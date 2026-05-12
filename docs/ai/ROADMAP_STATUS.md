@@ -18,12 +18,12 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
 | Goose MCP server | In progress | Six Workbench tools exposed through a stdio FastMCP server; real MCP stdio smoke passed |
-| Goose recipe MVP | In progress | Engineering acceptance recipe now uses run setup, execution capture, validation, quality gate, and analysis; two-tool smoke recipe added for slow local models |
+| Goose recipe MVP | Passed | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
 | Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
 | Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 77 tests and 2 subtests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
 | Public README/install flow | Draft | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
-| Public examples | In progress | Tiny Python fix, Goose tool smoke, Goose recipe smoke, and sanitized sample run added for v0.1 alpha |
+| Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, and sanitized sample run added for v0.1 alpha |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -103,4 +103,4 @@ Tasks:
 
 ## Current Next Step
 
-Prepare the v0.1.0-alpha release surface, run the two-tool Goose smoke on slow local models, smoke-test the full six-tool recipe when practical, then clean ignored cache folders before public release.
+Tag `v0.1.0-alpha`, then start v0.2 recipe library and validation policy pack work.

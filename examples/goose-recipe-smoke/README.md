@@ -6,7 +6,8 @@ validates and quality-gates the run evidence.
 
 On slow local models, run `examples/goose-tool-smoke/` first. The full recipe
 may need a long shell timeout because it requires an implementation turn plus
-multiple MCP tool calls.
+multiple MCP tool calls. A local Gemma 4 full smoke took about 22 minutes on
+the initial v0.1 alpha machine.
 
 ```bash
 goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
