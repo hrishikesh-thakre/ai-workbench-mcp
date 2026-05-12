@@ -1,0 +1,30 @@
+{
+  "run_id": "needs-review-test-fix",
+  "generated_at": "2026-05-12T00:00:00",
+  "project": "ai_workbench_mcp",
+  "task_type": "test",
+  "workflow_mode": "test",
+  "execution_boundary": "automatic_provider_execution_with_validation",
+  "risk": "medium",
+  "validation_strength": "strong",
+  "complexity_score": 9,
+  "complexity_band": "moderate",
+  "prompt": "bug_root_cause_investigation",
+  "recipe": "workbench-test-fix-acceptance.yaml",
+  "selected_tier": "frontier",
+  "selected_model": {
+    "provider": "goose",
+    "model": "frontier-tier",
+    "fallback_models": [],
+    "parameters": {},
+    "use_for": [
+      "bounded failing-test repair with strong validation"
+    ]
+  },
+  "reason": "A medium-risk test-fix task with strong validation can route to the frontier tier.",
+  "matched_rule": "medium_risk_frontier",
+  "manual_override_allowed": true,
+  "fallbacks": [],
+  "output_path": "model_selection.json",
+  "status": "selected"
+}

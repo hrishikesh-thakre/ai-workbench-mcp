@@ -120,6 +120,7 @@ Evidence boundary:
 - Keep local run evidence in ignored `runs/`.
 - Commit only sanitized examples under `examples/sample-runs/`.
 - Remove local absolute paths, provider secrets, private target-repo names, and raw model-loader logs from any committed sample.
+- Read `docs/analytics/acceptance-analytics.md` before using run analytics for routing decisions.
 
 ## 7. Public Release Rule
 

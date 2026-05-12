@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-05-12T00:00:00",
+  "loop_type": "blocking_findings",
+  "required": true,
+  "reason": "Deterministic validation failed and the run is not sign-off ready.",
+  "next_action": "Review the full_test_suite failure, make a bounded revision, rerun validation, and repeat the quality gate.",
+  "accepted_pass": 0,
+  "final_status": "revision_required",
+  "authoritative_model_output": "model_output.md",
+  "authoritative_validation_report": "validation_report.json",
+  "blocking_findings": [
+    "Required validation command full_test_suite failed.",
+    "The run cannot be accepted until deterministic validation passes."
+  ],
+  "non_blocking_findings": []
+}

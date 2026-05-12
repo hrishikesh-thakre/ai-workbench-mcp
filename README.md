@@ -209,6 +209,8 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/): sanitized committed evidence showing an accepted run folder.
 - [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
+- [Sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized synthetic evidence showing failed validation and a revision-required quality gate.
+- [Acceptance analytics guide](docs/analytics/acceptance-analytics.md): how to read `run_metrics.json`, `run_summary.md`, outcome buckets, routing feedback candidates, and optional cost fields.
 
 ## Development
 

@@ -1,0 +1,91 @@
+{
+  "run_id": "needs-review-test-fix",
+  "project": "ai_workbench_mcp",
+  "profile": "test_fix",
+  "generated_at": "2026-05-12T00:00:00",
+  "commands_run": [
+    {
+      "name": "pytest_collection",
+      "command": "python -m pytest --collect-only -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 300
+    },
+    {
+      "name": "full_test_suite",
+      "command": "python -m pytest -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 3.0,
+      "exit_code": 1,
+      "status": "failed",
+      "duration_ms": 900
+    },
+    {
+      "name": "recipe_policy_discovery_tests",
+      "command": "python -m pytest tests/test_recipes.py -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 250
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [
+    {
+      "name": "artifact_presence",
+      "status": "passed",
+      "summary": "All required run artifacts are present.",
+      "details": [
+        "Found 3 required artifacts."
+      ]
+    },
+    {
+      "name": "artifact_non_empty",
+      "status": "passed",
+      "summary": "Required artifacts contain content.",
+      "details": [
+        "Checked 3 artifacts for non-empty content."
+      ]
+    }
+  ],
+  "review_checks": [
+    {
+      "name": "model_output_status",
+      "status": "passed",
+      "summary": "model_output.md indicates a captured execution state.",
+      "details": [
+        "Model output status: response_captured"
+      ]
+    },
+    {
+      "name": "captured_response_format",
+      "status": "needs_review",
+      "summary": "Captured response reports failed deterministic validation.",
+      "details": [
+        "The validation section records a failed full test suite."
+      ]
+    }
+  ],
+  "missing_context_notes": {
+    "needs_review": [
+      "Review the failed full_test_suite output before another implementation pass."
+    ],
+    "info": []
+  },
+  "overall_status": "failed",
+  "sign_off_ready": false,
+  "confidence": 0.4,
+  "summary": {
+    "commands_passed": 2,
+    "commands_failed": 1,
+    "checks_passed": 3,
+    "checks_needs_review": 1,
+    "checks_failed": 0
+  }
+}

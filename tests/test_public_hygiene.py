@@ -74,7 +74,7 @@ class PublicHygieneTests(unittest.TestCase):
 
         self.assertEqual(
             sample_names,
-            ["accepted-docs-only-smoke", "accepted-tiny-python-fix"],
+            ["accepted-docs-only-smoke", "accepted-tiny-python-fix", "needs-review-test-fix"],
         )
 
     def test_operating_docs_are_aligned_to_v02_release_candidate_state(self) -> None:
@@ -86,7 +86,8 @@ class PublicHygieneTests(unittest.TestCase):
 
         roadmap = (ROOT / "docs" / "ai" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
         self.assertIn("Phase 4: v0.2 Recipe And Policy Packs (Release Candidate)", roadmap)
-        self.assertIn("tagging `v0.2.0-alpha`", roadmap)
+        self.assertIn("Phase 5: Acceptance Analytics (Hardening)", roadmap)
+        self.assertIn("routing feedback candidates", roadmap)
         self.assertNotIn("passed 78 tests and 2 subtests", roadmap)
         self.assertNotIn("Phase 4: v0.2 Recipe And Policy Packs (Next)", roadmap)
         self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)

@@ -8,8 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 TINY_EXAMPLE = ROOT / "examples" / "tiny-python-fix"
 SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-tiny-python-fix"
 DOCS_ONLY_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-docs-only-smoke"
+NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test-fix"
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
+SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
+ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
 README = ROOT / "README.md"
+START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
 V02_RELEASE = ROOT / "docs" / "releases" / "v0.2.0-alpha.md"
 
 REQUIRED_SAMPLE_ARTIFACTS = [
@@ -46,25 +50,30 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("FAILED", result.stderr)
 
     def test_sample_run_contains_required_sanitized_artifacts(self) -> None:
-        for sample_run in (SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN):
+        for sample_run in (SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN, NEEDS_REVIEW_SAMPLE_RUN):
             with self.subTest(sample_run=sample_run.name):
                 for artifact in REQUIRED_SAMPLE_ARTIFACTS:
                     self.assertTrue((sample_run / artifact).exists(), artifact)
 
                 selection = json.loads((sample_run / "model_selection.json").read_text(encoding="utf-8"))
-                report = json.loads((sample_run / "validation_report.json").read_text(encoding="utf-8"))
-                decision = json.loads((sample_run / "revision_decision.json").read_text(encoding="utf-8"))
 
                 self.assertEqual(selection["status"], "selected")
-                self.assertEqual(report["overall_status"], "passed")
-                self.assertTrue(report["sign_off_ready"])
-                self.assertEqual(decision["final_status"], "accepted")
 
                 combined = "\n".join(path.read_text(encoding="utf-8") for path in sample_run.iterdir() if path.is_file())
                 self.assertNotIn("D:\\", combined)
                 self.assertNotIn("C:\\Users", combined)
                 self.assertNotIn("api_key", combined.lower())
                 self.assertNotIn("token=", combined.lower())
+
+    def test_accepted_sample_runs_are_accepted(self) -> None:
+        for sample_run in (SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN):
+            with self.subTest(sample_run=sample_run.name):
+                report = json.loads((sample_run / "validation_report.json").read_text(encoding="utf-8"))
+                decision = json.loads((sample_run / "revision_decision.json").read_text(encoding="utf-8"))
+
+                self.assertEqual(report["overall_status"], "passed")
+                self.assertTrue(report["sign_off_ready"])
+                self.assertEqual(decision["final_status"], "accepted")
 
     def test_docs_only_sample_run_uses_focused_prompt_profile_and_policy(self) -> None:
         metadata = json.loads((DOCS_ONLY_SAMPLE_RUN / "task_metadata.json").read_text(encoding="utf-8"))
@@ -92,6 +101,27 @@ class PublicExamplesTests(unittest.TestCase):
             )
         )
 
+    def test_needs_review_sample_run_uses_test_fix_profile_and_revision_required_gate(self) -> None:
+        metadata = json.loads((NEEDS_REVIEW_SAMPLE_RUN / "task_metadata.json").read_text(encoding="utf-8"))
+        selection = json.loads((NEEDS_REVIEW_SAMPLE_RUN / "model_selection.json").read_text(encoding="utf-8"))
+        report = json.loads((NEEDS_REVIEW_SAMPLE_RUN / "validation_report.json").read_text(encoding="utf-8"))
+        decision = json.loads((NEEDS_REVIEW_SAMPLE_RUN / "revision_decision.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["prompt"], "bug_root_cause_investigation")
+        self.assertEqual(metadata["recipe"], "workbench-test-fix-acceptance.yaml")
+        self.assertEqual(selection["selected_tier"], "frontier")
+        self.assertEqual(report["profile"], "test_fix")
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertFalse(report["sign_off_ready"])
+        self.assertEqual(decision["final_status"], "revision_required")
+        self.assertTrue(decision["blocking_findings"])
+        self.assertTrue(
+            any(
+                command["name"] == "full_test_suite" and command["status"] == "failed"
+                for command in report["commands_run"]
+            )
+        )
+
     def test_readme_product_page_references_quickstart_tools_recipe_and_sample_run(self) -> None:
         text = README.read_text(encoding="utf-8")
 
@@ -111,6 +141,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/focused-workflows", text)
         self.assertIn("examples/sample-runs/accepted-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
+        self.assertIn("examples/sample-runs/needs-review-test-fix", text)
+        self.assertIn("docs/analytics/acceptance-analytics.md", text)
         self.assertIn("recipes/workbench-docs-only-acceptance.yaml", text)
         self.assertIn("recipes/workbench-python-package-maintenance.yaml", text)
         self.assertIn("recipes/workbench-test-fix-acceptance.yaml", text)
@@ -138,6 +170,22 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("test_fix", text)
         self.assertIn("low_risk_coding", text)
         self.assertIn("Do not commit `runs/`", text)
+
+    def test_sample_runs_readme_and_analytics_guide_document_phase5_reports(self) -> None:
+        sample_text = SAMPLE_RUNS_README.read_text(encoding="utf-8")
+        guide_text = ANALYTICS_GUIDE.read_text(encoding="utf-8")
+        readme_text = README.read_text(encoding="utf-8")
+        start_here_text = START_HERE.read_text(encoding="utf-8")
+
+        self.assertIn("needs-review-test-fix", sample_text)
+        self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
+        self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
+        self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
+        self.assertIn("--runs-dir examples/sample-runs", guide_text)
+        self.assertIn("run_metrics.json", guide_text)
+        self.assertIn("run_summary.md", guide_text)
+        self.assertIn("routing_feedback_candidates", guide_text)
+        self.assertIn("Cost tracking is optional provider metadata", guide_text)
 
     def test_v02_release_notes_document_focused_profiles_and_verification(self) -> None:
         text = V02_RELEASE.read_text(encoding="utf-8")

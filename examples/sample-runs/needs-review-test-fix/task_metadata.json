@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-12T00:00:00",
+  "run_id": "needs-review-test-fix",
+  "project": "ai_workbench_mcp",
+  "task": "Repair a bounded failing-test signal, but stop when deterministic validation still fails.",
+  "prompt": "bug_root_cause_investigation",
+  "risk": "medium",
+  "task_type": "test",
+  "context_profile": "default_docs_first",
+  "recipe": "workbench-test-fix-acceptance.yaml",
+  "changed_files": [
+    "examples/tiny-python-fix/calculator.py"
+  ],
+  "docs": [],
+  "include_diff": false
+}

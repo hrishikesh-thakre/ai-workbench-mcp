@@ -211,6 +211,17 @@ def acceptance_bucket(report: dict[str, object], decision: dict[str, object]) ->
     return outcome
 
 
+def public_outcome_bucket(report: dict[str, object], decision: dict[str, object]) -> str:
+    if accepted_by_validation_and_gate(report, decision):
+        return "accepted"
+    outcome = quality_gate_outcome(decision)
+    if outcome in {"review_required", "revision_required"}:
+        return "review_required"
+    if report.get("overall_status") == "failed":
+        return "failed"
+    return "other"
+
+
 def acceptance_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str, object]]:
     result: dict[str, dict[str, object]] = {}
     for key, counts in sorted(matrix.items()):
@@ -225,6 +236,57 @@ def acceptance_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str,
             "acceptance_rate": round(accepted / max(1, total), 2),
         }
     return result
+
+
+def outcome_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for key, counts in sorted(matrix.items()):
+        total = sum(counts.values())
+        accepted = counts.get("accepted", 0)
+        review_required = counts.get("review_required", 0)
+        failed = counts.get("failed", 0)
+        result[key] = {
+            "accepted": accepted,
+            "review_required": review_required,
+            "failed": failed,
+            "other": total - accepted - review_required - failed,
+            "total": total,
+            "acceptance_rate": round(accepted / max(1, total), 2),
+            "review_rate": round(review_required / max(1, total), 2),
+            "failure_rate": round(failed / max(1, total), 2),
+        }
+    return result
+
+
+def routing_feedback_candidates(
+    outcome_matrix: dict[str, Counter[str]],
+    failure_reason_matrix: dict[str, Counter[str]],
+) -> dict[str, dict[str, object]]:
+    candidates: dict[str, dict[str, object]] = {}
+    for key, counts in sorted(outcome_matrix.items()):
+        parts = str(key).split("|")
+        recipe, profile, tier, risk, complexity = (parts + ["unknown"] * 5)[:5]
+        total = sum(counts.values())
+        accepted = counts.get("accepted", 0)
+        review_required = counts.get("review_required", 0)
+        failed = counts.get("failed", 0)
+        candidates[key] = {
+            "recipe": recipe,
+            "validation_profile": profile,
+            "selected_tier": tier,
+            "risk": risk,
+            "complexity_band": complexity,
+            "accepted": accepted,
+            "review_required": review_required,
+            "failed": failed,
+            "other": total - accepted - review_required - failed,
+            "total": total,
+            "acceptance_rate": round(accepted / max(1, total), 2),
+            "review_rate": round(review_required / max(1, total), 2),
+            "failure_rate": round(failed / max(1, total), 2),
+            "top_failure_reasons": dict(failure_reason_matrix.get(key, Counter()).most_common(5)),
+        }
+    return candidates
 
 
 def failure_reasons(report: dict[str, object], decision: dict[str, object]) -> list[str]:
@@ -494,12 +556,19 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     accepted_by_profile: Counter[str] = Counter()
     accepted_by_tier: Counter[str] = Counter()
     accepted_by_task_type: Counter[str] = Counter()
+    public_outcomes: Counter[str] = Counter()
     quality_outcomes: Counter[str] = Counter()
     failure_reason_counts: Counter[str] = Counter()
     acceptance_by_recipe: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_profile: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_tier: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_quality_outcome: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_recipe: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_profile: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_tier: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_quality_outcome: dict[str, Counter[str]] = defaultdict(Counter)
+    routing_candidate_outcomes: dict[str, Counter[str]] = defaultdict(Counter)
+    routing_candidate_failure_reasons: dict[str, Counter[str]] = defaultdict(Counter)
 
     for run in runs:
         logs = run["logs"]
@@ -523,6 +592,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             decision if isinstance(decision, dict) else {},
         )
         bucket = acceptance_bucket(report if isinstance(report, dict) else {}, decision if isinstance(decision, dict) else {})
+        public_bucket = public_outcome_bucket(
+            report if isinstance(report, dict) else {},
+            decision if isinstance(decision, dict) else {},
+        )
         risk = str(selection.get("risk", "unknown")) if isinstance(selection, dict) else "unknown"
         complexity_band = str(selection.get("complexity_band", "unknown")) if isinstance(selection, dict) else "unknown"
         # Backfill: when historical runs lack complexity scoring, use risk as a proxy.
@@ -536,10 +609,17 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         routing_key = f"{selected_tier}|{risk}|{complexity_band}"
         routing_feedback[routing_key][run_status] += 1
         quality_outcomes[gate_outcome] += 1
+        public_outcomes[public_bucket] += 1
         acceptance_by_recipe[recipe][bucket] += 1
         acceptance_by_profile[profile][bucket] += 1
         acceptance_by_tier[selected_tier][bucket] += 1
         acceptance_by_quality_outcome[gate_outcome][bucket] += 1
+        outcome_by_recipe[recipe][public_bucket] += 1
+        outcome_by_profile[profile][public_bucket] += 1
+        outcome_by_tier[selected_tier][public_bucket] += 1
+        outcome_by_quality_outcome[gate_outcome][public_bucket] += 1
+        routing_candidate_key = f"{recipe}|{profile}|{selected_tier}|{risk}|{complexity_band}"
+        routing_candidate_outcomes[routing_candidate_key][public_bucket] += 1
         if accepted:
             accepted_runs_total += 1
             accepted_by_recipe[recipe] += 1
@@ -552,6 +632,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 decision if isinstance(decision, dict) else {},
             ):
                 failure_reason_counts[reason] += 1
+                routing_candidate_failure_reasons[routing_candidate_key][reason] += 1
         if isinstance(logs, list):
             for row in logs:
                 tier = row.get("model_tier")
@@ -798,6 +879,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "accepted_runs_by_validation_profile": dict(accepted_by_profile),
         "accepted_runs_by_selected_tier": dict(accepted_by_tier),
         "accepted_runs_by_task_type": dict(accepted_by_task_type),
+        "review_required_runs_total": public_outcomes.get("review_required", 0),
+        "failed_runs_total": public_outcomes.get("failed", 0),
+        "other_runs_total": public_outcomes.get("other", 0),
+        "outcome_counts": dict(public_outcomes),
         "quality_gate_outcomes": dict(quality_outcomes),
         "failure_reasons": dict(failure_reason_counts.most_common(10)),
         "acceptance_breakdown": {
@@ -806,6 +891,16 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             "by_selected_tier": acceptance_breakdown(acceptance_by_tier),
             "by_quality_gate_outcome": acceptance_breakdown(acceptance_by_quality_outcome),
         },
+        "outcome_breakdown": {
+            "by_recipe": outcome_breakdown(outcome_by_recipe),
+            "by_validation_profile": outcome_breakdown(outcome_by_profile),
+            "by_selected_tier": outcome_breakdown(outcome_by_tier),
+            "by_quality_gate_outcome": outcome_breakdown(outcome_by_quality_outcome),
+        },
+        "routing_feedback_candidates": routing_feedback_candidates(
+            routing_candidate_outcomes,
+            routing_candidate_failure_reasons,
+        ),
         "confidence_by_task_type": confidence_by_task_result,
         "model_tier_usage": dict(tier_usage),
         "validation_profiles_used": dict(profiles_used),
@@ -925,6 +1020,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             "accepted_runs_by_recipe": dict(accepted_by_recipe),
             "accepted_runs_by_validation_profile": dict(accepted_by_profile),
             "accepted_runs_by_selected_tier": dict(accepted_by_tier),
+            "review_required_runs_total": public_outcomes.get("review_required", 0),
+            "failed_runs_total": public_outcomes.get("failed", 0),
+            "outcome_counts": dict(public_outcomes),
             "quality_gate_outcomes": dict(quality_outcomes),
             "failure_reasons": dict(failure_reason_counts.most_common(10)),
             "manual_handoff_count": manual_handoff_count,
@@ -1012,26 +1110,32 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Workflow needs-review rate: {metrics['workflow_needs_review_rate']}",
         f"- Average confidence: {metrics['average_confidence']}",
         f"- Accepted runs total: {metrics['accepted_runs_total']}",
+        f"- Review-required runs total: {metrics['review_required_runs_total']}",
+        f"- Failed runs total: {metrics['failed_runs_total']}",
         f"- Acceptance rate: {metrics['acceptance_rate']}",
+        "",
+        "## Acceptance Outcomes",
+        "",
+        f"- Outcome counts: {metrics['outcome_counts']}",
+        f"- Quality-gate outcomes: {metrics['quality_gate_outcomes']}",
+        f"- Failure reasons: {metrics['failure_reasons']}",
         "",
         "## Acceptance Analytics",
         "",
         f"- Accepted runs by recipe: {metrics['accepted_runs_by_recipe']}",
         f"- Accepted runs by validation profile: {metrics['accepted_runs_by_validation_profile']}",
         f"- Accepted runs by selected tier: {metrics['accepted_runs_by_selected_tier']}",
-        f"- Quality-gate outcomes: {metrics['quality_gate_outcomes']}",
-        f"- Failure reasons: {metrics['failure_reasons']}",
         "",
-        "### Acceptance By Recipe",
+        "### Public Outcomes By Recipe",
         "",
-        "| Recipe | Accepted | Needs Review | Failed | Other | Total | Acceptance Rate |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Recipe | Accepted | Review Required | Failed | Other | Total | Acceptance Rate | Review Rate | Failure Rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
-    recipe_breakdown = as_dict(as_dict(metrics.get("acceptance_breakdown")).get("by_recipe"))
+    recipe_breakdown = as_dict(as_dict(metrics.get("outcome_breakdown")).get("by_recipe"))
     for recipe, data in recipe_breakdown.items():
         data = as_dict(data)
         lines.append(
-            f"| {recipe} | {data.get('accepted', 0)} | {data.get('needs_review', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} |"
+            f"| {recipe} | {data.get('accepted', 0)} | {data.get('review_required', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} | {data.get('review_rate', 0.0)} | {data.get('failure_rate', 0.0)} |"
         )
     lines.extend([
         "",
@@ -1045,6 +1149,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Cost Tracking",
         "",
+        "Cost tracking is optional provider metadata; zero or empty values mean no provider cost evidence was found.",
         f"- Total tokens tracked: {metrics['total_tokens_tracked']}",
         f"- Runs with token data: {metrics['runs_with_token_data']}",
         f"- Average tokens per run: {metrics['average_tokens_per_run']}",
@@ -1062,6 +1167,21 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Final status by selected tier: {metrics['final_status_by_selected_tier']}",
         f"- Review triggers by selected tier: {metrics['review_loop_trigger_by_selected_tier']}",
         f"- Eval pass rate by selected tier: {metrics['eval_pass_rate_by_selected_tier']}",
+        "",
+        "## Routing Feedback Candidates",
+        "",
+        "| Recipe | Profile | Tier | Risk | Complexity | Accepted | Review Required | Failed | Total | Acceptance Rate | Review Rate | Failure Rate | Top Failure Reasons |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|",
+    ])
+    candidates = metrics.get("routing_feedback_candidates", {})
+    for _key, data in (candidates.items() if isinstance(candidates, dict) else []):
+        data = as_dict(data)
+        top_reasons = as_dict(data.get("top_failure_reasons"))
+        reason_text = ", ".join(f"{reason}={count}" for reason, count in top_reasons.items()) or ""
+        lines.append(
+            f"| {data.get('recipe', 'unknown')} | {data.get('validation_profile', 'unknown')} | {data.get('selected_tier', 'unknown')} | {data.get('risk', 'unknown')} | {data.get('complexity_band', 'unknown')} | {data.get('accepted', 0)} | {data.get('review_required', 0)} | {data.get('failed', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} | {data.get('review_rate', 0.0)} | {data.get('failure_rate', 0.0)} | {reason_text} |"
+        )
+    lines.extend([
         "",
         "## Routing Feedback Matrix (tier|risk|complexity → pass rate)",
         "",
