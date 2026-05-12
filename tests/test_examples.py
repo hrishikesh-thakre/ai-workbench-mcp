@@ -12,6 +12,8 @@ NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
 SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
 ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
+DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
+LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 README = ROOT / "README.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
 V02_RELEASE = ROOT / "docs" / "releases" / "v0.2.0-alpha.md"
@@ -143,6 +145,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
+        self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
+        self.assertIn("docs/github/launch-issues.md", text)
         self.assertIn("recipes/workbench-docs-only-acceptance.yaml", text)
         self.assertIn("recipes/workbench-python-package-maintenance.yaml", text)
         self.assertIn("recipes/workbench-test-fix-acceptance.yaml", text)
@@ -174,6 +178,8 @@ class PublicExamplesTests(unittest.TestCase):
     def test_sample_runs_readme_and_analytics_guide_document_phase5_reports(self) -> None:
         sample_text = SAMPLE_RUNS_README.read_text(encoding="utf-8")
         guide_text = ANALYTICS_GUIDE.read_text(encoding="utf-8")
+        dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
+        launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
 
@@ -181,11 +187,25 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
+        self.assertIn("docs/dogfooding/phase5-dogfooding.md", sample_text)
+        self.assertIn("docs/dogfooding/phase5-dogfooding.md", readme_text)
+        self.assertIn("docs/dogfooding/phase5-dogfooding.md", start_here_text)
+        self.assertIn("docs/github/launch-issues.md", readme_text)
+        self.assertIn("docs/github/launch-issues.md", start_here_text)
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)
         self.assertIn("routing_feedback_candidates", guide_text)
         self.assertIn("Cost tracking is optional provider metadata", guide_text)
+        self.assertIn("20-50 real Goose acceptance runs", dogfooding_text)
+        self.assertIn("runs/dogfood-YYYYMMDD-<short-task-slug>", dogfooding_text)
+        self.assertIn("routing_feedback_candidates", dogfooding_text)
+        self.assertIn("command_failed:full_test_suite", dogfooding_text)
+        self.assertIn("dogfooding: collect 20-50 Goose acceptance runs", launch_text)
+        self.assertIn("analytics: promote routing feedback candidates", launch_text)
+        self.assertIn("cost evidence: capture provider token and cost metadata", launch_text)
+        self.assertIn("ci: prototype PR acceptance gate", launch_text)
+        self.assertNotIn("before the v0.1 alpha announcement", launch_text)
 
     def test_v02_release_notes_document_focused_profiles_and_verification(self) -> None:
         text = V02_RELEASE.read_text(encoding="utf-8")

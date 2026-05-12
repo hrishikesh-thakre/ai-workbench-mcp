@@ -20,7 +20,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Goose MCP server | Alpha complete | Six Workbench tools exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
 | Goose recipe MVP | Alpha complete | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
 | Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
-| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 109 tests and 72 subtests during Phase 5 analytics hardening |
+| Validation of extracted tests | Passed | Full pytest suite passed during Phase 5 analytics hardening |
 | Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\phase5_analytics_scaffold` passed |
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
 | Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
@@ -29,6 +29,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
 | Acceptance analytics | Hardening | `workbench_analyze_runs` now summarizes accepted, review-required, and failed runs with routing feedback candidates |
+| Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -122,8 +123,9 @@ Tasks:
 - Add routing feedback candidates for later model-selection policy.
 - Track cost per accepted artifact when real provider cost evidence exists.
 - Promote sanitized golden cases.
+- Run the Phase 5 dogfooding protocol across 20-50 real Goose tasks.
 - Feed historical evidence back into routing recommendations.
 
 ## Current Next Step
 
-Continue Phase 5 by turning routing feedback candidates into model-selection policy inputs after more real accepted and review-required runs accumulate. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Continue Phase 5 by running the dogfooding protocol in `docs/dogfooding/phase5-dogfooding.md`, then use real `routing_feedback_candidates` to propose bounded model-selection policy experiments. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

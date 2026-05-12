@@ -121,6 +121,7 @@ Evidence boundary:
 - Commit only sanitized examples under `examples/sample-runs/`.
 - Remove local absolute paths, provider secrets, private target-repo names, and raw model-loader logs from any committed sample.
 - Read `docs/analytics/acceptance-analytics.md` before using run analytics for routing decisions.
+- Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 
 ## 7. Public Release Rule
 
@@ -133,3 +134,13 @@ Before public release, remove or avoid:
 - broad UI/provider plumbing that competes with Goose
 
 The public repo should look like a Goose-compatible acceptance extension, not an alternative agent platform.
+
+## 8. Phase 5 Launch Path
+
+The next product pass is not more recipes. It is collecting real Goose runs and using `workbench_analyze_runs` to decide whether routing policy should change.
+
+Use:
+
+- `docs/dogfooding/phase5-dogfooding.md` for the dogfooding protocol.
+- `docs/analytics/acceptance-analytics.md` for reading metrics and summaries.
+- `docs/github/launch-issues.md` for public alpha issue seeds.
