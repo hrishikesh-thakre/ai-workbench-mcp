@@ -1,4 +1,5 @@
 import re
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -89,6 +90,13 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertNotIn("passed 78 tests and 2 subtests", roadmap)
         self.assertNotIn("Phase 4: v0.2 Recipe And Policy Packs (Next)", roadmap)
         self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)
+
+    def test_package_version_matches_v02_alpha_release_docs(self) -> None:
+        pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
+
+        self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
+        self.assertIn("Python package version: `0.2.0a0`", release_note)
 
 
 if __name__ == "__main__":
