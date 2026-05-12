@@ -55,12 +55,6 @@ def _append_optional(command: list[str], flag: str, value: object | None) -> Non
         command.extend([flag, str(value)])
 
 
-def _append_repeated(command: list[str], flag: str, values: list[str] | tuple[str, ...] | None) -> None:
-    if values:
-        command.append(flag)
-        command.extend(str(value) for value in values)
-
-
 def _workbench_path(path: str | Path) -> Path:
     candidate = Path(path)
     return candidate if candidate.is_absolute() else WORKBENCH_ROOT / candidate
@@ -73,6 +67,24 @@ def _load_model_select_module() -> Any:
     import model_select as model_select_module
 
     return model_select_module
+
+
+def _load_validate_run_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import validate_run as validate_run_module
+
+    return validate_run_module
+
+
+def _load_quality_loop_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import quality_loop as quality_loop_module
+
+    return quality_loop_module
 
 
 def model_selection_response(selection: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
@@ -242,35 +254,24 @@ def validate_run(
     changed_files: list[str] | None = None,
     report_name: str = "validation_report.json",
 ) -> JsonObject:
-    command = [
-        str(TOOLS_DIR / "validate_run.py"),
-        "--project",
-        project,
-        "--out-dir",
-        str(out_dir),
-        "--report-name",
-        report_name,
-    ]
-    _append_optional(command, "--profile", profile)
-    _append_repeated(command, "--changed-files", changed_files)
-
-    result = run_tool(
-        operation="workbench_validate_run",
-        args=command,
-        accepted_exit_codes={0, 1, 2},
+    args = SimpleNamespace(
+        project=project,
+        profile=profile,
+        changed_files=changed_files or [],
+        out_dir=str(out_dir),
+        report_name=report_name,
     )
-    if isinstance(result, dict):
-        return result
-
     report_path = _workbench_path(out_dir) / report_name
-    if not report_path.exists():
+    try:
+        report = _load_validate_run_module().validate_run_payload(args)
+    except Exception as exc:
         return error_envelope(
             operation="workbench_validate_run",
-            code="missing_validation_report",
-            message="Validation completed without writing the expected report.",
+            code="validation_failed",
+            message=str(exc),
             details={"validation_report": str(report_path)},
         )
-    return validation_file_response(report_path)
+    return validation_response(report, artifacts={"validation_report": report_path})
 
 
 def quality_gate(
@@ -283,37 +284,26 @@ def quality_gate(
     review_prompt: str | Path | None = None,
     review_output: str | Path | None = None,
 ) -> JsonObject:
-    command = [
-        str(TOOLS_DIR / "quality_loop.py"),
-        "--project",
-        project,
-        "--run-dir",
-        str(run_dir),
-        "--mode",
-        mode,
-    ]
-    _append_optional(command, "--risk", risk)
-    _append_optional(command, "--validation-report", validation_report)
-    _append_optional(command, "--review-prompt", review_prompt)
-    _append_optional(command, "--review-output", review_output)
-
-    result = run_tool(
-        operation="workbench_quality_gate",
-        args=command,
-        accepted_exit_codes={0, 1, 2},
+    args = SimpleNamespace(
+        project=project,
+        run_dir=str(run_dir),
+        mode=mode,
+        risk=risk,
+        validation_report=str(validation_report) if validation_report is not None else None,
+        review_prompt=str(review_prompt) if review_prompt is not None else None,
+        review_output=str(review_output) if review_output is not None else None,
     )
-    if isinstance(result, dict):
-        return result
-
     decision_path = _workbench_path(run_dir) / "revision_decision.json"
-    if not decision_path.exists():
+    try:
+        decision = _load_quality_loop_module().quality_gate_payload(args)
+    except Exception as exc:
         return error_envelope(
             operation="workbench_quality_gate",
-            code="missing_revision_decision",
-            message="Quality gate completed without writing revision_decision.json.",
+            code="quality_gate_failed",
+            message=str(exc),
             details={"revision_decision": str(decision_path)},
         )
-    return quality_gate_file_response(decision_path)
+    return quality_gate_response(decision, artifacts={"revision_decision": decision_path})
 
 
 def analyze_runs(

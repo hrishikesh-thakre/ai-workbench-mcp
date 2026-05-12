@@ -19,8 +19,8 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
 | Goose MCP server | Not started | `src/ai_workbench_mcp/` placeholder exists |
 | Goose recipe MVP | Not started | `recipes/` placeholder exists |
-| Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection extracted |
-| Validation of extracted tests | Passed | `python -m pytest -q` passed 39 tests |
+| Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, and quality gate extracted |
+| Validation of extracted tests | Passed | `python -m pytest -q` passed 48 tests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
 | Public README/install flow | Draft | Needs update after MCP server exists |
 
@@ -100,4 +100,4 @@ Tasks:
 
 ## Current Next Step
 
-Continue Phase 1 by extracting deterministic validation into a direct callable core path while preserving CLI behavior and the stable response envelope.
+Continue Phase 1 by extracting run analysis into a direct callable core path while preserving CLI behavior and the stable response envelope.

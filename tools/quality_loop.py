@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 import re
 import shutil
-import subprocess
-import sys
+from types import SimpleNamespace
 
 from config_loader import load_simple_yaml
 from context_scout import WORKBENCH_ROOT, load_project_config, resolve_cli_path
 from response_format import extract_preferred_response_text, missing_required_sections
+from validate_run import validate_run_payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -382,24 +382,15 @@ def run_second_pass_validation(project_key: str, run_dir: Path) -> None:
         shutil.copyfile(original_output, backup_output)
     try:
         shutil.copyfile(second_output, original_output)
-        command = [
-            sys.executable,
-            str(WORKBENCH_ROOT / "tools" / "validate_run.py"),
-            "--project",
-            project_key,
-            "--profile",
-            "run_signoff",
-            "--out-dir",
-            str(run_dir),
-            "--report-name",
-            second_report.name,
-        ]
-        result = subprocess.run(command, capture_output=True, text=True, check=False)
-        if result.returncode not in {0, 1, 2}:
-            raise RuntimeError(
-                "Second-pass validation execution failed unexpectedly\n"
-                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        validate_run_payload(
+            SimpleNamespace(
+                project=project_key,
+                profile="run_signoff",
+                changed_files=[],
+                out_dir=str(run_dir),
+                report_name=second_report.name,
             )
+        )
     finally:
         if backup_output.exists():
             shutil.copyfile(backup_output, original_output)
@@ -457,10 +448,7 @@ def promote_revision(project_key: str, run_dir: Path) -> dict[str, object]:
     return decision
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-
+def quality_gate_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
     run_dir = resolve_cli_path(args.run_dir, project.root)
     model_output_path = run_dir / "model_output.md"
@@ -470,31 +458,12 @@ def main() -> int:
     decision_path = run_dir / "revision_decision.json"
 
     if args.mode == "promote_revision":
-        try:
-            decision = promote_revision(args.project, run_dir)
-        except (FileNotFoundError, RuntimeError) as exc:
-            decision = base_decision(
-                loop_type="same_model_retry",
-                required=True,
-                reason=str(exc),
-                next_action="await_revision",
-                final_status="revision_required",
-                accepted_pass=1,
-                blocking_findings=[str(exc)],
-                non_blocking_findings=[],
-            )
-            write_json(decision_path, decision)
-            print(f"revision_decision={decision_path}")
-            print("final_status=revision_required")
-            return 1
+        decision = promote_revision(args.project, run_dir)
         write_json(decision_path, decision)
-        print(f"revision_decision={decision_path}")
-        print(f"final_status={decision['final_status']}")
-        return 0 if decision["final_status"] == "accepted" else 2
+        return decision
 
     if not model_output_path.exists():
-        print(f"Missing model_output.md: {model_output_path}")
-        return 1
+        raise FileNotFoundError(f"Missing model_output.md: {model_output_path}")
 
     model_output_text = read_text(model_output_path)
     report = read_json(validation_path)
@@ -503,8 +472,7 @@ def main() -> int:
     if args.mode == "evaluate_review":
         review_text = read_text(review_output_path)
         if not review_text:
-            print(f"Missing review output: {review_output_path}")
-            return 1
+            raise FileNotFoundError(f"Missing review output: {review_output_path}")
         blocking, non_blocking = classify_review_output(review_text)
         final_status = "revision_required" if blocking else "accepted"
         decision = base_decision(
@@ -518,9 +486,7 @@ def main() -> int:
             non_blocking_findings=non_blocking,
         )
         write_json(decision_path, decision)
-        print(f"revision_decision={decision_path}")
-        print(f"final_status={final_status}")
-        return 2 if blocking else 0
+        return decision
 
     config = load_quality_config()
     if args.mode == "auto":
@@ -554,9 +520,7 @@ def main() -> int:
             non_blocking_findings=non_blocking,
         )
         write_json(decision_path, decision)
-        print(f"revision_decision={decision_path}")
-        print("final_status=accepted")
-        return 0
+        return decision
 
     decision = base_decision(
         loop_type=loop_type,
@@ -573,11 +537,54 @@ def main() -> int:
         review_prompt_path.write_text(pairwise_prompt_text(reason, run_dir, report), encoding="utf-8")
     else:
         review_prompt_path.write_text(review_prompt_text(loop_type, reason, model_output_text, report), encoding="utf-8")
+    return decision
+
+
+def quality_gate_exit_code(decision: dict[str, object]) -> int:
+    return 0 if decision.get("final_status") == "accepted" else 2
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    try:
+        decision = quality_gate_payload(args)
+    except Exception as exc:
+        if args.mode == "promote_revision" and isinstance(exc, (FileNotFoundError, RuntimeError)):
+            try:
+                project = load_project_config(args.project)
+                run_dir = resolve_cli_path(args.run_dir, project.root)
+                decision_path = run_dir / "revision_decision.json"
+                decision = base_decision(
+                    loop_type="same_model_retry",
+                    required=True,
+                    reason=str(exc),
+                    next_action="await_revision",
+                    final_status="revision_required",
+                    accepted_pass=1,
+                    blocking_findings=[str(exc)],
+                    non_blocking_findings=[],
+                )
+                write_json(decision_path, decision)
+                print(f"revision_decision={decision_path}")
+                print("final_status=revision_required")
+                return 1
+            except Exception:
+                pass
+        print(str(exc))
+        return 1
+
+    project = load_project_config(args.project)
+    run_dir = resolve_cli_path(args.run_dir, project.root)
+    review_prompt_path = resolve_cli_path(args.review_prompt, project.root) if args.review_prompt else run_dir / "review_prompt.md"
+    decision_path = run_dir / "revision_decision.json"
 
     print(f"revision_decision={decision_path}")
-    print(f"review_prompt={review_prompt_path}")
-    print("final_status=review_required")
-    return 2
+    if args.mode not in {"evaluate_review", "promote_revision"} and decision.get("final_status") == "review_required":
+        print(f"review_prompt={review_prompt_path}")
+    print(f"final_status={decision['final_status']}")
+    return quality_gate_exit_code(decision)
 
 
 if __name__ == "__main__":

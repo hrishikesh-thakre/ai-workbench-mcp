@@ -673,10 +673,7 @@ def determine_exit_code(overall_status: str) -> int:
     return 1
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-
+def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
     profile = load_validation_profile(args.profile or project.default_validation_profile)
     run_dir = resolve_cli_path(args.out_dir, project.root)
@@ -724,9 +721,20 @@ def main() -> int:
     )
     report_path = run_dir / args.report_name
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    project = load_project_config(args.project)
+    run_dir = resolve_cli_path(args.out_dir, project.root)
+    report_path = run_dir / args.report_name
+    report = validate_run_payload(args)
 
     print(f"project={args.project}")
-    print(f"profile={profile.name}")
+    print(f"profile={report['profile']}")
     print(f"run_dir={run_dir}")
     print(f"validation_report={report_path}")
     print(f"overall_status={report['overall_status']}")

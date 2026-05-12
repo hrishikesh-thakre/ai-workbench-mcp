@@ -11,7 +11,73 @@ TOOLS_DIR = ROOT / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from quality_loop import classify_review_output, determine_auto_trigger, main, read_json
+from quality_loop import classify_review_output, determine_auto_trigger, main, quality_gate_payload, read_json
+
+
+def quality_args(
+    run_dir: Path,
+    *,
+    mode: str = "auto",
+    risk: str | None = None,
+    review_output: Path | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        project="ai_workbench_mcp",
+        run_dir=str(run_dir),
+        mode=mode,
+        risk=risk,
+        validation_report=None,
+        review_prompt=None,
+        review_output=str(review_output) if review_output is not None else None,
+    )
+
+
+def write_structured_model_output(run_dir: Path) -> None:
+    (run_dir / "model_output.md").write_text(
+        "\n".join(
+            [
+                "# Model Output",
+                "",
+                "## Captured Response",
+                "",
+                "Summary:",
+                "Implemented a bounded change.",
+                "",
+                "Files touched:",
+                "- tools/example.py",
+                "",
+                "Validation run:",
+                "- pytest -> passed",
+                "",
+                "Risks / follow-ups:",
+                "- None.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
+def write_passed_validation_report(run_dir: Path) -> None:
+    (run_dir / "validation_report.json").write_text(
+        json.dumps({"overall_status": "passed", "confidence": 1.0}),
+        encoding="utf-8",
+    )
+
+
+def write_promotion_artifacts(run_dir: Path) -> None:
+    (run_dir / "model_output.md").write_text("original model output\n", encoding="utf-8")
+    (run_dir / "validation_report.json").write_text(
+        json.dumps({"overall_status": "failed", "source": "first"}),
+        encoding="utf-8",
+    )
+    (run_dir / "model_output_2.md").write_text("revised model output\n", encoding="utf-8")
+
+
+def write_second_pass_report(run_dir: Path, status: str) -> None:
+    (run_dir / "validation_report_2.json").write_text(
+        json.dumps({"overall_status": status, "source": "second"}),
+        encoding="utf-8",
+    )
 
 
 class ClassifyReviewOutputTests(unittest.TestCase):
@@ -104,6 +170,56 @@ class ClassifyReviewOutputTests(unittest.TestCase):
 
 
 class EvaluateReviewModeTests(unittest.TestCase):
+    def test_quality_gate_payload_evaluate_review_requires_revision_when_blocking_findings_exist(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            (run_dir / "model_output.md").write_text("Summary: placeholder\n", encoding="utf-8")
+            review_output = run_dir / "review_output.md"
+            review_output.write_text(
+                "\n".join(
+                    [
+                        "- Blocking: Missing validation evidence.",
+                        "- Non-blocking: Add one more regression test.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            decision = quality_gate_payload(quality_args(run_dir, mode="evaluate_review", review_output=review_output))
+            written = read_json(run_dir / "revision_decision.json")
+
+        self.assertEqual(decision, written)
+        self.assertEqual(decision["final_status"], "revision_required")
+        self.assertEqual(decision["blocking_findings"], ["Blocking: Missing validation evidence."])
+        self.assertEqual(decision["non_blocking_findings"], ["Non-blocking: Add one more regression test."])
+
+    def test_quality_gate_payload_evaluate_review_accepts_non_blocking_findings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            (run_dir / "model_output.md").write_text("Summary: placeholder\n", encoding="utf-8")
+            review_output = run_dir / "review_output.md"
+            review_output.write_text(
+                "\n".join(
+                    [
+                        "- Non blocking: Clarify the summary wording.",
+                        "- Consider covering one more edge case later.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            decision = quality_gate_payload(quality_args(run_dir, mode="evaluate_review", review_output=review_output))
+
+        self.assertEqual(decision["final_status"], "accepted")
+        self.assertEqual(decision["blocking_findings"], [])
+        self.assertEqual(
+            decision["non_blocking_findings"],
+            [
+                "Non blocking: Clarify the summary wording.",
+                "Consider covering one more edge case later.",
+            ],
+        )
+
     def test_evaluate_review_requires_revision_when_blocking_findings_exist(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir)
@@ -221,7 +337,130 @@ class EvaluateReviewModeTests(unittest.TestCase):
             self.assertEqual(decision["non_blocking_findings"], [])
 
 
+class PromoteRevisionModeTests(unittest.TestCase):
+    def test_quality_gate_payload_promote_revision_promotes_when_second_pass_validation_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_promotion_artifacts(run_dir)
+
+            def validation_stub(args: SimpleNamespace) -> dict[str, object]:
+                self.assertEqual(args.profile, "run_signoff")
+                self.assertEqual(args.report_name, "validation_report_2.json")
+                self.assertEqual(Path(args.out_dir), run_dir)
+                write_second_pass_report(run_dir, "passed")
+                return {"overall_status": "passed"}
+
+            with patch("quality_loop.validate_run_payload", side_effect=validation_stub) as validate_payload:
+                decision = quality_gate_payload(quality_args(run_dir, mode="promote_revision"))
+            written = read_json(run_dir / "revision_decision.json")
+            promoted_report = read_json(run_dir / "validation_report.json")
+            promoted_output = (run_dir / "model_output.md").read_text(encoding="utf-8")
+            archived_output = (run_dir / "model_output_1.md").read_text(encoding="utf-8")
+            archived_report = read_json(run_dir / "validation_report_1.json")
+
+        self.assertEqual(validate_payload.call_count, 1)
+        self.assertEqual(decision, written)
+        self.assertEqual(decision["final_status"], "accepted")
+        self.assertEqual(decision["accepted_pass"], 2)
+        self.assertEqual(promoted_output, "revised model output\n")
+        self.assertEqual(promoted_report["overall_status"], "passed")
+        self.assertEqual(promoted_report["source"], "second")
+        self.assertEqual(archived_output, "original model output\n")
+        self.assertEqual(archived_report["source"], "first")
+
+    def test_quality_gate_payload_promote_revision_does_not_promote_when_second_pass_validation_is_not_passed(self) -> None:
+        for status in ("failed", "needs_review"):
+            with self.subTest(status=status):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    run_dir = Path(tmpdir)
+                    write_promotion_artifacts(run_dir)
+
+                    def validation_stub(args: SimpleNamespace) -> dict[str, object]:
+                        write_second_pass_report(run_dir, status)
+                        return {"overall_status": status}
+
+                    with patch("quality_loop.validate_run_payload", side_effect=validation_stub):
+                        decision = quality_gate_payload(quality_args(run_dir, mode="promote_revision"))
+                    written = read_json(run_dir / "revision_decision.json")
+                    canonical_report = read_json(run_dir / "validation_report.json")
+
+                    self.assertEqual(decision, written)
+                    self.assertEqual(decision["final_status"], "revision_required")
+                    self.assertEqual(decision["next_action"], "await_revision")
+                    self.assertEqual(decision["blocking_findings"], [f"validation_report_2.json status: {status}"])
+                    self.assertEqual((run_dir / "model_output.md").read_text(encoding="utf-8"), "original model output\n")
+                    self.assertEqual(canonical_report["source"], "first")
+                    self.assertFalse((run_dir / "model_output_1.md").exists())
+                    self.assertFalse((run_dir / "validation_report_1.json").exists())
+
+    def test_promote_revision_cli_missing_second_output_preserves_exit_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            argv = [
+                "quality_loop.py",
+                "--project",
+                "ai_workbench",
+                "--run-dir",
+                str(run_dir),
+                "--mode",
+                "promote_revision",
+            ]
+
+            with patch("quality_loop.load_project_config", return_value=SimpleNamespace(root=run_dir)):
+                with patch.object(sys, "argv", argv):
+                    exit_code = main()
+            decision = read_json(run_dir / "revision_decision.json")
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(decision["final_status"], "revision_required")
+        self.assertEqual(decision["next_action"], "await_revision")
+        self.assertIn("Missing second-pass output", decision["blocking_findings"][0])
+
+
 class DetermineAutoTriggerTests(unittest.TestCase):
+    def test_quality_gate_payload_auto_accepts_low_risk_structured_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_structured_model_output(run_dir)
+            write_passed_validation_report(run_dir)
+
+            decision = quality_gate_payload(quality_args(run_dir, risk="low"))
+            written = read_json(run_dir / "revision_decision.json")
+            review_prompt_exists = (run_dir / "review_prompt.md").exists()
+
+        self.assertEqual(decision, written)
+        self.assertEqual(decision["loop_type"], "none")
+        self.assertEqual(decision["final_status"], "accepted")
+        self.assertFalse(decision["required"])
+        self.assertFalse(review_prompt_exists)
+
+    def test_quality_gate_payload_auto_writes_review_prompt_for_alternate_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_structured_model_output(run_dir)
+            write_passed_validation_report(run_dir)
+            (run_dir / "model_selection.json").write_text(
+                json.dumps(
+                    {
+                        "selected_tier": "local_coding",
+                        "task_type": "implementation",
+                        "workflow_mode": "implement",
+                        "prompt": "implement_request_change_request",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            decision = quality_gate_payload(quality_args(run_dir, risk="medium"))
+            revision_decision_exists = (run_dir / "revision_decision.json").exists()
+            review_prompt_exists = (run_dir / "review_prompt.md").exists()
+
+        self.assertEqual(decision["loop_type"], "alternate_model_review")
+        self.assertEqual(decision["final_status"], "review_required")
+        self.assertEqual(decision["blocking_findings"], ["local_coding used for medium risk."])
+        self.assertTrue(revision_decision_exists)
+        self.assertTrue(review_prompt_exists)
+
     def test_two_candidate_outputs_trigger_pairwise_compare(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir)

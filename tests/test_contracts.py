@@ -1,4 +1,5 @@
 import json
+import inspect
 import subprocess
 import tempfile
 import unittest
@@ -16,6 +17,7 @@ from ai_workbench_mcp.core import (
     model_selection_file_response,
     model_selection_response,
     quality_gate_response,
+    quality_gate,
     run_analysis_response,
     select_model,
     validate_run,
@@ -193,19 +195,100 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["complexity_band"], "moderate")
         self.assertEqual(response["summary"]["matched_rule"], "easy_moderate_local_coding")
 
-    def test_validate_run_reports_missing_expected_artifact(self) -> None:
+    def test_validate_run_direct_call_writes_artifact_and_wraps_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+            real_subprocess_run = subprocess.run
 
-            with patch("ai_workbench_mcp.core.subprocess.run", return_value=completed):
+            def guarded_subprocess_run(*args, **kwargs):
+                caller = inspect.stack()[1]
+                if Path(caller.filename).name == "core.py":
+                    raise AssertionError("core subprocess.run not expected")
+                return real_subprocess_run(*args, **kwargs)
+
+            with (
+                patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+                patch("ai_workbench_mcp.core.subprocess.run", side_effect=guarded_subprocess_run),
+            ):
                 response = validate_run(
                     project="ai_workbench_mcp",
                     out_dir=tmpdir,
+                    profile="scaffold",
                 )
+            written = json.loads((Path(tmpdir) / "validation_report.json").read_text(encoding="utf-8"))
 
-        self.assertFalse(response["ok"])
+        self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_validate_run")
-        self.assertEqual(response["errors"][0]["code"], "missing_validation_report")
+        self.assertEqual(response["status"], "passed")
+        self.assertEqual(response["artifacts"]["validation_report"], str(Path(tmpdir) / "validation_report.json"))
+        self.assertEqual(written["overall_status"], "passed")
+        self.assertEqual(response["summary"]["project"], "ai_workbench_mcp")
+        self.assertEqual(response["summary"]["profile"], "scaffold")
+        self.assertTrue(response["summary"]["sign_off_ready"])
+        self.assertEqual(response["summary"]["commands_passed"], 6)
+        self.assertEqual(response["summary"]["commands_failed"], 0)
+        self.assertEqual(response["summary"]["checks_passed"], 3)
+        self.assertEqual(response["summary"]["checks_needs_review"], 0)
+        self.assertEqual(response["summary"]["checks_failed"], 0)
+
+    def test_quality_gate_direct_call_writes_artifact_and_wraps_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            (run_dir / "model_output.md").write_text(
+                "\n".join(
+                    [
+                        "# Model Output",
+                        "",
+                        "## Captured Response",
+                        "",
+                        "Summary:",
+                        "Implemented a bounded change.",
+                        "",
+                        "Files touched:",
+                        "- tools/example.py",
+                        "",
+                        "Validation run:",
+                        "- pytest -> passed",
+                        "",
+                        "Risks / follow-ups:",
+                        "- None.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "validation_report.json").write_text(
+                json.dumps({"overall_status": "passed", "confidence": 1.0}),
+                encoding="utf-8",
+            )
+            real_subprocess_run = subprocess.run
+
+            def guarded_subprocess_run(*args, **kwargs):
+                caller = inspect.stack()[1]
+                if Path(caller.filename).name == "core.py":
+                    raise AssertionError("core subprocess.run not expected")
+                return real_subprocess_run(*args, **kwargs)
+
+            with (
+                patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+                patch("ai_workbench_mcp.core.subprocess.run", side_effect=guarded_subprocess_run),
+            ):
+                response = quality_gate(
+                    project="ai_workbench_mcp",
+                    run_dir=run_dir,
+                    mode="auto",
+                    risk="low",
+                )
+            written = json.loads((run_dir / "revision_decision.json").read_text(encoding="utf-8"))
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["operation"], "workbench_quality_gate")
+        self.assertEqual(response["status"], "accepted")
+        self.assertEqual(response["artifacts"]["revision_decision"], str(run_dir / "revision_decision.json"))
+        self.assertEqual(written["final_status"], "accepted")
+        self.assertEqual(response["summary"]["loop_type"], "none")
+        self.assertFalse(response["summary"]["required"])
+        self.assertEqual(response["summary"]["accepted_pass"], 1)
+        self.assertEqual(response["summary"]["blocking_findings"], 0)
+        self.assertEqual(response["summary"]["non_blocking_findings"], 0)
 
 
 if __name__ == "__main__":
