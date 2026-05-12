@@ -70,9 +70,10 @@ def _require_choice(name: str, value: str, allowed: set[str]) -> None:
         raise ValueError(f"{name} must be one of: {choices}.")
 
 
-def _has_jsonl_decision(path: Path, decision: str) -> bool:
+def _jsonl_entries(path: Path) -> list[JsonObject]:
     if not path.exists():
-        return False
+        return []
+    entries: list[JsonObject] = []
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         if not line.strip():
             continue
@@ -80,9 +81,13 @@ def _has_jsonl_decision(path: Path, decision: str) -> bool:
             payload = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if isinstance(payload, dict) and payload.get("decision") == decision:
-            return True
-    return False
+        if isinstance(payload, dict):
+            entries.append(payload)
+    return entries
+
+
+def _has_jsonl_decision(path: Path, decision: str) -> bool:
+    return any(entry.get("decision") == decision for entry in _jsonl_entries(path))
 
 
 def _load_model_select_module() -> Any:
@@ -278,6 +283,7 @@ def record_execution_response(payload: JsonObject, artifacts: JsonObject | None 
             "provider": payload.get("provider"),
             "model": payload.get("model"),
             "files_touched": len(files_touched) if isinstance(files_touched, list) else 0,
+            "duplicate_ignored": bool(payload.get("duplicate_ignored", False)),
         },
     )
 
@@ -506,55 +512,74 @@ def record_execution(
         model_output_path = run_dir_path / "model_output.md"
         run_log_path = run_dir_path / "run_log.jsonl"
 
-        handoff_payload = _load_model_handoff_module().model_handoff_payload(
-            SimpleNamespace(
-                project=project,
-                selection=str(model_selection_path),
-                prompt=str(final_prompt_path),
-                out=str(model_output_path),
-                response_file=None,
-                response_text=response_text,
-                response_source=response_source,
-                model_output_status=model_output_status,
-            )
-        )
-
         selection = read_json_artifact(model_selection_path)
         selected_tier = selection.get("selected_tier")
-        _, selected_model = _selected_model_summary(selection)
+        selected_provider, selected_model = _selected_model_summary(selection)
         prompt_name = selection.get("prompt") or "unknown"
         task_metadata = read_json_artifact(run_dir_path / "task_metadata.json")
         task_text = task_metadata.get("task") or selection.get("task_text") or ""
         touched = files_touched or []
-        _load_run_log_module().run_log_payload(
-            SimpleNamespace(
-                run_id=str(handoff_payload["run_id"]),
-                task=str(task_text),
-                decision="model_response_captured",
-                status=run_status,
-                prompt=str(prompt_name) if prompt_name is not None else None,
-                model_tier=str(selected_tier) if selected_tier is not None else None,
-                model=selected_model,
-                validation=validation,
-                first_pass_outcome=None,
-                final_outcome=None,
-                quality_loop_status=None,
-                authoritative_validation=None,
-                follow_up=follow_up,
-                context_docs=[],
-                files_touched=touched,
-                artifacts=["model_output.md"],
-                out=str(run_log_path),
-            )
-        )
 
-        payload: JsonObject = {
-            **handoff_payload,
-            "project": project,
-            "run_dir": str(run_dir_path),
-            "run_status": run_status,
-            "files_touched": touched,
-        }
+        duplicate_ignored = model_output_path.exists() and _has_jsonl_decision(
+            run_log_path,
+            "model_response_captured",
+        )
+        if duplicate_ignored:
+            payload = {
+                "run_id": task_metadata.get("run_id") or selection.get("run_id") or run_dir_path.name,
+                "project": project,
+                "run_dir": str(run_dir_path),
+                "status": model_output_status,
+                "run_status": run_status,
+                "response_source": response_source,
+                "provider": selected_provider,
+                "model": selected_model,
+                "files_touched": touched,
+                "duplicate_ignored": True,
+            }
+        else:
+            handoff_payload = _load_model_handoff_module().model_handoff_payload(
+                SimpleNamespace(
+                    project=project,
+                    selection=str(model_selection_path),
+                    prompt=str(final_prompt_path),
+                    out=str(model_output_path),
+                    response_file=None,
+                    response_text=response_text,
+                    response_source=response_source,
+                    model_output_status=model_output_status,
+                )
+            )
+            _load_run_log_module().run_log_payload(
+                SimpleNamespace(
+                    run_id=str(handoff_payload["run_id"]),
+                    task=str(task_text),
+                    decision="model_response_captured",
+                    status=run_status,
+                    prompt=str(prompt_name) if prompt_name is not None else None,
+                    model_tier=str(selected_tier) if selected_tier is not None else None,
+                    model=selected_model,
+                    validation=validation,
+                    first_pass_outcome=None,
+                    final_outcome=None,
+                    quality_loop_status=None,
+                    authoritative_validation=None,
+                    follow_up=follow_up,
+                    context_docs=[],
+                    files_touched=touched,
+                    artifacts=["model_output.md"],
+                    out=str(run_log_path),
+                )
+            )
+
+            payload = {
+                **handoff_payload,
+                "project": project,
+                "run_dir": str(run_dir_path),
+                "run_status": run_status,
+                "files_touched": touched,
+                "duplicate_ignored": False,
+            }
     except Exception as exc:
         return error_envelope(
             operation="workbench_record_execution",

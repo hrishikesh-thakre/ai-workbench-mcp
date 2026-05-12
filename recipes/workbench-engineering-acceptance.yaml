@@ -85,7 +85,8 @@ instructions: |
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", and risk="{{ risk }}".
   2. Call workbench_select_model with project="{{ project }}", task_type="{{ task_type }}", risk="{{ risk }}", validation_strength="{{ validation_strength }}", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
   3. Perform the requested engineering task: {{ task }}
-  4. Call workbench_record_execution with project="{{ project }}", run_dir="{{ run_dir }}", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
+  4. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
+     If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
   5. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", and out_dir="{{ run_dir }}".
   6. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
   7. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.

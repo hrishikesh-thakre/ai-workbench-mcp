@@ -139,6 +139,51 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(log_entries[-1]["status"], "in_progress")
         self.assertEqual(log_entries[-1]["files_touched"], ["src/ai_workbench_mcp/core.py"])
 
+    def test_record_execution_repeated_call_does_not_overwrite_or_duplicate_log(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "run1"
+            open_run(
+                project="ai_workbench_mcp",
+                task="Record only the first response.",
+                run_dir=run_dir,
+                risk="medium",
+            )
+            select_model(
+                project="ai_workbench_mcp",
+                task_type="implement",
+                risk="medium",
+                out=run_dir / "model_selection.json",
+                prompt="implement_request_change_request",
+                complexity_score=13,
+            )
+
+            first = record_execution(
+                project="ai_workbench_mcp",
+                run_dir=run_dir,
+                response_text="Summary:\nFirst captured response.",
+                files_touched=["src/ai_workbench_mcp/core.py"],
+            )
+            second = record_execution(
+                project="ai_workbench_mcp",
+                run_dir=run_dir,
+                response_text="Summary:\nSecond response should be ignored.",
+                files_touched=[],
+            )
+            model_output = (run_dir / "model_output.md").read_text(encoding="utf-8")
+            log_entries = [
+                json.loads(line)
+                for line in (run_dir / "run_log.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+
+        self.assertTrue(first["ok"])
+        self.assertFalse(first["summary"]["duplicate_ignored"])
+        self.assertTrue(second["ok"])
+        self.assertTrue(second["summary"]["duplicate_ignored"])
+        self.assertEqual(len(log_entries), 2)
+        self.assertEqual(log_entries[-1]["decision"], "model_response_captured")
+        self.assertIn("First captured response.", model_output)
+        self.assertNotIn("Second response should be ignored.", model_output)
+
     def test_record_execution_rejects_invalid_status_values_before_writes(self) -> None:
         response = record_execution(
             project="ai_workbench_mcp",

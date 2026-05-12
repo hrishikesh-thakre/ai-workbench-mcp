@@ -53,6 +53,9 @@ class WorkbenchRecipeTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
         self.assertIn("Do not claim the run is accepted", text)
         self.assertIn("deterministic validation and the quality gate", text)
+        self.assertIn("Call workbench_record_execution exactly once", text)
+        self.assertIn("do not call workbench_record_execution again", text)
+        self.assertIn('status="response_captured"', text)
 
     def test_tool_smoke_recipe_is_bounded_to_open_and_select(self) -> None:
         text = TOOL_SMOKE_RECIPE_PATH.read_text(encoding="utf-8")

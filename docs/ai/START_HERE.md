@@ -1,7 +1,7 @@
 # START_HERE
 
 Owner: AI Workbench MCP
-Status: Draft
+Status: v0.1 alpha baseline
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -74,7 +74,7 @@ Goose recipe
   -> accepted / revise / needs_review
 ```
 
-The first implementation should expose the Workbench core through a Goose-compatible MCP server.
+The current alpha exposes the Workbench core through a Goose-compatible MCP server.
 
 ## 5. Validation Expectations
 

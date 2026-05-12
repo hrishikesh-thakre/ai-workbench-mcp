@@ -1,7 +1,7 @@
 # PROJECT_MAP
 
 Owner: AI Workbench MCP
-Status: Draft
+Status: v0.1 alpha baseline
 Created: 2026-05-12
 
 ## 1. Purpose
