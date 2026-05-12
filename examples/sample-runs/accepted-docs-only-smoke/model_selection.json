@@ -1,0 +1,29 @@
+{
+  "run_id": "accepted-docs-only-smoke",
+  "generated_at": "2026-05-12T00:00:00",
+  "project": "ai_workbench_mcp",
+  "task_type": "implementation",
+  "workflow_mode": "implement",
+  "execution_boundary": "automatic_provider_execution_with_validation",
+  "risk": "low",
+  "validation_strength": "strong",
+  "complexity_score": 4,
+  "complexity_band": "easy",
+  "prompt": "documentation_accuracy_audit",
+  "selected_tier": "local_coding",
+  "selected_model": {
+    "provider": "goose",
+    "model": "local-coding-tier",
+    "fallback_models": [],
+    "parameters": {},
+    "use_for": [
+      "bounded documentation workflow smoke"
+    ]
+  },
+  "reason": "Easy low-risk documentation workflow can start on the local coding tier with deterministic validation.",
+  "matched_rule": "easy_moderate_local_coding",
+  "manual_override_allowed": true,
+  "fallbacks": [],
+  "output_path": "model_selection.json",
+  "status": "selected"
+}

@@ -100,3 +100,24 @@ Initial tools:
 - `workbench_analyze_runs`
 - `workbench_open_run`
 - `workbench_record_execution`
+
+## 7. v0.2 Policy Packs Stay In Validation Profiles
+
+Status: Accepted
+
+Decision:
+
+- For v0.2, focused policy packs are named profiles inside `configs/validation_profiles.yaml`.
+- Each acceptance profile must remain command-backed and declare required evidence artifacts when it can be used for sign-off.
+- Do not create a separate policy-pack directory until profiles need additional metadata, composition, inheritance, or runtime-specific packaging.
+
+Why:
+
+- The current v0.2 profiles are small and share the same validation engine.
+- Keeping profiles in one config keeps Goose recipes simple: recipes only need to pass `validation_profile`.
+- A first-class policy-pack directory would add structure before there is a clear schema boundary.
+
+Implications:
+
+- Discovery tests should verify that recipes reference valid validation profiles.
+- Profile growth should be revisited before v0.3 if command lists, artifact policy, or risk policy become hard to maintain in one YAML file.

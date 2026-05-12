@@ -80,6 +80,50 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params complexity_score=4
 ```
 
+For bounded documentation-only changes, use the focused v0.2 recipe:
+
+```bash
+goose run --recipe ./recipes/workbench-docs-only-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-docs-only \
+  --params task="Update the public docs for the requested documentation-only change." \
+  --params risk=low
+```
+
+For bounded Python package maintenance, use:
+
+```bash
+goose run --recipe ./recipes/workbench-python-package-maintenance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-package-maintenance \
+  --params task="Make the requested bounded Python package maintenance change and keep the full test suite passing." \
+  --params task_type=implement \
+  --params risk=medium
+```
+
+For bounded test-fix work, use:
+
+```bash
+goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-test-fix \
+  --params task="Fix the requested failing test signal with the smallest justified change and report the exact validation command." \
+  --params risk=medium
+```
+
+For a general low-risk implementation task with deterministic test coverage, use the engineering recipe with the low-risk coding profile:
+
+```bash
+goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-low-risk-coding \
+  --params task="Make the requested bounded low-risk code change and keep deterministic tests passing." \
+  --params task_type=implement \
+  --params risk=low \
+  --params validation_profile=low_risk_coding \
+  --params complexity_score=8
+```
+
 Inspect the evidence folder:
 
 ```text
@@ -132,12 +176,39 @@ Goose recipe
 
 A run is accepted only when deterministic validation and the quality gate support acceptance.
 
+## Approved Prompt Catalog
+
+Approved prompts live in `prompts/approved/`. The public library contains 12 reusable Workbench prompts:
+
+| Prompt | Use |
+|---|---|
+| `bug_root_cause_investigation.md` | Investigate a bug, identify likely root cause, and define the smallest safe fix. |
+| `code_review_patch_risk_audit.md` | Review a patch or AI-generated change set for correctness, regression, contract, and validation risk. |
+| `data_acquisition_surface_audit.md` | Audit data acquisition, ingestion, scraping, upload, webhook, and external data surfaces. |
+| `documentation_accuracy_audit.md` | Check documentation against actual code, commands, behavior, and configuration. |
+| `implement_request_change_request.md` | Implement a bounded PRD, feature request, bug-fix request, or change request. |
+| `navigation_page_title_ia_audit.md` | Audit navigation, page titles, labels, routing, and information architecture. |
+| `performance_latency_hotspot_audit.md` | Identify performance and latency hot spots with concrete validation steps. |
+| `prompt_failure_improvement_log.md` | Analyze prompt failures and record improvements for future runs. |
+| `repository_context_index_audit.md` | Build or audit a repository context map for agent orientation. |
+| `security_privacy_risk_review.md` | Review security and privacy risk in code, data flows, APIs, logs, and AI features. |
+| `test_case_development_meaningful_coverage.md` | Develop meaningful test coverage for features, bug fixes, APIs, and workflows. |
+| `ux_visual_accessibility_audit.md` | Audit UX, visual clarity, accessibility, and task completion quality. |
+
+Focused v0.2 recipes use the most specific prompt by default: docs-only uses `documentation_accuracy_audit.md`, test-fix uses `bug_root_cause_investigation.md`, and a later test-creation workflow should use `test_case_development_meaningful_coverage.md`.
+
 ## Examples
 
 - [Tiny Python fix](examples/tiny-python-fix/): a deliberately broken one-function project for recipe smoke tests.
 - [Goose tool smoke](examples/goose-tool-smoke/): two-tool live smoke for slow local models.
 - [Goose recipe smoke](examples/goose-recipe-smoke/): exact command for a low-risk Goose acceptance run.
+- [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, package maintenance, test-fix, and low-risk coding workflows.
+- [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
+- [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
+- [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
+- `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/): sanitized committed evidence showing an accepted run folder.
+- [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
 
 ## Development
 
@@ -162,8 +233,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 ## Roadmap
 
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
-- `v0.2`: stronger recipe library.
-- `v0.3`: validation policy packs.
+- `v0.2.0-alpha`: focused recipe library and validation policy profiles.
+- `v0.3`: accepted-artifact routing feedback.
 - `v0.4`: accepted-artifact analytics.
 - `v0.5`: CI mode for PR acceptance.
 - `v1.0`: stable MCP contracts and recipe API.

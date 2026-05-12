@@ -85,3 +85,9 @@ Do not add:
 - generated caches
 
 The public repo should remain small, installable, and easy to explain.
+
+Evidence boundary:
+
+- `runs/` is the local evidence ledger and must stay ignored.
+- Committed evidence belongs only under `examples/sample-runs/`.
+- Any committed sample run must be sanitized: no local absolute paths, provider secrets, private target-repo names, or raw model-loader logs.

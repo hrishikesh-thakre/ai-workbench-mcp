@@ -1,0 +1,95 @@
+version: "1.0.0"
+title: "Workbench Test-Fix Acceptance"
+description: "Run a bounded test-fix task through AI Workbench acceptance with the test_fix validation profile."
+
+parameters:
+  - key: project
+    input_type: string
+    requirement: optional
+    description: "Project key from configs/projects.yaml."
+    default: "ai_workbench_mcp"
+  - key: run_dir
+    input_type: string
+    requirement: user_prompt
+    description: "Evidence directory for this test-fix run, for example runs/20260512_test_fix."
+  - key: task
+    input_type: string
+    requirement: user_prompt
+    description: "Bounded failing-test repair task Goose should perform."
+  - key: risk
+    input_type: select
+    requirement: optional
+    description: "Risk level for routing and quality-gate policy."
+    default: "medium"
+    options:
+      - "low"
+      - "medium"
+      - "high"
+  - key: validation_profile
+    input_type: string
+    requirement: optional
+    description: "Validation profile from configs/validation_profiles.yaml."
+    default: "test_fix"
+  - key: prompt
+    input_type: string
+    requirement: optional
+    description: "Approved prompt name used for routing metadata."
+    default: "bug_root_cause_investigation"
+  - key: complexity_score
+    input_type: number
+    requirement: optional
+    description: "Optional 1-25 complexity score for model routing."
+    default: "9"
+
+extensions:
+  - type: stdio
+    name: "AI Workbench MCP"
+    cmd: "ai-workbench-mcp"
+    args: []
+    timeout: 300
+    bundled: false
+    description: "AI Workbench routing, validation, quality gate, and run analytics."
+    available_tools:
+      - "workbench_open_run"
+      - "workbench_select_model"
+      - "workbench_record_execution"
+      - "workbench_validate_run"
+      - "workbench_quality_gate"
+      - "workbench_analyze_runs"
+
+instructions: |
+  You are running a Test-fix AI Workbench acceptance workflow through Goose.
+
+  Use the AI Workbench MCP tools as the source of truth for routing, validation, quality gate decisions, and analytics. Do not claim the run is accepted unless deterministic validation and the quality gate both support that conclusion.
+
+  Boundaries:
+  - Start from the failing test signal and make the smallest production or test update that is justified by the intended behavior.
+  - Do not weaken, delete, skip, xfail, or broadly rewrite tests unless the task explicitly asks for test-correction work and the reason is captured in the response.
+  - Do not add private run history, provider secrets, personal machine paths, broad UI/provider plumbing, or target-repo-specific configuration.
+  - If deterministic validation cannot be run, stop and report that this test-fix recipe cannot produce an accepted run.
+
+  Workflow:
+  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", and risk="{{ risk }}".
+  2. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
+  3. Perform the requested test-fix task: {{ task }}
+  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task.
+  5. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
+     If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
+  6. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", and out_dir="{{ run_dir }}".
+  7. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
+  8. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
+  9. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
+
+prompt: |
+  Task: {{ task }}
+
+  Run directory: {{ run_dir }}
+  Project: {{ project }}
+  Risk: {{ risk }}
+  Validation profile: {{ validation_profile }}
+
+  Start by opening the Workbench run, then select the model tier with Workbench. Repair the failing test signal with a bounded change, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
+
+activities:
+  - "Run an accepted test-fix workflow for: {{ task }}"
+  - "Validate and quality-gate the evidence in {{ run_dir }}"

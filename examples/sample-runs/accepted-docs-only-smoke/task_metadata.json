@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-12T00:00:00",
+  "run_id": "accepted-docs-only-smoke",
+  "project": "ai_workbench_mcp",
+  "task": "Run a documentation-only focused workflow smoke without editing tracked source files.",
+  "prompt": "documentation_accuracy_audit",
+  "risk": "low",
+  "task_type": "documentation update",
+  "context_profile": "default_docs_first",
+  "changed_files": [],
+  "docs": [],
+  "include_diff": false
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict, dataclass
 from datetime import datetime
+import fnmatch
 import json
 from pathlib import Path
 import re
@@ -23,6 +24,7 @@ class ValidationProfile:
     non_empty_artifacts: list[str]
     review_checks: list[str]
     consistency_checks: list[str]
+    changed_file_policy: dict[str, object]
 
 
 @dataclass
@@ -102,6 +104,9 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
         non_empty_artifacts=[str(item) for item in profile_data.get("non_empty_artifacts", [])],
         review_checks=[str(item) for item in profile_data.get("review_checks", [])],
         consistency_checks=[str(item) for item in profile_data.get("consistency_checks", [])],
+        changed_file_policy=profile_data.get("changed_file_policy", {})
+        if isinstance(profile_data.get("changed_file_policy", {}), dict)
+        else {},
     )
 
 
@@ -288,6 +293,136 @@ def validate_non_empty_artifacts(run_dir: Path, artifact_names: list[str]) -> Va
         status="passed",
         summary="Required artifacts contain content.",
         details=[f"Checked {len(artifact_names)} artifacts for non-empty content."],
+    )
+
+
+def normalize_changed_file(path_text: str) -> str:
+    normalized = path_text.strip().replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return normalized
+
+
+def parse_git_status_changed_files(project_root: Path, run_dir: Path) -> list[str]:
+    result = subprocess.run(
+        ["git", "status", "--short", "--untracked-files=all"],
+        cwd=project_root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+
+    changed_files: list[str] = []
+    run_dir_text = normalize_changed_file(str(run_dir.relative_to(project_root))) if run_dir.is_relative_to(project_root) else ""
+    for raw_line in result.stdout.splitlines():
+        if len(raw_line) < 4:
+            continue
+        path_text = raw_line[3:].strip()
+        if " -> " in path_text:
+            path_text = path_text.rsplit(" -> ", 1)[1]
+        changed_file = normalize_changed_file(path_text.strip('"'))
+        if run_dir_text and (changed_file == run_dir_text or changed_file.startswith(f"{run_dir_text}/")):
+            continue
+        if changed_file.startswith("runs/"):
+            continue
+        changed_files.append(changed_file)
+    return sorted(set(changed_files))
+
+
+def parse_run_log_changed_files(run_dir: Path) -> tuple[list[str], bool]:
+    changed_files: list[str] = []
+    has_files_touched_entry = False
+    for entry in read_jsonl_entries(run_dir / "run_log.jsonl"):
+        files_touched = entry.get("files_touched", [])
+        if not isinstance(files_touched, list):
+            continue
+        has_files_touched_entry = True
+        changed_files.extend(str(item) for item in files_touched if item is not None)
+    return (
+        sorted(set(normalize_changed_file(item) for item in changed_files if normalize_changed_file(item))),
+        has_files_touched_entry,
+    )
+
+
+def read_jsonl_entries(file_path: Path) -> list[dict[str, object]]:
+    if not file_path.exists():
+        return []
+    entries: list[dict[str, object]] = []
+    for line in file_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            entries.append(payload)
+    return entries
+
+
+def collect_changed_files(args_changed_files: list[str], run_dir: Path, project_root: Path) -> tuple[list[str], str]:
+    explicit_files = sorted(set(normalize_changed_file(item) for item in args_changed_files if normalize_changed_file(item)))
+    if explicit_files:
+        return explicit_files, "cli_changed_files"
+
+    run_log_files, has_run_log_files_touched = parse_run_log_changed_files(run_dir)
+    if has_run_log_files_touched:
+        return run_log_files, "run_log_files_touched"
+
+    return parse_git_status_changed_files(project_root, run_dir), "git_status"
+
+
+def matches_any_pattern(path_text: str, patterns: list[str]) -> bool:
+    normalized = normalize_changed_file(path_text)
+    return any(fnmatch.fnmatchcase(normalized, normalize_changed_file(pattern)) for pattern in patterns)
+
+
+def validate_changed_file_policy(
+    profile: ValidationProfile,
+    changed_files: list[str],
+    source: str,
+) -> ValidationCheck | None:
+    if not profile.changed_file_policy:
+        return None
+
+    allowed_patterns = [
+        str(item)
+        for item in profile.changed_file_policy.get("allowed_patterns", [])
+        if item is not None
+    ]
+    forbidden_patterns = [
+        str(item)
+        for item in profile.changed_file_policy.get("forbidden_patterns", [])
+        if item is not None
+    ]
+
+    violations: list[str] = []
+    for changed_file in changed_files:
+        if forbidden_patterns and matches_any_pattern(changed_file, forbidden_patterns):
+            violations.append(f"Forbidden changed file: {changed_file}")
+            continue
+        if allowed_patterns and not matches_any_pattern(changed_file, allowed_patterns):
+            violations.append(f"Changed file is outside allowed scope: {changed_file}")
+
+    if violations:
+        return build_check(
+            name="changed_file_policy",
+            status="failed",
+            summary="Changed files violate the validation profile policy.",
+            details=[f"Changed-file source: {source}", *violations],
+        )
+
+    return build_check(
+        name="changed_file_policy",
+        status="passed",
+        summary="Changed files match the validation profile policy.",
+        details=[
+            f"Changed-file source: {source}",
+            f"Checked {len(changed_files)} changed files.",
+        ],
     )
 
 
@@ -685,6 +820,10 @@ def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
     artifact_checks: list[ValidationCheck] = []
     artifact_checks.append(validate_artifact_presence(run_dir, profile.required_artifacts))
     artifact_checks.append(validate_non_empty_artifacts(run_dir, profile.non_empty_artifacts))
+    changed_files, changed_file_source = collect_changed_files(args.changed_files, run_dir, project.root)
+    changed_file_check = validate_changed_file_policy(profile, changed_files, changed_file_source)
+    if changed_file_check is not None:
+        artifact_checks.append(changed_file_check)
 
     review_checks: list[ValidationCheck] = []
     missing_context_notes = {"needs_review": [], "info": []}

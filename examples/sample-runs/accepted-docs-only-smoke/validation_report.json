@@ -1,0 +1,88 @@
+{
+  "run_id": "accepted-docs-only-smoke",
+  "project": "ai_workbench_mcp",
+  "profile": "docs_only",
+  "generated_at": "2026-05-12T00:00:00",
+  "commands_run": [
+    {
+      "name": "verify_public_docs",
+      "command": "python -c \"verify public docs exist\"",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 120
+    },
+    {
+      "name": "recipe_policy_discovery_tests",
+      "command": "python -m pytest tests/test_recipes.py -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 550
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [
+    {
+      "name": "artifact_presence",
+      "status": "passed",
+      "summary": "All required run artifacts are present.",
+      "details": [
+        "Found 3 required artifacts."
+      ]
+    },
+    {
+      "name": "artifact_non_empty",
+      "status": "passed",
+      "summary": "Required artifacts contain content.",
+      "details": [
+        "Checked 3 artifacts for non-empty content."
+      ]
+    },
+    {
+      "name": "changed_file_policy",
+      "status": "passed",
+      "summary": "Changed files match the validation profile policy.",
+      "details": [
+        "Changed-file source: run_log_files_touched",
+        "Checked 0 changed files."
+      ]
+    }
+  ],
+  "review_checks": [
+    {
+      "name": "model_output_status",
+      "status": "passed",
+      "summary": "model_output.md indicates an accepted execution state.",
+      "details": [
+        "Model output status: response_captured"
+      ]
+    },
+    {
+      "name": "captured_response_format",
+      "status": "passed",
+      "summary": "Captured model response matches the preferred structured format.",
+      "details": [
+        "Validated normalized response section."
+      ]
+    }
+  ],
+  "missing_context_notes": {
+    "needs_review": [],
+    "info": []
+  },
+  "overall_status": "passed",
+  "sign_off_ready": true,
+  "confidence": 1.0,
+  "summary": {
+    "commands_passed": 2,
+    "commands_failed": 0,
+    "checks_passed": 5,
+    "checks_needs_review": 0,
+    "checks_failed": 0
+  }
+}

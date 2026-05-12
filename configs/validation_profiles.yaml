@@ -89,3 +89,127 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
+
+  docs_only:
+    description: Docs-only acceptance profile for bounded public documentation updates.
+    commands:
+      - name: verify_public_docs
+        command: python -c "from pathlib import Path; docs=('README.md','docs/ai/START_HERE.md','docs/ai/DECISIONS.md','docs/ai/PROJECT_MAP.md','docs/ai/ROADMAP_STATUS.md'); missing=[p for p in docs if not Path(p).is_file() or not Path(p).read_text(encoding='utf-8').strip()]; raise SystemExit(1 if missing else 0)"
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: recipe_policy_discovery_tests
+        command: python -m pytest tests/test_recipes.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      allowed_patterns:
+        - "*.md"
+        - "docs/**/*.md"
+        - "examples/**/*.md"
+      forbidden_patterns:
+        - "src/**"
+        - "tools/**"
+        - "tests/**"
+        - "configs/**"
+        - "recipes/**"
+        - "pyproject.toml"
+        - "requirements.txt"
+
+  python_package_maintenance:
+    description: Package maintenance profile for bounded Python packaging, import, tool, and test updates.
+    commands:
+      - name: pyproject_package_metadata
+        command: python -c "from pathlib import Path; import tomllib; data=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); project=data.get('project', {}); assert project.get('name') == 'ai-workbench-mcp'; assert project.get('requires-python') == '>=3.11'; assert Path('src/ai_workbench_mcp').is_dir()"
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: package_import_smoke
+        command: python -c "import sys; sys.path.insert(0, 'src'); import ai_workbench_mcp; from ai_workbench_mcp import server; assert hasattr(server, 'register_tools')"
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 2.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+
+  test_fix:
+    description: Test-fix acceptance profile for bounded changes whose primary acceptance signal is a deterministic passing test suite.
+    commands:
+      - name: pytest_collection
+        command: python -m pytest --collect-only -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 3.0
+      - name: recipe_policy_discovery_tests
+        command: python -m pytest tests/test_recipes.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+
+  low_risk_coding:
+    description: Low-risk coding acceptance profile for bounded implementation changes with deterministic test coverage.
+    commands:
+      - name: pytest_collection
+        command: python -m pytest --collect-only -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 3.0
+      - name: workbench_tool_help_smoke
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status

@@ -25,6 +25,9 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
 | Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, and sanitized sample run added for v0.1 alpha |
 | Execution capture idempotency | Done | Repeated `workbench_record_execution` calls return success without overwriting `model_output.md` or duplicating `run_log.jsonl` entries |
+| v0.2 recipe and policy discovery | Started | Folder-level recipe discovery and validation-profile reference tests added; docs-only, Python package maintenance, test-fix, and low-risk coding profiles are discoverable |
+| v0.2 public examples and release note | Started | Focused workflow command examples added under `examples/focused-workflows/`; v0.2 alpha release summary added under `docs/releases/` |
+| v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -97,9 +100,10 @@ Make the alpha workflow useful across common low-risk engineering tasks without 
 
 Tasks:
 
-- Add focused Goose recipes for docs-only changes, Python package maintenance, and test-fix workflows.
-- Add validation policy packs for docs-only, low-risk coding, and package maintenance.
-- Add tests that recipes and policy packs are discoverable and reference valid validation profiles.
+- Add focused Goose recipes for docs-only changes, Python package maintenance, and test-fix workflows. Docs-only is started with `recipes/workbench-docs-only-acceptance.yaml`; Python package maintenance is started with `recipes/workbench-python-package-maintenance.yaml`; test-fix is started with `recipes/workbench-test-fix-acceptance.yaml`.
+- Add validation policy packs for docs-only, low-risk coding, package maintenance, and test-fix work. Docs-only is started with the `docs_only` validation profile; package maintenance is started with the `python_package_maintenance` validation profile; test-fix is started with the `test_fix` validation profile; low-risk coding is started with the `low_risk_coding` validation profile.
+- Add tests that recipes and policy packs are discoverable and reference valid validation profiles. Initial recipe/profile discovery coverage is in `tests/test_recipes.py`.
+- Add public examples and release notes for focused workflows. Initial command examples are in `examples/focused-workflows/README.md`; release summary is in `docs/releases/v0.2.0-alpha.md`.
 - Keep the six-tool acceptance workflow stable.
 
 ## Phase 5: Acceptance Analytics
@@ -117,4 +121,4 @@ Tasks:
 
 ## Current Next Step
 
-Start v0.2 recipe library and validation policy pack work. Keep the six-tool acceptance workflow stable while adding focused recipes and policy variants.
+Continue v0.2 hardening by adding sanitized sample evidence for one focused workflow and keeping validation-profile discovery strict. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

@@ -1,0 +1,104 @@
+version: "1.0.0"
+title: "Workbench Python Package Maintenance"
+description: "Run a bounded Python package maintenance task through AI Workbench acceptance with the python_package_maintenance validation profile."
+
+parameters:
+  - key: project
+    input_type: string
+    requirement: optional
+    description: "Project key from configs/projects.yaml."
+    default: "ai_workbench_mcp"
+  - key: run_dir
+    input_type: string
+    requirement: user_prompt
+    description: "Evidence directory for this package maintenance run, for example runs/20260512_package_maintenance."
+  - key: task
+    input_type: string
+    requirement: user_prompt
+    description: "Bounded Python package maintenance task Goose should perform."
+  - key: task_type
+    input_type: select
+    requirement: optional
+    description: "Workbench routing task type."
+    default: "implement"
+    options:
+      - "implement"
+      - "test"
+      - "investigate"
+  - key: risk
+    input_type: select
+    requirement: optional
+    description: "Risk level for routing and quality-gate policy."
+    default: "medium"
+    options:
+      - "low"
+      - "medium"
+      - "high"
+  - key: validation_profile
+    input_type: string
+    requirement: optional
+    description: "Validation profile from configs/validation_profiles.yaml."
+    default: "python_package_maintenance"
+  - key: prompt
+    input_type: string
+    requirement: optional
+    description: "Approved prompt name used for routing metadata."
+    default: "implement_request_change_request"
+  - key: complexity_score
+    input_type: number
+    requirement: optional
+    description: "Optional 1-25 complexity score for model routing."
+    default: "8"
+
+extensions:
+  - type: stdio
+    name: "AI Workbench MCP"
+    cmd: "ai-workbench-mcp"
+    args: []
+    timeout: 300
+    bundled: false
+    description: "AI Workbench routing, validation, quality gate, and run analytics."
+    available_tools:
+      - "workbench_open_run"
+      - "workbench_select_model"
+      - "workbench_record_execution"
+      - "workbench_validate_run"
+      - "workbench_quality_gate"
+      - "workbench_analyze_runs"
+
+instructions: |
+  You are running a Python package maintenance AI Workbench acceptance workflow through Goose.
+
+  Use the AI Workbench MCP tools as the source of truth for routing, validation, quality gate decisions, and analytics. Do not claim the run is accepted unless deterministic validation and the quality gate both support that conclusion.
+
+  Boundaries:
+  - Keep changes bounded to package maintenance concerns: Python package metadata, importability, tests, Workbench tools, MCP package code, configs, recipes, and public docs needed for the task.
+  - Do not add private run history, provider secrets, personal machine paths, broad UI/provider plumbing, or target-repo-specific configuration.
+  - Preserve Goose as the execution surface and keep Workbench core logic runtime-agnostic.
+  - If the requested task requires deployment, secret handling, destructive migration, or unrelated product work, stop and report that this package maintenance recipe is the wrong execution profile.
+
+  Workflow:
+  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", and risk="{{ risk }}".
+  2. Call workbench_select_model with project="{{ project }}", task_type="{{ task_type }}", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
+  3. Perform the requested Python package maintenance task: {{ task }}
+  4. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
+     If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
+  5. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", and out_dir="{{ run_dir }}".
+  6. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
+  7. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
+  8. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
+
+prompt: |
+  Task: {{ task }}
+
+  Run directory: {{ run_dir }}
+  Project: {{ project }}
+  Task type: {{ task_type }}
+  Risk: {{ risk }}
+  Validation profile: {{ validation_profile }}
+
+  Start by opening the Workbench run, then select the model tier with Workbench. Complete the bounded Python package maintenance work, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
+
+activities:
+  - "Run an accepted Python package maintenance workflow for: {{ task }}"
+  - "Validate and quality-gate the evidence in {{ run_dir }}"

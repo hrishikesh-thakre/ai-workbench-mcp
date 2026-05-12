@@ -76,7 +76,32 @@ Goose recipe
 
 The current alpha exposes the Workbench core through a Goose-compatible MCP server.
 
-## 5. Validation Expectations
+## 5. Approved Prompt Catalog
+
+Approved prompts live in `prompts/approved/`. The public catalog is:
+
+| Prompt | Primary use |
+|---|---|
+| `bug_root_cause_investigation.md` | Bug investigation and root-cause analysis before fixing. |
+| `code_review_patch_risk_audit.md` | Patch, diff, or AI-generated change review. |
+| `data_acquisition_surface_audit.md` | Data acquisition, ingestion, scraping, upload, and webhook surface review. |
+| `documentation_accuracy_audit.md` | Documentation accuracy checks against implementation reality. |
+| `implement_request_change_request.md` | Bounded implementation from a request, PRD, bug fix, or change brief. |
+| `navigation_page_title_ia_audit.md` | Navigation, page title, label, route, and information architecture audit. |
+| `performance_latency_hotspot_audit.md` | Performance and latency hot spot investigation. |
+| `prompt_failure_improvement_log.md` | Prompt failure review and prompt improvement record. |
+| `repository_context_index_audit.md` | Repository context indexing and orientation audit. |
+| `security_privacy_risk_review.md` | Security and privacy risk review. |
+| `test_case_development_meaningful_coverage.md` | Meaningful test-case development and coverage expansion. |
+| `ux_visual_accessibility_audit.md` | UX, accessibility, and visual clarity audit. |
+
+Focused v0.2 defaults:
+
+- Docs-only recipe: `documentation_accuracy_audit.md`
+- Test-fix recipe: `bug_root_cause_investigation.md`
+- Future test-creation workflow: `test_case_development_meaningful_coverage.md`
+
+## 6. Validation Expectations
 
 For this starter extraction, begin with:
 
@@ -90,7 +115,13 @@ pytest
 
 Do not treat Goose prose as acceptance evidence. A run is accepted only when the evidence folder has deterministic validation and a quality-gate decision.
 
-## 6. Public Release Rule
+Evidence boundary:
+
+- Keep local run evidence in ignored `runs/`.
+- Commit only sanitized examples under `examples/sample-runs/`.
+- Remove local absolute paths, provider secrets, private target-repo names, and raw model-loader logs from any committed sample.
+
+## 7. Public Release Rule
 
 Before public release, remove or avoid:
 
