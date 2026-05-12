@@ -310,14 +310,10 @@ def estimate_cost_from_metadata(metadata: dict[str, object], runtime: dict[str, 
     return round(estimated_cost_usd, 8), str(pricing.get("source")) if pricing.get("source") else None
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-
+def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     runs_dir = Path(args.runs_dir)
     if not runs_dir.exists():
-        print(f"runs_dir_missing={runs_dir}")
-        return 1
+        raise FileNotFoundError(f"runs_dir_missing={runs_dir}")
 
     out_dir = Path(args.out_dir) if args.out_dir else runs_dir / "_reports"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -901,6 +897,23 @@ def main() -> int:
             f"| {run['run_id']} | {run['status']} | {run['task_type']} | {str(run['eligible_for_golden_case']).lower()} |"
         )
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return metrics
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+
+    try:
+        metrics = run_analysis_payload(args)
+    except FileNotFoundError as exc:
+        print(str(exc))
+        return 1
+
+    runs_dir = Path(args.runs_dir)
+    out_dir = Path(args.out_dir) if args.out_dir else runs_dir / "_reports"
+    metrics_path = out_dir / "run_metrics.json"
+    summary_path = out_dir / "run_summary.md"
 
     print(f"run_metrics={metrics_path}")
     print(f"run_summary={summary_path}")

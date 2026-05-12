@@ -87,6 +87,15 @@ def _load_quality_loop_module() -> Any:
     return quality_loop_module
 
 
+def _load_run_analyze_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import run_analyze as run_analyze_module
+
+    return run_analyze_module
+
+
 def model_selection_response(selection: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
     selected_model = selection.get("selected_model", {})
     selected_model = selected_model if isinstance(selected_model, dict) else {}
@@ -314,29 +323,23 @@ def analyze_runs(
     out_dir: str | Path | None = None,
     evals_dir: str | Path = "evals/golden_cases",
 ) -> JsonObject:
-    command = [
-        str(TOOLS_DIR / "run_analyze.py"),
-        "--runs-dir",
-        str(runs_dir),
-        "--evals-dir",
-        str(evals_dir),
-    ]
-    _append_optional(command, "--task-type", task_type)
-    _append_optional(command, "--since", since)
-    _append_optional(command, "--out-dir", out_dir)
-
-    result = run_tool(operation="workbench_analyze_runs", args=command)
-    if isinstance(result, dict):
-        return result
-
     report_dir = _workbench_path(out_dir) if out_dir is not None else _workbench_path(runs_dir) / "_reports"
     metrics_path = report_dir / "run_metrics.json"
     summary_path = report_dir / "run_summary.md"
-    if not metrics_path.exists():
+    args = SimpleNamespace(
+        runs_dir=str(_workbench_path(runs_dir)),
+        task_type=task_type,
+        since=since,
+        out_dir=str(_workbench_path(out_dir)) if out_dir is not None else None,
+        evals_dir=str(_workbench_path(evals_dir)),
+    )
+    try:
+        metrics = _load_run_analyze_module().run_analysis_payload(args)
+    except Exception as exc:
         return error_envelope(
             operation="workbench_analyze_runs",
-            code="missing_run_metrics",
-            message="Run analysis completed without writing run_metrics.json.",
+            code="run_analysis_failed",
+            message=str(exc),
             details={"run_metrics": str(metrics_path)},
         )
-    return run_analysis_file_response(metrics_path, summary_path=summary_path)
+    return run_analysis_response(metrics, artifacts={"run_metrics": metrics_path, "run_summary": summary_path})

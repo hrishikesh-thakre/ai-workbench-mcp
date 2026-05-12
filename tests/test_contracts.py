@@ -19,6 +19,7 @@ from ai_workbench_mcp.core import (
     quality_gate_response,
     quality_gate,
     run_analysis_response,
+    analyze_runs,
     select_model,
     validate_run,
     validation_response,
@@ -289,6 +290,72 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["accepted_pass"], 1)
         self.assertEqual(response["summary"]["blocking_findings"], 0)
         self.assertEqual(response["summary"]["non_blocking_findings"], 0)
+
+    def test_analyze_runs_direct_call_writes_artifacts_and_wraps_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            runs_dir = root / "runs"
+            run_dir = runs_dir / "run1"
+            run_dir.mkdir(parents=True)
+            (run_dir / "run_log.jsonl").write_text(
+                json.dumps(
+                    {
+                        "timestamp": "2026-05-12T10:00:00",
+                        "model_tier": "local_coding",
+                        "decision": "model_response_captured",
+                        "prompt": "implement_request_change_request",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (run_dir / "model_selection.json").write_text(
+                json.dumps(
+                    {
+                        "selected_tier": "local_coding",
+                        "task_type": "implementation",
+                        "risk": "medium",
+                        "complexity_band": "moderate",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "validation_report.json").write_text(
+                json.dumps({"overall_status": "passed", "confidence": 0.9}),
+                encoding="utf-8",
+            )
+            out_dir = root / "reports"
+            real_subprocess_run = subprocess.run
+
+            def guarded_subprocess_run(*args, **kwargs):
+                caller = inspect.stack()[1]
+                if Path(caller.filename).name == "core.py":
+                    raise AssertionError("core subprocess.run not expected")
+                return real_subprocess_run(*args, **kwargs)
+
+            with (
+                patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+                patch("ai_workbench_mcp.core.subprocess.run", side_effect=guarded_subprocess_run),
+            ):
+                response = analyze_runs(
+                    runs_dir=runs_dir,
+                    out_dir=out_dir,
+                    evals_dir=root / "evals",
+                )
+            written = json.loads((out_dir / "run_metrics.json").read_text(encoding="utf-8"))
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["operation"], "workbench_analyze_runs")
+        self.assertEqual(response["status"], "completed")
+        self.assertEqual(response["artifacts"]["run_metrics"], str(out_dir / "run_metrics.json"))
+        self.assertEqual(response["artifacts"]["run_summary"], str(out_dir / "run_summary.md"))
+        self.assertEqual(written["runs_total"], 1)
+        self.assertEqual(response["summary"]["runs_total"], 1)
+        self.assertEqual(response["summary"]["runs_passed"], 1)
+        self.assertEqual(response["summary"]["runs_failed"], 0)
+        self.assertEqual(response["summary"]["runs_needs_review"], 0)
+        self.assertEqual(response["summary"]["workflow_signoff_pass_rate"], 1.0)
+        self.assertEqual(response["summary"]["average_confidence"], 0.9)
 
 
 if __name__ == "__main__":
