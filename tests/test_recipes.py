@@ -134,6 +134,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn('cmd: "ai-workbench-mcp"', text)
                 self.assertIn('name: "AI Workbench MCP"', text)
                 self.assertIn("available_tools:", text)
+                self.assertIn(f'recipe="{recipe_path.name}"', text)
 
     def test_validation_recipes_reference_discoverable_policy_profiles(self) -> None:
         profiles = validation_profiles()

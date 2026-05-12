@@ -48,7 +48,7 @@ instructions: |
   You are running a minimal AI Workbench MCP tool smoke.
 
   Call exactly these two tools, then stop:
-  1. workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", risk="{{ risk }}", and prompt="implement_request_change_request".
+  1. workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", risk="{{ risk }}", prompt="implement_request_change_request", and recipe="workbench-mcp-tool-smoke.yaml".
   2. workbench_select_model with project="{{ project }}", task_type="implement", risk="{{ risk }}", validation_strength="medium", prompt="implement_request_change_request", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
 
   Do not edit tracked files. Do not run validation. Do not run the quality gate. Summarize only the two returned Workbench envelope statuses.

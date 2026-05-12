@@ -26,6 +26,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 task=task,
                 run_dir=run_dir,
                 risk="low",
+                recipe="workbench-engineering-acceptance.yaml",
             )
             prompt_summary = parse_final_prompt(run_dir / "final_prompt.md")
             metadata = json.loads((run_dir / "task_metadata.json").read_text(encoding="utf-8"))
@@ -42,6 +43,8 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(prompt_summary.risk, "low")
         self.assertIn(task, prompt_summary.task)
         self.assertEqual(metadata["task"], task)
+        self.assertEqual(metadata["recipe"], "workbench-engineering-acceptance.yaml")
+        self.assertEqual(response["summary"]["recipe"], "workbench-engineering-acceptance.yaml")
         self.assertEqual(len(log_lines), 1)
         self.assertEqual(json.loads(log_lines[0])["decision"], "run_opened")
 

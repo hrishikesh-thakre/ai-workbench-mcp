@@ -69,7 +69,7 @@ instructions: |
   - If deterministic validation cannot be run, stop and report that this test-fix recipe cannot produce an accepted run.
 
   Workflow:
-  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", and risk="{{ risk }}".
+  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-test-fix-acceptance.yaml".
   2. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
   3. Perform the requested test-fix task: {{ task }}
   4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task.

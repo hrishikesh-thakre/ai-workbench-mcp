@@ -8,6 +8,7 @@
   "risk": "low",
   "task_type": "implementation",
   "context_profile": "default_docs_first",
+  "recipe": "workbench-engineering-acceptance.yaml",
   "changed_files": [
     "examples/tiny-python-fix/calculator.py"
   ],

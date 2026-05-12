@@ -145,6 +145,130 @@ def final_prompt_name(selection: dict[str, object], logs: list[dict[str, object]
     return "unknown"
 
 
+def task_metadata_for(run_dir: Path) -> dict[str, object]:
+    return read_json(run_dir / "task_metadata.json")
+
+
+def recipe_for(
+    metadata: dict[str, object],
+    selection: dict[str, object],
+    report: dict[str, object],
+    logs: list[dict[str, object]],
+) -> str:
+    for candidate in (
+        metadata.get("recipe"),
+        selection.get("recipe"),
+        report.get("recipe"),
+    ):
+        if candidate:
+            return str(candidate)
+    for row in reversed(logs):
+        recipe = row.get("recipe")
+        if recipe:
+            return str(recipe)
+
+    profile = str(report.get("profile", ""))
+    profile_to_recipe = {
+        "docs_only": "workbench-docs-only-acceptance.yaml",
+        "python_package_maintenance": "workbench-python-package-maintenance.yaml",
+        "test_fix": "workbench-test-fix-acceptance.yaml",
+        "low_risk_coding": "workbench-engineering-acceptance.yaml",
+        "run_signoff": "workbench-engineering-acceptance.yaml",
+        "tiny_python_fix": "workbench-engineering-acceptance.yaml",
+    }
+    if profile in profile_to_recipe:
+        return profile_to_recipe[profile]
+
+    prompt = final_prompt_name(selection, logs)
+    prompt_to_recipe = {
+        "documentation_accuracy_audit": "workbench-docs-only-acceptance.yaml",
+        "bug_root_cause_investigation": "workbench-test-fix-acceptance.yaml",
+    }
+    return prompt_to_recipe.get(prompt, "unknown")
+
+
+def quality_gate_outcome(decision: dict[str, object]) -> str:
+    outcome = str(decision.get("final_status", "")).strip()
+    return outcome or "missing_decision"
+
+
+def accepted_by_validation_and_gate(report: dict[str, object], decision: dict[str, object]) -> bool:
+    return (
+        quality_gate_outcome(decision) == "accepted"
+        and report.get("overall_status") == "passed"
+        and report.get("sign_off_ready") is True
+    )
+
+
+def acceptance_bucket(report: dict[str, object], decision: dict[str, object]) -> str:
+    if accepted_by_validation_and_gate(report, decision):
+        return "accepted"
+    outcome = quality_gate_outcome(decision)
+    if outcome in {"review_required", "revision_required"}:
+        return "needs_review"
+    if report.get("overall_status") == "failed":
+        return "failed"
+    return outcome
+
+
+def acceptance_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str, object]]:
+    result: dict[str, dict[str, object]] = {}
+    for key, counts in sorted(matrix.items()):
+        total = sum(counts.values())
+        accepted = counts.get("accepted", 0)
+        result[key] = {
+            "accepted": accepted,
+            "needs_review": counts.get("needs_review", 0),
+            "failed": counts.get("failed", 0),
+            "other": total - accepted - counts.get("needs_review", 0) - counts.get("failed", 0),
+            "total": total,
+            "acceptance_rate": round(accepted / max(1, total), 2),
+        }
+    return result
+
+
+def failure_reasons(report: dict[str, object], decision: dict[str, object]) -> list[str]:
+    reasons: list[str] = []
+    if report.get("overall_status") not in {"passed", None, ""}:
+        reasons.append(f"validation_overall:{report.get('overall_status')}")
+    if report and report.get("sign_off_ready") is False:
+        reasons.append("validation_not_sign_off_ready")
+
+    for command in report.get("commands_run", []) if isinstance(report.get("commands_run", []), list) else []:
+        command = as_dict(command)
+        status = str(command.get("status", ""))
+        exit_code = command.get("exit_code")
+        if status == "failed" or exit_code not in {None, 0}:
+            reasons.append(f"command_failed:{command.get('name', 'unknown')}")
+
+    for command in report.get("commands_not_run", []) if isinstance(report.get("commands_not_run", []), list) else []:
+        command = as_dict(command)
+        reasons.append(f"command_not_run:{command.get('name', 'unknown')}")
+
+    for section in ("artifact_checks", "review_checks"):
+        for check in report.get(section, []) if isinstance(report.get(section, []), list) else []:
+            check = as_dict(check)
+            status = str(check.get("status", ""))
+            if status in {"failed", "needs_review"}:
+                reasons.append(f"{section}:{status}:{check.get('name', 'unknown')}")
+
+    notes = report.get("missing_context_notes", {})
+    if isinstance(notes, dict):
+        for note in notes.get("needs_review", []) if isinstance(notes.get("needs_review", []), list) else []:
+            reasons.append(f"missing_context:{note}")
+
+    outcome = quality_gate_outcome(decision)
+    if outcome not in {"accepted", "missing_decision"}:
+        reasons.append(f"quality_gate:{outcome}")
+    loop_type = str(decision.get("loop_type", "none"))
+    if loop_type and loop_type != "none":
+        reasons.append(f"quality_loop:{loop_type}")
+    if outcome == "missing_decision":
+        reasons.append("quality_gate:missing_decision")
+
+    return reasons or ["unknown"]
+
+
 def scan_eval_results(runs_dir: Path) -> list[dict[str, object]]:
     results: list[dict[str, object]] = []
     reports_dir = runs_dir / "_reports"
@@ -333,6 +457,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         report = read_json(run_dir / "validation_report.json")
         decision = read_json(run_dir / "revision_decision.json")
         selection = selection_for(run_dir)
+        metadata = task_metadata_for(run_dir)
         runs.append(
             {
                 "run_id": run_dir.name,
@@ -341,6 +466,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 "report": report,
                 "decision": decision,
                 "selection": selection,
+                "metadata": metadata,
                 "task_type": task_type,
                 "status": final_status(report, decision),
                 "eligible_for_golden_case": eligible_for_golden_case(run_dir),
@@ -363,15 +489,40 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     manual_handoff_count = 0
     response_captured_count = 0
     routing_feedback: dict[str, Counter[str]] = defaultdict(Counter)
+    accepted_runs_total = 0
+    accepted_by_recipe: Counter[str] = Counter()
+    accepted_by_profile: Counter[str] = Counter()
+    accepted_by_tier: Counter[str] = Counter()
+    accepted_by_task_type: Counter[str] = Counter()
+    quality_outcomes: Counter[str] = Counter()
+    failure_reason_counts: Counter[str] = Counter()
+    acceptance_by_recipe: dict[str, Counter[str]] = defaultdict(Counter)
+    acceptance_by_profile: dict[str, Counter[str]] = defaultdict(Counter)
+    acceptance_by_tier: dict[str, Counter[str]] = defaultdict(Counter)
+    acceptance_by_quality_outcome: dict[str, Counter[str]] = defaultdict(Counter)
 
     for run in runs:
         logs = run["logs"]
         report = run["report"]
         decision = run["decision"]
         selection = run["selection"]
+        metadata = run["metadata"]
         task_type = str(run["task_type"])
         selected_tier = latest_tier(logs if isinstance(logs, list) else [], selection if isinstance(selection, dict) else {})
         run_status = str(run["status"])
+        profile = str(report.get("profile", "unknown")) if isinstance(report, dict) else "unknown"
+        recipe = recipe_for(
+            metadata if isinstance(metadata, dict) else {},
+            selection if isinstance(selection, dict) else {},
+            report if isinstance(report, dict) else {},
+            logs if isinstance(logs, list) else [],
+        )
+        gate_outcome = quality_gate_outcome(decision if isinstance(decision, dict) else {})
+        accepted = accepted_by_validation_and_gate(
+            report if isinstance(report, dict) else {},
+            decision if isinstance(decision, dict) else {},
+        )
+        bucket = acceptance_bucket(report if isinstance(report, dict) else {}, decision if isinstance(decision, dict) else {})
         risk = str(selection.get("risk", "unknown")) if isinstance(selection, dict) else "unknown"
         complexity_band = str(selection.get("complexity_band", "unknown")) if isinstance(selection, dict) else "unknown"
         # Backfill: when historical runs lack complexity scoring, use risk as a proxy.
@@ -384,6 +535,23 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         prompt_by_tier[selected_tier][prompt_name] += 1
         routing_key = f"{selected_tier}|{risk}|{complexity_band}"
         routing_feedback[routing_key][run_status] += 1
+        quality_outcomes[gate_outcome] += 1
+        acceptance_by_recipe[recipe][bucket] += 1
+        acceptance_by_profile[profile][bucket] += 1
+        acceptance_by_tier[selected_tier][bucket] += 1
+        acceptance_by_quality_outcome[gate_outcome][bucket] += 1
+        if accepted:
+            accepted_runs_total += 1
+            accepted_by_recipe[recipe] += 1
+            accepted_by_profile[profile] += 1
+            accepted_by_tier[selected_tier] += 1
+            accepted_by_task_type[task_type] += 1
+        else:
+            for reason in failure_reasons(
+                report if isinstance(report, dict) else {},
+                decision if isinstance(decision, dict) else {},
+            ):
+                failure_reason_counts[reason] += 1
         if isinstance(logs, list):
             for row in logs:
                 tier = row.get("model_tier")
@@ -624,6 +792,20 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "average_confidence": average_confidence,
         "workflow_signoff_pass_rate": round(status_counts.get("passed", 0) / max(1, len(runs)), 2) if runs else 0.0,
         "workflow_needs_review_rate": round(status_counts.get("needs_review", 0) / max(1, len(runs)), 2) if runs else 0.0,
+        "accepted_runs_total": accepted_runs_total,
+        "acceptance_rate": round(accepted_runs_total / max(1, len(runs)), 2) if runs else 0.0,
+        "accepted_runs_by_recipe": dict(accepted_by_recipe),
+        "accepted_runs_by_validation_profile": dict(accepted_by_profile),
+        "accepted_runs_by_selected_tier": dict(accepted_by_tier),
+        "accepted_runs_by_task_type": dict(accepted_by_task_type),
+        "quality_gate_outcomes": dict(quality_outcomes),
+        "failure_reasons": dict(failure_reason_counts.most_common(10)),
+        "acceptance_breakdown": {
+            "by_recipe": acceptance_breakdown(acceptance_by_recipe),
+            "by_validation_profile": acceptance_breakdown(acceptance_by_profile),
+            "by_selected_tier": acceptance_breakdown(acceptance_by_tier),
+            "by_quality_gate_outcome": acceptance_breakdown(acceptance_by_quality_outcome),
+        },
         "confidence_by_task_type": confidence_by_task_result,
         "model_tier_usage": dict(tier_usage),
         "validation_profiles_used": dict(profiles_used),
@@ -738,6 +920,13 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             "workflow_signoff_pass_rate": round(status_counts.get("passed", 0) / max(1, len(runs)), 2) if runs else 0.0,
             "workflow_needs_review_rate": round(status_counts.get("needs_review", 0) / max(1, len(runs)), 2) if runs else 0.0,
             "average_confidence": average_confidence,
+            "accepted_runs_total": accepted_runs_total,
+            "acceptance_rate": round(accepted_runs_total / max(1, len(runs)), 2) if runs else 0.0,
+            "accepted_runs_by_recipe": dict(accepted_by_recipe),
+            "accepted_runs_by_validation_profile": dict(accepted_by_profile),
+            "accepted_runs_by_selected_tier": dict(accepted_by_tier),
+            "quality_gate_outcomes": dict(quality_outcomes),
+            "failure_reasons": dict(failure_reason_counts.most_common(10)),
             "manual_handoff_count": manual_handoff_count,
             "response_captured_count": response_captured_count,
             "review_loop_triggers": dict(review_triggers),
@@ -822,6 +1011,29 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Workflow sign-off pass rate: {metrics['workflow_signoff_pass_rate']}",
         f"- Workflow needs-review rate: {metrics['workflow_needs_review_rate']}",
         f"- Average confidence: {metrics['average_confidence']}",
+        f"- Accepted runs total: {metrics['accepted_runs_total']}",
+        f"- Acceptance rate: {metrics['acceptance_rate']}",
+        "",
+        "## Acceptance Analytics",
+        "",
+        f"- Accepted runs by recipe: {metrics['accepted_runs_by_recipe']}",
+        f"- Accepted runs by validation profile: {metrics['accepted_runs_by_validation_profile']}",
+        f"- Accepted runs by selected tier: {metrics['accepted_runs_by_selected_tier']}",
+        f"- Quality-gate outcomes: {metrics['quality_gate_outcomes']}",
+        f"- Failure reasons: {metrics['failure_reasons']}",
+        "",
+        "### Acceptance By Recipe",
+        "",
+        "| Recipe | Accepted | Needs Review | Failed | Other | Total | Acceptance Rate |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    recipe_breakdown = as_dict(as_dict(metrics.get("acceptance_breakdown")).get("by_recipe"))
+    for recipe, data in recipe_breakdown.items():
+        data = as_dict(data)
+        lines.append(
+            f"| {recipe} | {data.get('accepted', 0)} | {data.get('needs_review', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} |"
+        )
+    lines.extend([
         "",
         "## Workflow Signals",
         "",
@@ -855,7 +1067,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "| Tier | Risk | Complexity | Passed | Needs Review | Failed | Total | Pass Rate |",
         "|---|---|---|---:|---:|---:|---:|---:|",
-    ]
+    ])
     rfm = metrics.get("routing_feedback_matrix", {})
     for key, data in (rfm.items() if isinstance(rfm, dict) else []):
         parts = str(key).split("|")

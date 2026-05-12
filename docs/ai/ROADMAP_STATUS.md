@@ -20,7 +20,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Goose MCP server | Alpha complete | Six Workbench tools exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
 | Goose recipe MVP | Alpha complete | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
 | Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
-| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 104 tests and 69 subtests during v0.2 release-readiness checks |
+| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 105 tests and 69 subtests during acceptance-analytics checks |
 | Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\v02_release_candidate_scaffold` passed |
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
 | Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
@@ -28,6 +28,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.2 recipe and policy discovery | Release candidate | Folder-level recipe discovery and validation-profile reference tests cover docs-only, Python package maintenance, test-fix, and low-risk coding profiles |
 | v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
+| Acceptance analytics | Started | `workbench_analyze_runs` now summarizes accepted runs by recipe, validation profile, model tier, failure reason, and quality-gate outcome |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -108,7 +109,7 @@ Tasks:
 - Add public examples, sanitized focused sample evidence, and release notes for focused workflows.
 - Keep the six-tool acceptance workflow stable.
 
-## Phase 5: Acceptance Analytics
+## Phase 5: Acceptance Analytics (Started)
 
 Goal:
 
@@ -116,7 +117,7 @@ Make routing improve from accepted artifacts.
 
 Tasks:
 
-- Track acceptance rate by task class and tier.
+- Track acceptance rate by task class, recipe, validation profile, and tier. Started in `tools/run_analyze.py`.
 - Track cost per accepted artifact.
 - Promote sanitized golden cases.
 - Feed historical evidence back into routing recommendations.

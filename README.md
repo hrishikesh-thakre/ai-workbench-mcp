@@ -158,7 +158,7 @@ workbench_quality_gate
   -> accepts, rejects, or requests review and writes revision_decision.json
 
 workbench_analyze_runs
-  -> summarizes accepted-run metrics under runs/_reports
+  -> summarizes accepted-run metrics by recipe, validation profile, model tier, failure reason, and quality-gate outcome under runs/_reports
 ```
 
 ## Workflow

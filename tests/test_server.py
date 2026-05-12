@@ -113,6 +113,7 @@ class ServerToolHandlerTests(unittest.TestCase):
             prompt="implement_request_change_request",
             risk="medium",
             context_profile=None,
+            recipe=None,
             changed_files=["src/example.py"],
             docs=None,
             include_diff=False,

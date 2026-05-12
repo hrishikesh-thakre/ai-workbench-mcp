@@ -241,6 +241,10 @@ def run_analysis_response(metrics: JsonObject, artifacts: JsonObject | None = No
             "workflow_signoff_pass_rate": metrics.get("workflow_signoff_pass_rate"),
             "workflow_needs_review_rate": metrics.get("workflow_needs_review_rate"),
             "average_confidence": metrics.get("average_confidence"),
+            "accepted_runs_total": metrics.get("accepted_runs_total"),
+            "acceptance_rate": metrics.get("acceptance_rate"),
+            "accepted_runs_by_recipe": metrics.get("accepted_runs_by_recipe"),
+            "quality_gate_outcomes": metrics.get("quality_gate_outcomes"),
         },
     )
 
@@ -257,6 +261,7 @@ def open_run_response(payload: JsonObject, artifacts: JsonObject | None = None) 
             "task": payload.get("task"),
             "prompt": payload.get("prompt"),
             "risk": payload.get("risk"),
+            "recipe": payload.get("recipe"),
             "run_dir": payload.get("run_dir"),
             "docs_read": payload.get("docs_read"),
             "files_considered": payload.get("files_considered"),
@@ -373,6 +378,7 @@ def open_run(
     prompt: str = "implement_request_change_request",
     risk: str = "medium",
     context_profile: str | None = None,
+    recipe: str | None = None,
     changed_files: list[str] | None = None,
     docs: list[str] | None = None,
     include_diff: bool = False,
@@ -412,6 +418,7 @@ def open_run(
             "risk": risk,
             "task_type": task_type,
             "context_profile": profile_name,
+            "recipe": recipe,
             "changed_files": changed_files or [],
             "docs": docs or [],
             "include_diff": include_diff,
@@ -469,6 +476,7 @@ def open_run(
             "prompt": Path(prompt).stem,
             "risk": risk,
             "context_profile": profile_name,
+            "recipe": recipe,
         }
     except Exception as exc:
         return error_envelope(

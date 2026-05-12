@@ -77,6 +77,7 @@ class PublicExamplesTests(unittest.TestCase):
         ]
 
         self.assertEqual(metadata["prompt"], "documentation_accuracy_audit")
+        self.assertEqual(metadata["recipe"], "workbench-docs-only-acceptance.yaml")
         self.assertEqual(report["profile"], "docs_only")
         self.assertEqual(report["confidence"], 1.0)
         self.assertEqual(decision["final_status"], "accepted")

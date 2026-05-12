@@ -8,6 +8,7 @@
   "risk": "low",
   "task_type": "documentation update",
   "context_profile": "default_docs_first",
+  "recipe": "workbench-docs-only-acceptance.yaml",
   "changed_files": [],
   "docs": [],
   "include_diff": false

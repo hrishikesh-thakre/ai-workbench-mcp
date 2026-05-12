@@ -68,7 +68,7 @@ instructions: |
   - If the requested task requires code or configuration changes, stop and report that this docs-only recipe is the wrong execution profile.
 
   Workflow:
-  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", and risk="{{ risk }}".
+  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-docs-only-acceptance.yaml".
   2. Call workbench_select_model with project="{{ project }}", task_type="implement", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
   3. Perform the requested documentation-only task: {{ task }}
   4. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
