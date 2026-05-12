@@ -1,12 +1,12 @@
 # START_HERE
 
-Owner: AI Workbench Goose
+Owner: AI Workbench MCP
 Status: Draft
 Created: 2026-05-12
 
 ## 1. Project One-Liner
 
-`ai-workbench-goose` is a Goose-first, runtime-agnostic trust layer for agentic work. It packages Workbench routing, validation, evidence, quality-gate, and analytics logic so Goose can execute work while Workbench decides whether that work is acceptable.
+`ai-workbench-mcp` is a Goose-first, runtime-agnostic trust layer for agentic work. It packages Workbench routing, validation, evidence, quality-gate, and analytics logic so Goose can execute work while Workbench decides whether that work is acceptable.
 
 ## 2. Product Direction
 

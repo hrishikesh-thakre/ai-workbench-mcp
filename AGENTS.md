@@ -2,7 +2,7 @@
 
 ## Repository Summary
 
-`ai-workbench-goose` is a public-shaped extraction of the AI Workbench trust layer. Its purpose is to integrate with Goose as an MCP extension and recipe set while preserving Workbench-owned routing, validation, evidence, quality gates, and analytics.
+`ai-workbench-mcp` is a public-shaped extraction of the AI Workbench trust layer. Its purpose is to integrate with Goose as the first supported MCP host while preserving Workbench-owned routing, validation, evidence, quality gates, and analytics.
 
 ## Read First
 

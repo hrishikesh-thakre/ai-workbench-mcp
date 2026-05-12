@@ -1,6 +1,6 @@
 # ROADMAP_STATUS
 
-Owner: AI Workbench Goose
+Owner: AI Workbench MCP
 Status: Draft
 Created: 2026-05-12
 
@@ -21,7 +21,7 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Goose recipe MVP | Not started | `recipes/` placeholder exists |
 | Core JSON response contracts | Not started | Required before reliable MCP wrapper |
 | Validation of extracted tests | Passed | `python -m pytest -q` passed 29 tests |
-| Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_goose --profile scaffold --out-dir runs\smoke` passed |
+| Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
 | Public README/install flow | Draft | Needs update after MCP server exists |
 
 ## Phase 0: Repo Alignment

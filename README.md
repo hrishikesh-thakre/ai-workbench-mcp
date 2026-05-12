@@ -1,6 +1,6 @@
-# AI Workbench Goose
+# AI Workbench MCP
 
-AI Workbench Goose is a Goose-first acceptance layer for agentic engineering work.
+AI Workbench MCP is a Goose-first, runtime-agnostic acceptance layer for agentic engineering work.
 
 It is not another general-purpose agent runner. Goose owns the desktop, CLI, provider ecosystem, recipes, MCP extensions, and execution loop. This repo provides the complementary trust layer:
 

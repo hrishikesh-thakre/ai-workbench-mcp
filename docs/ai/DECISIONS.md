@@ -1,6 +1,6 @@
 # DECISIONS
 
-Owner: AI Workbench Goose
+Owner: AI Workbench MCP
 Status: Draft
 Created: 2026-05-12
 

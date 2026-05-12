@@ -1,7 +1,7 @@
 projects:
-  ai_workbench_goose:
+  ai_workbench_mcp:
     root: .
-    description: Goose-first AI Workbench trust-layer extraction.
+    description: AI Workbench MCP trust-layer extraction.
     docs:
       start_here: docs/ai/START_HERE.md
       project_map: docs/ai/PROJECT_MAP.md
