@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Goose-first acceptance, validation, routing, and audit layer for agentic work."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["mcp>=1.25.0,<2"]
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
@@ -13,7 +13,6 @@ classifiers = [
 ai-workbench-mcp = "ai_workbench_mcp.server:main"
 
 [project.optional-dependencies]
-mcp = ["mcp"]
 dev = ["pytest"]
 
 [tool.pytest.ini_options]

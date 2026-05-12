@@ -25,7 +25,7 @@ Goose Desktop / CLI / recipe
   -> accepted artifact analytics
 ```
 
-Current status: Phase 2 MCP MVP. The core Workbench operations are callable directly from Python and exposed through a Goose-compatible stdio MCP server.
+Current status: Phase 2.5 MCP MVP. The core Workbench operations and evidence lifecycle tools are callable directly from Python and exposed through a Goose-compatible stdio MCP server.
 
 Start with [START_HERE.md](docs/ai/START_HERE.md).
 
@@ -34,13 +34,13 @@ Start with [START_HERE.md](docs/ai/START_HERE.md).
 From the repository root:
 
 ```bash
-python -m pip install -e ".[mcp]"
+python -m pip install -e .
 ```
 
 For development and tests:
 
 ```bash
-python -m pip install -e ".[mcp,dev]"
+python -m pip install -e ".[dev]"
 python -m pytest -q
 ```
 
@@ -62,7 +62,9 @@ Choose:
 
 The server exposes:
 
+- `workbench_open_run`
 - `workbench_select_model`
+- `workbench_record_execution`
 - `workbench_validate_run`
 - `workbench_quality_gate`
 - `workbench_analyze_runs`
@@ -71,8 +73,10 @@ The server exposes:
 
 Example Goose prompts:
 
+- `Call workbench_open_run with project ai_workbench_mcp, task "Document the current lifecycle tools", run_dir runs/manual, prompt implement_request_change_request, and risk medium.`
 - `Call workbench_select_model with project ai_workbench_mcp, task_type implement, risk medium, out runs/manual/model_selection.json, prompt implement_request_change_request, complexity_score 13.`
-- `Call workbench_validate_run with project ai_workbench_mcp, profile scaffold, out_dir runs/manual.`
+- `Call workbench_record_execution with project ai_workbench_mcp, run_dir runs/manual, and response_text "Summary:\nCaptured the manual smoke.\n\nFiles touched:\n- None.\n\nValidation run:\n- Not run.\n\nRisks / follow-ups:\n- None."`
+- `Call workbench_validate_run with project ai_workbench_mcp, profile run_signoff, out_dir runs/manual.`
 - `Call workbench_quality_gate with project ai_workbench_mcp, run_dir runs/manual, mode auto, risk medium.`
 - `Call workbench_analyze_runs with runs_dir runs and out_dir runs/_reports.`
 
@@ -90,4 +94,4 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params risk=medium
 ```
 
-The recipe uses the `ai-workbench-mcp` stdio extension and calls model selection, validation, quality gate, and run analysis in order.
+The recipe uses the `ai-workbench-mcp` stdio extension and calls run setup, model selection, execution capture, validation, quality gate, and run analysis in order.

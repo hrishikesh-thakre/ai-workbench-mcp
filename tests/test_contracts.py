@@ -196,6 +196,20 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["complexity_band"], "moderate")
         self.assertEqual(response["summary"]["matched_rule"], "easy_moderate_local_coding")
 
+    def test_select_model_rejects_invalid_risk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            response = select_model(
+                project="ai_workbench_mcp",
+                task_type="implement",
+                risk="urgent",
+                out=Path(tmpdir) / "model_selection.json",
+            )
+
+        self.assertEqual(response["operation"], "workbench_select_model")
+        self.assertFalse(response["ok"])
+        self.assertEqual(response["errors"][0]["code"], "model_selection_failed")
+        self.assertIn("risk must be one of", response["errors"][0]["message"])
+
     def test_validate_run_direct_call_writes_artifact_and_wraps_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             real_subprocess_run = subprocess.run

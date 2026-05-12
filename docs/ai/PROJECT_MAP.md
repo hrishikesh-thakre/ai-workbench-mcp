@@ -46,16 +46,16 @@ runs/<run_id>/
 | `tools/response_format.py` | Response parsing and required-section helpers |
 | `configs/` | Starter routing, validation, context, and quality-loop configuration |
 | `prompts/approved/` | Minimal public prompt templates |
-| `recipes/` | Future Goose recipe files |
-| `src/ai_workbench_mcp/` | Future MCP server package |
-| `tests/` | Focused starter tests copied from the private lab repo |
+| `recipes/` | Goose recipe files for Workbench acceptance workflows |
+| `src/ai_workbench_mcp/` | MCP server package and runtime-agnostic core wrappers |
+| `tests/` | Focused tests for core contracts, tool payloads, recipes, and MCP runtime smoke |
 | `docs/ai/` | Operating docs for the Goose-first pivot |
 
-## 4. Planned MCP Tool Boundary
+## 4. MCP Tool Boundary
 
 | MCP Tool | Backing Logic |
 |---|---|
-| `workbench_open_run` | new thin wrapper around run folder creation |
+| `workbench_open_run` | `tools/context_scout.py` plus task metadata, final prompt, and initial run log |
 | `workbench_select_model` | `tools/model_select.py` |
 | `workbench_record_execution` | `tools/model_handoff.py` plus runtime metadata capture |
 | `workbench_validate_run` | `tools/validate_run.py` |

@@ -30,4 +30,4 @@ Workbench-owned trust layer.
 Runtime-agnostic core.
 ```
 
-The first public MVP should expose model selection, validation, quality gate, and run analysis through a Goose-compatible MCP server.
+The first public MVP exposes run setup, model selection, execution capture, validation, quality gate, and run analysis through a Goose-compatible MCP server.

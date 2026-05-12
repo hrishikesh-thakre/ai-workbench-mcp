@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import json
 from pathlib import Path
 import subprocess
@@ -14,6 +15,9 @@ from .contracts import JsonObject, error_envelope, response_envelope
 
 WORKBENCH_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DIR = WORKBENCH_ROOT / "tools"
+ALLOWED_RISKS = {"low", "medium", "high"}
+ALLOWED_RUN_STATUSES = {"started", "in_progress", "completed", "blocked"}
+ALLOWED_RECORD_MODEL_OUTPUT_STATUSES = {"response_captured"}
 
 
 def read_json_artifact(path: str | Path) -> JsonObject:
@@ -60,6 +64,27 @@ def _workbench_path(path: str | Path) -> Path:
     return candidate if candidate.is_absolute() else WORKBENCH_ROOT / candidate
 
 
+def _require_choice(name: str, value: str, allowed: set[str]) -> None:
+    if value not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise ValueError(f"{name} must be one of: {choices}.")
+
+
+def _has_jsonl_decision(path: Path, decision: str) -> bool:
+    if not path.exists():
+        return False
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("decision") == decision:
+            return True
+    return False
+
+
 def _load_model_select_module() -> Any:
     tools_dir = str(TOOLS_DIR)
     if tools_dir not in sys.path:
@@ -94,6 +119,33 @@ def _load_run_analyze_module() -> Any:
     import run_analyze as run_analyze_module
 
     return run_analyze_module
+
+
+def _load_context_scout_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import context_scout as context_scout_module
+
+    return context_scout_module
+
+
+def _load_model_handoff_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import model_handoff as model_handoff_module
+
+    return model_handoff_module
+
+
+def _load_run_log_module() -> Any:
+    tools_dir = str(TOOLS_DIR)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import run_log as run_log_module
+
+    return run_log_module
 
 
 def model_selection_response(selection: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
@@ -188,6 +240,48 @@ def run_analysis_response(metrics: JsonObject, artifacts: JsonObject | None = No
     )
 
 
+def open_run_response(payload: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
+    return response_envelope(
+        operation="workbench_open_run",
+        status="opened",
+        ok=True,
+        artifacts=artifacts,
+        summary={
+            "run_id": payload.get("run_id"),
+            "project": payload.get("project"),
+            "task": payload.get("task"),
+            "prompt": payload.get("prompt"),
+            "risk": payload.get("risk"),
+            "run_dir": payload.get("run_dir"),
+            "docs_read": payload.get("docs_read"),
+            "files_considered": payload.get("files_considered"),
+            "git_status": payload.get("git_status"),
+        },
+    )
+
+
+def record_execution_response(payload: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
+    status = str(payload.get("status") or "response_captured")
+    files_touched = payload.get("files_touched", [])
+    return response_envelope(
+        operation="workbench_record_execution",
+        status=status,
+        ok=status == "response_captured",
+        artifacts=artifacts,
+        summary={
+            "run_id": payload.get("run_id"),
+            "project": payload.get("project"),
+            "run_dir": payload.get("run_dir"),
+            "model_output_status": status,
+            "run_status": payload.get("run_status"),
+            "response_source": payload.get("response_source"),
+            "provider": payload.get("provider"),
+            "model": payload.get("model"),
+            "files_touched": len(files_touched) if isinstance(files_touched, list) else 0,
+        },
+    )
+
+
 def model_selection_file_response(path: str | Path) -> JsonObject:
     return model_selection_response(
         read_json_artifact(path),
@@ -216,6 +310,267 @@ def run_analysis_file_response(path: str | Path, summary_path: str | Path | None
     return run_analysis_response(read_json_artifact(path), artifacts=artifacts)
 
 
+def _write_json(path: Path, payload: JsonObject) -> None:
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _final_prompt_text(
+    *,
+    run_id: str,
+    project: str,
+    task: str,
+    prompt: str,
+    risk: str,
+    task_type: str,
+    context_profile: str,
+) -> str:
+    return "\n".join(
+        [
+            "# Final Prompt",
+            "",
+            "## Run Metadata",
+            "",
+            f"- Run ID: `{run_id}`",
+            f"- Project: `{project}`",
+            "- Mode: `goose`",
+            f"- Task Type: `{task_type}`",
+            f"- Risk: `{risk}`",
+            f"- Prompt: `{Path(prompt).stem}`",
+            f"- Context Profile: `{context_profile}`",
+            "",
+            "## Task Summary",
+            "",
+            task,
+            "",
+            "## Approved Prompt Reference",
+            "",
+            f"Use approved prompt `{Path(prompt).stem}` with the run metadata and task summary above.",
+            "",
+        ]
+    )
+
+
+def _selected_model_summary(selection: JsonObject) -> tuple[str | None, str | None]:
+    selected_model = selection.get("selected_model", {})
+    if not isinstance(selected_model, dict):
+        return None, None
+    provider = selected_model.get("provider")
+    model = selected_model.get("model")
+    return str(provider) if provider is not None else None, str(model) if model is not None else None
+
+
+def open_run(
+    *,
+    project: str,
+    task: str,
+    run_dir: str | Path | None = None,
+    prompt: str = "implement_request_change_request",
+    risk: str = "medium",
+    context_profile: str | None = None,
+    changed_files: list[str] | None = None,
+    docs: list[str] | None = None,
+    include_diff: bool = False,
+) -> JsonObject:
+    try:
+        _require_choice("risk", risk, ALLOWED_RISKS)
+        context_scout = _load_context_scout_module()
+        project_config = context_scout.load_project_config(project)
+        prompt_path = context_scout.resolve_prompt_path(prompt, project_config.prompts_dir)
+        if not prompt_path.exists():
+            raise FileNotFoundError(f"Approved prompt file not found: {prompt_path}")
+        profile_name = context_profile or project_config.default_context_profile
+        task_type = context_scout.classify_task(prompt)
+
+        scout_args = SimpleNamespace(
+            project=project,
+            task=task,
+            prompt=prompt,
+            risk=risk,
+            include_diff=include_diff,
+            docs=docs or [],
+            changed_files=changed_files or [],
+            context_profile=context_profile,
+            out_dir=str(run_dir) if run_dir is not None else None,
+        )
+        scout_payload = context_scout.context_scout_payload(scout_args)
+        output_dir = Path(str(scout_payload["output_dir"]))
+        run_id = str(scout_payload["run_id"])
+
+        task_metadata = {
+            "schema_version": 1,
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "run_id": run_id,
+            "project": project,
+            "task": task,
+            "prompt": Path(prompt).stem,
+            "risk": risk,
+            "task_type": task_type,
+            "context_profile": profile_name,
+            "changed_files": changed_files or [],
+            "docs": docs or [],
+            "include_diff": include_diff,
+        }
+        task_metadata_path = output_dir / "task_metadata.json"
+        _write_json(task_metadata_path, task_metadata)
+
+        final_prompt_path = output_dir / "final_prompt.md"
+        final_prompt_path.write_text(
+            _final_prompt_text(
+                run_id=run_id,
+                project=project,
+                task=task,
+                prompt=prompt,
+                risk=risk,
+                task_type=task_type,
+                context_profile=profile_name,
+            ),
+            encoding="utf-8",
+        )
+
+        run_log_path = output_dir / "run_log.jsonl"
+        if not _has_jsonl_decision(run_log_path, "run_opened"):
+            _load_run_log_module().run_log_payload(
+                SimpleNamespace(
+                    run_id=run_id,
+                    task=task,
+                    decision="run_opened",
+                    status="started",
+                    prompt=Path(prompt).stem,
+                    model_tier=None,
+                    model=None,
+                    validation=None,
+                    first_pass_outcome=None,
+                    final_outcome=None,
+                    quality_loop_status=None,
+                    authoritative_validation=None,
+                    follow_up=None,
+                    context_docs=docs or [],
+                    files_touched=changed_files or [],
+                    artifacts=[
+                        "task_metadata.json",
+                        "final_prompt.md",
+                        "expert_packet.md",
+                        "search_results.md",
+                    ],
+                    out=str(run_log_path),
+                )
+            )
+
+        payload: JsonObject = {
+            **scout_payload,
+            "run_dir": str(output_dir),
+            "task": task,
+            "prompt": Path(prompt).stem,
+            "risk": risk,
+            "context_profile": profile_name,
+        }
+    except Exception as exc:
+        return error_envelope(
+            operation="workbench_open_run",
+            code="open_run_failed",
+            message=str(exc),
+        )
+
+    return open_run_response(
+        payload,
+        artifacts={
+            "run_dir": output_dir,
+            "task_metadata": task_metadata_path,
+            "final_prompt": final_prompt_path,
+            "run_log": run_log_path,
+            "expert_packet": output_dir / "expert_packet.md",
+        },
+    )
+
+
+def record_execution(
+    *,
+    project: str,
+    run_dir: str | Path,
+    response_text: str,
+    files_touched: list[str] | None = None,
+    model_output_status: str = "response_captured",
+    run_status: str = "in_progress",
+    response_source: str = "goose",
+    validation: str | None = None,
+    follow_up: str | None = None,
+) -> JsonObject:
+    try:
+        _require_choice("model_output_status", model_output_status, ALLOWED_RECORD_MODEL_OUTPUT_STATUSES)
+        _require_choice("run_status", run_status, ALLOWED_RUN_STATUSES)
+        context_scout = _load_context_scout_module()
+        project_config = context_scout.load_project_config(project)
+        run_dir_path = context_scout.resolve_cli_path(str(run_dir), project_config.root)
+        model_selection_path = run_dir_path / "model_selection.json"
+        final_prompt_path = run_dir_path / "final_prompt.md"
+        model_output_path = run_dir_path / "model_output.md"
+        run_log_path = run_dir_path / "run_log.jsonl"
+
+        handoff_payload = _load_model_handoff_module().model_handoff_payload(
+            SimpleNamespace(
+                project=project,
+                selection=str(model_selection_path),
+                prompt=str(final_prompt_path),
+                out=str(model_output_path),
+                response_file=None,
+                response_text=response_text,
+                response_source=response_source,
+                model_output_status=model_output_status,
+            )
+        )
+
+        selection = read_json_artifact(model_selection_path)
+        selected_tier = selection.get("selected_tier")
+        _, selected_model = _selected_model_summary(selection)
+        prompt_name = selection.get("prompt") or "unknown"
+        task_metadata = read_json_artifact(run_dir_path / "task_metadata.json")
+        task_text = task_metadata.get("task") or selection.get("task_text") or ""
+        touched = files_touched or []
+        _load_run_log_module().run_log_payload(
+            SimpleNamespace(
+                run_id=str(handoff_payload["run_id"]),
+                task=str(task_text),
+                decision="model_response_captured",
+                status=run_status,
+                prompt=str(prompt_name) if prompt_name is not None else None,
+                model_tier=str(selected_tier) if selected_tier is not None else None,
+                model=selected_model,
+                validation=validation,
+                first_pass_outcome=None,
+                final_outcome=None,
+                quality_loop_status=None,
+                authoritative_validation=None,
+                follow_up=follow_up,
+                context_docs=[],
+                files_touched=touched,
+                artifacts=["model_output.md"],
+                out=str(run_log_path),
+            )
+        )
+
+        payload: JsonObject = {
+            **handoff_payload,
+            "project": project,
+            "run_dir": str(run_dir_path),
+            "run_status": run_status,
+            "files_touched": touched,
+        }
+    except Exception as exc:
+        return error_envelope(
+            operation="workbench_record_execution",
+            code="record_execution_failed",
+            message=str(exc),
+        )
+
+    return record_execution_response(
+        payload,
+        artifacts={
+            "model_output": model_output_path,
+            "run_log": run_log_path,
+        },
+    )
+
+
 def select_model(
     *,
     project: str,
@@ -230,6 +585,14 @@ def select_model(
     task_text: str | None = None,
     code_files: list[str] | None = None,
 ) -> JsonObject:
+    try:
+        _require_choice("risk", risk, ALLOWED_RISKS)
+    except Exception as exc:
+        return error_envelope(
+            operation="workbench_select_model",
+            code="model_selection_failed",
+            message=str(exc),
+        )
     output_path = _workbench_path(out)
     args = SimpleNamespace(
         project=project,
@@ -293,6 +656,15 @@ def quality_gate(
     review_prompt: str | Path | None = None,
     review_output: str | Path | None = None,
 ) -> JsonObject:
+    if risk is not None:
+        try:
+            _require_choice("risk", risk, ALLOWED_RISKS)
+        except Exception as exc:
+            return error_envelope(
+                operation="workbench_quality_gate",
+                code="quality_gate_failed",
+                message=str(exc),
+            )
     args = SimpleNamespace(
         project=project,
         run_dir=str(run_dir),

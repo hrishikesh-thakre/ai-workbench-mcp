@@ -56,9 +56,7 @@ def append_jsonl(file_path: Path, payload: dict[str, object]) -> None:
         handle.write(json.dumps(payload, separators=(",", ":")) + "\n")
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
+def run_log_payload(args: argparse.Namespace) -> dict[str, object]:
     out_path = Path(args.out)
 
     payload = {
@@ -81,11 +79,18 @@ def main() -> int:
         "artifacts": args.artifacts,
     }
     append_jsonl(out_path, payload)
+    return {**payload, "out": str(out_path)}
 
-    print(f"run_id={args.run_id}")
-    print(f"status={args.status}")
-    print(f"out={out_path}")
-    print(f"decision={args.decision}")
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    payload = run_log_payload(args)
+
+    print(f"run_id={payload['run_id']}")
+    print(f"status={payload['status']}")
+    print(f"out={payload['out']}")
+    print(f"decision={payload['decision']}")
     return 0
 
 

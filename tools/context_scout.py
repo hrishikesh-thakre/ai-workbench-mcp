@@ -1235,10 +1235,7 @@ def ensure_output_dir(project: ProjectConfig, requested_out_dir: str | None, tas
     return run_id, out_dir
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-
+def context_scout_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
     profile_name = args.context_profile or project.default_context_profile
     profile = load_context_profile(profile_name)
@@ -1345,11 +1342,26 @@ def main() -> int:
         redaction_summary=redaction_summary,
     )
 
-    print(f"run_id={run_id}")
-    print(f"output_dir={out_dir}")
-    print(f"docs_read={len(docs_read)}")
-    print(f"files_considered={len(files_considered)}")
-    print(f"git_status={git_evidence.status}")
+    return {
+        "run_id": run_id,
+        "project": args.project,
+        "output_dir": str(out_dir),
+        "docs_read": len(docs_read),
+        "files_considered": len(files_considered),
+        "git_status": git_evidence.status,
+    }
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    payload = context_scout_payload(args)
+
+    print(f"run_id={payload['run_id']}")
+    print(f"output_dir={payload['output_dir']}")
+    print(f"docs_read={payload['docs_read']}")
+    print(f"files_considered={payload['files_considered']}")
+    print(f"git_status={payload['git_status']}")
     return 0
 
 

@@ -14,7 +14,9 @@ class WorkbenchRecipeTests(unittest.TestCase):
         self.assertIn('name: "AI Workbench MCP"', text)
         self.assertIn('type: stdio', text)
         self.assertIn('timeout: 300', text)
+        self.assertIn('- "workbench_open_run"', text)
         self.assertIn('- "workbench_select_model"', text)
+        self.assertIn('- "workbench_record_execution"', text)
         self.assertIn('- "workbench_validate_run"', text)
         self.assertIn('- "workbench_quality_gate"', text)
         self.assertIn('- "workbench_analyze_runs"', text)
@@ -38,7 +40,9 @@ class WorkbenchRecipeTests(unittest.TestCase):
     def test_recipe_instructions_call_tools_in_acceptance_order(self) -> None:
         text = RECIPE_PATH.read_text(encoding="utf-8")
         ordered_tools = [
+            "workbench_open_run",
             "workbench_select_model",
+            "workbench_record_execution",
             "workbench_validate_run",
             "workbench_quality_gate",
             "workbench_analyze_runs",

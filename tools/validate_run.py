@@ -560,6 +560,7 @@ def run_profile_commands(project_root: Path, profile: ValidationProfile) -> tupl
             command,
             cwd=cwd_path,
             shell=True,
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             check=False,

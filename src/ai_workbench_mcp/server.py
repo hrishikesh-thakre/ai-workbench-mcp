@@ -20,6 +20,35 @@ def register_tools(mcp: Any) -> Any:
     """Register Workbench tools on a FastMCP-like server instance."""
 
     @mcp.tool()
+    def workbench_open_run(
+        project: str,
+        task: str,
+        run_dir: str | None = None,
+        prompt: str = "implement_request_change_request",
+        risk: str = "medium",
+        context_profile: str | None = None,
+        changed_files: list[str] | None = None,
+        docs: list[str] | None = None,
+        include_diff: bool = False,
+    ) -> JsonObject:
+        """Create a Workbench run folder and initial evidence artifacts."""
+
+        try:
+            return core.open_run(
+                project=project,
+                task=task,
+                run_dir=run_dir,
+                prompt=prompt,
+                risk=risk,
+                context_profile=context_profile,
+                changed_files=changed_files,
+                docs=docs,
+                include_diff=include_diff,
+            )
+        except Exception as exc:
+            return _tool_error("workbench_open_run", exc)
+
+    @mcp.tool()
     def workbench_select_model(
         project: str,
         task_type: str,
@@ -51,6 +80,35 @@ def register_tools(mcp: Any) -> Any:
             )
         except Exception as exc:
             return _tool_error("workbench_select_model", exc)
+
+    @mcp.tool()
+    def workbench_record_execution(
+        project: str,
+        run_dir: str,
+        response_text: str,
+        files_touched: list[str] | None = None,
+        model_output_status: str = "response_captured",
+        run_status: str = "in_progress",
+        response_source: str = "goose",
+        validation: str | None = None,
+        follow_up: str | None = None,
+    ) -> JsonObject:
+        """Capture Goose/model response text into Workbench evidence artifacts."""
+
+        try:
+            return core.record_execution(
+                project=project,
+                run_dir=run_dir,
+                response_text=response_text,
+                files_touched=files_touched,
+                model_output_status=model_output_status,
+                run_status=run_status,
+                response_source=response_source,
+                validation=validation,
+                follow_up=follow_up,
+            )
+        except Exception as exc:
+            return _tool_error("workbench_record_execution", exc)
 
     @mcp.tool()
     def workbench_validate_run(

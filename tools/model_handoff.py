@@ -209,15 +209,16 @@ def build_model_output(
     return "\n".join(lines).rstrip() + "\n"
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-
+def model_handoff_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
     selection_path = resolve_cli_path(args.selection, project.root)
     prompt_path = resolve_cli_path(args.prompt, project.root)
     output_path = resolve_cli_path(args.out, project.root)
-    response_path = resolve_cli_path(args.response_file, project.root) if args.response_file else None
+    response_file = getattr(args, "response_file", None)
+    response_path = resolve_cli_path(response_file, project.root) if response_file else None
+    inline_response_text = getattr(args, "response_text", None)
+    inline_response_source = getattr(args, "response_source", None)
+    model_output_status = getattr(args, "model_output_status", None)
 
     if not selection_path.exists():
         raise FileNotFoundError(f"Model selection file not found: {selection_path}")
@@ -249,8 +250,15 @@ def main() -> int:
     if response_path is not None:
         response_text = read_text(response_path)
         response_source = relative_path(response_path, project.root)
-        status = "response_captured"
+        status = model_output_status or "response_captured"
         reason = "Captured a model response from the supplied response file."
+    elif inline_response_text is not None:
+        response_text = str(inline_response_text)
+        response_source = str(inline_response_source or "inline_response")
+        status = model_output_status or "response_captured"
+        reason = "Captured a model response from the supplied response text."
+
+    if response_text is not None:
         normalization_result = normalize_response_text(response_text)
         normalized_response_text = normalization_result.normalized_text
         normalization_notes = normalization_result.normalization_notes
@@ -273,12 +281,29 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(f"project={args.project}")
-    print(f"run_id={selection_summary.run_id or prompt_summary.run_id or output_path.parent.name}")
-    print(f"status={status}")
-    print(f"provider={selection_summary.provider}")
-    print(f"model={selection_summary.model}")
-    print(f"output={output_path}")
+    return {
+        "project": args.project,
+        "run_id": selection_summary.run_id or prompt_summary.run_id or output_path.parent.name,
+        "status": status,
+        "provider": selection_summary.provider,
+        "model": selection_summary.model,
+        "output": str(output_path),
+        "response_source": response_source,
+        "normalization_notes": normalization_notes,
+    }
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    payload = model_handoff_payload(args)
+
+    print(f"project={payload['project']}")
+    print(f"run_id={payload['run_id']}")
+    print(f"status={payload['status']}")
+    print(f"provider={payload['provider']}")
+    print(f"model={payload['model']}")
+    print(f"output={payload['output']}")
     return 0
 
 

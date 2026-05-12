@@ -17,12 +17,12 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Private run history removal | Done | `runs/` is gitignored and not copied |
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
-| Goose MCP server | In progress | Four direct-call core tools exposed through a stdio FastMCP server |
-| Goose recipe MVP | In progress | First engineering acceptance recipe added; needs Goose smoke test |
-| Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, quality gate, and run analysis extracted |
-| Validation of extracted tests | Passed | `python -m pytest -q` passed 62 tests |
+| Goose MCP server | In progress | Six Workbench tools exposed through a stdio FastMCP server; real MCP stdio smoke passed |
+| Goose recipe MVP | In progress | Engineering acceptance recipe now uses run setup, execution capture, validation, quality gate, and analysis; needs Goose smoke test |
+| Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
+| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 72 tests and 2 subtests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
-| Public README/install flow | Draft | Minimal MCP install and Goose setup added; needs recipe flow after recipe exists |
+| Public README/install flow | Draft | MCP is a runtime dependency; README documents six-tool server and recipe flow |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -70,6 +70,8 @@ Tasks:
 - Add `workbench_validate_run`.
 - Add `workbench_quality_gate`.
 - Add `workbench_analyze_runs`.
+- Add `workbench_open_run`.
+- Add `workbench_record_execution`.
 - Add setup instructions for Goose Desktop and CLI.
 
 ## Phase 3: Goose Recipe MVP
@@ -100,4 +102,4 @@ Tasks:
 
 ## Current Next Step
 
-Continue Phase 2 by smoke-testing the MCP server and engineering acceptance recipe with Goose, then clean ignored cache folders before public release.
+Continue Phase 3 by smoke-testing the six-tool engineering acceptance recipe with Goose, then clean ignored cache folders before public release.

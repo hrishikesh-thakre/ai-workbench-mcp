@@ -46,7 +46,9 @@ class ServerRegistrationTests(unittest.TestCase):
         self.assertEqual(
             set(fake.tools),
             {
+                "workbench_open_run",
                 "workbench_select_model",
+                "workbench_record_execution",
                 "workbench_validate_run",
                 "workbench_quality_gate",
                 "workbench_analyze_runs",
@@ -79,7 +81,7 @@ class ServerRegistrationTests(unittest.TestCase):
             created = server.create_server()
 
         self.assertEqual(created.name, "AI Workbench MCP")
-        self.assertEqual(len(created.tools), 4)
+        self.assertEqual(len(created.tools), 6)
 
 
 class ServerToolHandlerTests(unittest.TestCase):
@@ -87,6 +89,34 @@ class ServerToolHandlerTests(unittest.TestCase):
         fake = FakeMCP()
         server.register_tools(fake)
         self.tools = fake.tools
+
+    def test_workbench_open_run_returns_core_envelope(self) -> None:
+        expected = envelope("workbench_open_run", status="opened")
+
+        with (
+            patch("ai_workbench_mcp.server.core.open_run", return_value=expected) as open_run,
+            patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+            patch("ai_workbench_mcp.core.subprocess.run", side_effect=AssertionError("subprocess not expected")),
+        ):
+            response = self.tools["workbench_open_run"](
+                project="ai_workbench_mcp",
+                task="Add lifecycle tools",
+                run_dir="runs/run1",
+                changed_files=["src/example.py"],
+            )
+
+        self.assertEqual(response, expected)
+        open_run.assert_called_once_with(
+            project="ai_workbench_mcp",
+            task="Add lifecycle tools",
+            run_dir="runs/run1",
+            prompt="implement_request_change_request",
+            risk="medium",
+            context_profile=None,
+            changed_files=["src/example.py"],
+            docs=None,
+            include_diff=False,
+        )
 
     def test_workbench_select_model_returns_core_envelope(self) -> None:
         expected = envelope("workbench_select_model", status="selected")
@@ -117,6 +147,34 @@ class ServerToolHandlerTests(unittest.TestCase):
             instruction_following="normal",
             task_text=None,
             code_files=["src/example.py"],
+        )
+
+    def test_workbench_record_execution_returns_core_envelope(self) -> None:
+        expected = envelope("workbench_record_execution", status="response_captured")
+
+        with (
+            patch("ai_workbench_mcp.server.core.record_execution", return_value=expected) as record_execution,
+            patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+            patch("ai_workbench_mcp.core.subprocess.run", side_effect=AssertionError("subprocess not expected")),
+        ):
+            response = self.tools["workbench_record_execution"](
+                project="ai_workbench_mcp",
+                run_dir="runs/run1",
+                response_text="Summary:\nDone.",
+                files_touched=["src/example.py"],
+            )
+
+        self.assertEqual(response, expected)
+        record_execution.assert_called_once_with(
+            project="ai_workbench_mcp",
+            run_dir="runs/run1",
+            response_text="Summary:\nDone.",
+            files_touched=["src/example.py"],
+            model_output_status="response_captured",
+            run_status="in_progress",
+            response_source="goose",
+            validation=None,
+            follow_up=None,
         )
 
     def test_workbench_validate_run_returns_core_envelope(self) -> None:
