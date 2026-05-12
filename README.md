@@ -75,3 +75,19 @@ Example Goose prompts:
 - `Call workbench_validate_run with project ai_workbench_mcp, profile scaffold, out_dir runs/manual.`
 - `Call workbench_quality_gate with project ai_workbench_mcp, run_dir runs/manual, mode auto, risk medium.`
 - `Call workbench_analyze_runs with runs_dir runs and out_dir runs/_reports.`
+
+## Recipe
+
+The first Goose recipe is available at [recipes/workbench-engineering-acceptance.yaml](recipes/workbench-engineering-acceptance.yaml).
+
+Run it with:
+
+```bash
+goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/manual \
+  --params task="Implement the requested bounded change" \
+  --params risk=medium
+```
+
+The recipe uses the `ai-workbench-mcp` stdio extension and calls model selection, validation, quality gate, and run analysis in order.
