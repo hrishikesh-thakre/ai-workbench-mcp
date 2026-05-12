@@ -1,6 +1,9 @@
 # AI Workbench MCP
 
+[![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+
 AI Workbench MCP is a Goose-first, runtime-agnostic acceptance layer for agentic engineering work.
+Licensed under Apache-2.0.
 
 It is not another general-purpose agent runner. Goose owns the desktop, CLI, provider ecosystem, recipes, MCP extensions, and execution loop. This repo provides the complementary trust layer:
 
@@ -22,6 +25,53 @@ Goose Desktop / CLI / recipe
   -> accepted artifact analytics
 ```
 
-Current status: extracted starter repo. The copied Python tools are the initial core; the Goose MCP wrapper and production recipe are the next implementation steps.
+Current status: Phase 2 MCP MVP. The core Workbench operations are callable directly from Python and exposed through a Goose-compatible stdio MCP server.
 
 Start with [START_HERE.md](docs/ai/START_HERE.md).
+
+## Install
+
+From the repository root:
+
+```bash
+python -m pip install -e ".[mcp]"
+```
+
+For development and tests:
+
+```bash
+python -m pip install -e ".[mcp,dev]"
+python -m pytest -q
+```
+
+## Goose MCP Setup
+
+Register AI Workbench MCP as a command-line stdio extension:
+
+```bash
+goose configure
+```
+
+Choose:
+
+- `Add Extension`
+- `Command-line Extension`
+- Name: `AI Workbench MCP`
+- Command: `ai-workbench-mcp`
+- Timeout: `300`
+
+The server exposes:
+
+- `workbench_select_model`
+- `workbench_validate_run`
+- `workbench_quality_gate`
+- `workbench_analyze_runs`
+
+## Manual Tool Examples
+
+Example Goose prompts:
+
+- `Call workbench_select_model with project ai_workbench_mcp, task_type implement, risk medium, out runs/manual/model_selection.json, prompt implement_request_change_request, complexity_score 13.`
+- `Call workbench_validate_run with project ai_workbench_mcp, profile scaffold, out_dir runs/manual.`
+- `Call workbench_quality_gate with project ai_workbench_mcp, run_dir runs/manual, mode auto, risk medium.`
+- `Call workbench_analyze_runs with runs_dir runs and out_dir runs/_reports.`

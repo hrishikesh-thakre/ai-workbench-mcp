@@ -17,12 +17,12 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Private run history removal | Done | `runs/` is gitignored and not copied |
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
-| Goose MCP server | Not started | `src/ai_workbench_mcp/` placeholder exists |
+| Goose MCP server | In progress | Four direct-call core tools exposed through a stdio FastMCP server |
 | Goose recipe MVP | Not started | `recipes/` placeholder exists |
 | Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, quality gate, and run analysis extracted |
-| Validation of extracted tests | Passed | `python -m pytest -q` passed 51 tests |
+| Validation of extracted tests | Passed | `python -m pytest -q` passed 59 tests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
-| Public README/install flow | Draft | Needs update after MCP server exists |
+| Public README/install flow | Draft | Minimal MCP install and Goose setup added; needs recipe flow after recipe exists |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -100,4 +100,4 @@ Tasks:
 
 ## Current Next Step
 
-Begin Phase 2 by wiring the direct callable core operations into the Goose-compatible MCP server.
+Continue Phase 2 by smoke-testing the MCP server with Goose, then add the first Goose recipe.
