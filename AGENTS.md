@@ -2,7 +2,7 @@
 
 ## Repository Summary
 
-`ai-workbench-mcp` is a public-shaped extraction of the AI Workbench trust layer. Its purpose is to integrate with Goose as the first supported MCP host while preserving Workbench-owned routing, validation, evidence, quality gates, and analytics.
+`ai-workbench-mcp` is a public-shaped extraction of the AI Workbench acceptance and audit layer. Its purpose is to integrate with Goose as the first supported MCP host while preserving Workbench-owned evidence, validation, quality gates, routing recommendations, and analytics.
 
 ## Read First
 
@@ -26,7 +26,7 @@ The repo is being built toward:
 
 ```text
 Goose-first distribution.
-Workbench-owned trust layer.
+Workbench-owned acceptance and audit layer.
 Runtime-agnostic core.
 ```
 

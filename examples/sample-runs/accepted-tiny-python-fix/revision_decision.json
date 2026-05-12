@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-05-12T00:00:00",
+  "loop_type": "none",
+  "required": false,
+  "reason": "No quality loop triggers detected.",
+  "next_action": "none",
+  "accepted_pass": 1,
+  "final_status": "accepted",
+  "authoritative_model_output": "model_output.md",
+  "authoritative_validation_report": "validation_report.json",
+  "blocking_findings": [],
+  "non_blocking_findings": []
+}

@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE_PATH = ROOT / "recipes" / "workbench-engineering-acceptance.yaml"
+TOOL_SMOKE_RECIPE_PATH = ROOT / "recipes" / "workbench-mcp-tool-smoke.yaml"
 
 
 class WorkbenchRecipeTests(unittest.TestCase):
@@ -52,6 +53,20 @@ class WorkbenchRecipeTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
         self.assertIn("Do not claim the run is accepted", text)
         self.assertIn("deterministic validation and the quality gate", text)
+
+    def test_tool_smoke_recipe_is_bounded_to_open_and_select(self) -> None:
+        text = TOOL_SMOKE_RECIPE_PATH.read_text(encoding="utf-8")
+
+        self.assertIn('title: "Workbench MCP Tool Smoke"', text)
+        self.assertIn("cmd: \"ai-workbench-mcp\"", text)
+        self.assertIn('- "workbench_open_run"', text)
+        self.assertIn('- "workbench_select_model"', text)
+        self.assertIn("Call exactly these two tools", text)
+        self.assertIn("Do not edit tracked files", text)
+        self.assertNotIn('- "workbench_record_execution"', text)
+        self.assertNotIn('- "workbench_validate_run"', text)
+        self.assertNotIn('- "workbench_quality_gate"', text)
+        self.assertNotIn('- "workbench_analyze_runs"', text)
 
 
 if __name__ == "__main__":

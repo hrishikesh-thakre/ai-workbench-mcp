@@ -1,0 +1,35 @@
+{
+  "run_id": "accepted-tiny-python-fix",
+  "project": "ai_workbench_mcp",
+  "profile": "run_signoff",
+  "generated_at": "2026-05-12T00:00:00",
+  "commands_run": [
+    {
+      "name": "tiny_python_fix_tests",
+      "command": "python -m unittest discover -s examples/tiny-python-fix -p \"test_*.py\"",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 120
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [],
+  "review_checks": [],
+  "missing_context_notes": {
+    "needs_review": [],
+    "info": []
+  },
+  "overall_status": "passed",
+  "sign_off_ready": true,
+  "confidence": 1.0,
+  "summary": {
+    "commands_passed": 1,
+    "commands_failed": 0,
+    "checks_passed": 5,
+    "checks_needs_review": 0,
+    "checks_failed": 0
+  }
+}

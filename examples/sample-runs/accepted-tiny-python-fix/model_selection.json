@@ -1,0 +1,21 @@
+{
+  "run_id": "accepted-tiny-python-fix",
+  "project": "ai_workbench_mcp",
+  "task_type": "implement",
+  "risk": "low",
+  "validation_strength": "medium",
+  "prompt": "implement_request_change_request",
+  "selected_tier": "local_coding",
+  "selected_model": {
+    "provider": "goose",
+    "model": "local-coding-tier",
+    "fallback_models": [],
+    "parameters": {},
+    "use_for": [
+      "low-risk coding changes"
+    ]
+  },
+  "reason": "Low-risk bounded coding work can start on the local coding tier.",
+  "matched_rule": "example_low_risk_local",
+  "status": "selected"
+}

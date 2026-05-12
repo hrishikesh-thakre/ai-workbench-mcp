@@ -6,7 +6,7 @@ Created: 2026-05-12
 
 ## 1. Project One-Liner
 
-`ai-workbench-mcp` is a Goose-first, runtime-agnostic trust layer for agentic work. It packages Workbench routing, validation, evidence, quality-gate, and analytics logic so Goose can execute work while Workbench decides whether that work is acceptable.
+`ai-workbench-mcp` is the acceptance and audit layer for AI coding agents. It packages Workbench evidence, validation, quality-gate, routing, and analytics logic so Goose can execute work while Workbench decides whether that work is acceptable.
 
 ## 2. Product Direction
 
@@ -14,7 +14,7 @@ The repo is built around this pivot:
 
 ```text
 Goose-first distribution.
-Workbench-owned trust layer.
+Workbench-owned acceptance and audit layer.
 Runtime-agnostic core.
 ```
 
@@ -39,7 +39,7 @@ Workbench should provide:
 
 ## 3. Current State
 
-This is an extracted starter repo, not a completed public release.
+This is a v0.1 alpha-shaped repo, not a completed stable release.
 
 Copied core:
 

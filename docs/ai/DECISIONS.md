@@ -17,7 +17,7 @@ Decision:
 Why:
 
 - Goose already provides the ecosystem, UI, providers, recipes, MCP, and execution loop.
-- The differentiated Workbench value is acceptance, validation, evidence, routing policy, and learning from accepted artifacts.
+- The differentiated Workbench value is evidence-backed acceptance, validation, quality gates, routing recommendations, and learning from accepted artifacts.
 
 Implications:
 

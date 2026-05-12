@@ -6,7 +6,7 @@ Created: 2026-05-12
 
 ## 1. Purpose
 
-This repo is the clean public-shaped extraction of the AI Workbench trust layer. It should become a Goose-compatible MCP extension and recipe set for accepting, validating, auditing, and learning from agentic work.
+This repo is the clean public-shaped extraction of the AI Workbench acceptance and audit layer. It is a Goose-compatible MCP extension and recipe set for accepting, validating, auditing, and learning from agentic work.
 
 ## 2. Target Architecture
 

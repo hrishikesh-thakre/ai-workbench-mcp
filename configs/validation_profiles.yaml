@@ -57,6 +57,30 @@ profiles:
     review_checks:
       - model_output_status
 
+  tiny_python_fix:
+    description: Validation profile for the tiny Python fix example.
+    commands:
+      - name: tiny_python_fix_tests
+        command: python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: validate_run_help
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+
   public_docs:
     description: Verify public operating docs exist.
     commands:

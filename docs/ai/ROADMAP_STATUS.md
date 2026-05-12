@@ -18,11 +18,12 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
 | Goose MCP server | In progress | Six Workbench tools exposed through a stdio FastMCP server; real MCP stdio smoke passed |
-| Goose recipe MVP | In progress | Engineering acceptance recipe now uses run setup, execution capture, validation, quality gate, and analysis; needs Goose smoke test |
+| Goose recipe MVP | In progress | Engineering acceptance recipe now uses run setup, execution capture, validation, quality gate, and analysis; two-tool smoke recipe added for slow local models |
 | Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
-| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 72 tests and 2 subtests |
+| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 77 tests and 2 subtests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
-| Public README/install flow | Draft | MCP is a runtime dependency; README documents six-tool server and recipe flow |
+| Public README/install flow | Draft | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
+| Public examples | In progress | Tiny Python fix, Goose tool smoke, Goose recipe smoke, and sanitized sample run added for v0.1 alpha |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -102,4 +103,4 @@ Tasks:
 
 ## Current Next Step
 
-Continue Phase 3 by smoke-testing the six-tool engineering acceptance recipe with Goose, then clean ignored cache folders before public release.
+Prepare the v0.1.0-alpha release surface, run the two-tool Goose smoke on slow local models, smoke-test the full six-tool recipe when practical, then clean ignored cache folders before public release.
