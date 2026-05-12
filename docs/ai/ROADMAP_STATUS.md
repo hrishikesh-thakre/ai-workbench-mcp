@@ -1,7 +1,7 @@
 # ROADMAP_STATUS
 
 Owner: AI Workbench MCP
-Status: v0.1 alpha baseline
+Status: v0.2 alpha release candidate
 Created: 2026-05-12
 
 ## Purpose
@@ -20,13 +20,13 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Goose MCP server | Alpha complete | Six Workbench tools exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
 | Goose recipe MVP | Alpha complete | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
 | Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
-| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 78 tests and 2 subtests |
-| Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
+| Validation of extracted tests | Passed | `python -m pytest -q -p no:cacheprovider` passed 103 tests and 69 subtests during v0.2 release-readiness checks |
+| Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\v02_release_candidate_scaffold` passed |
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
-| Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, and sanitized sample run added for v0.1 alpha |
+| Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
 | Execution capture idempotency | Done | Repeated `workbench_record_execution` calls return success without overwriting `model_output.md` or duplicating `run_log.jsonl` entries |
-| v0.2 recipe and policy discovery | Started | Folder-level recipe discovery and validation-profile reference tests added; docs-only, Python package maintenance, test-fix, and low-risk coding profiles are discoverable |
-| v0.2 public examples and release note | Started | Focused workflow command examples added under `examples/focused-workflows/`; v0.2 alpha release summary added under `docs/releases/` |
+| v0.2 recipe and policy discovery | Release candidate | Folder-level recipe discovery and validation-profile reference tests cover docs-only, Python package maintenance, test-fix, and low-risk coding profiles |
+| v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -92,7 +92,7 @@ Tasks:
 - Require artifact-backed acceptance reporting.
 - Test with a small local sample project.
 
-## Phase 4: v0.2 Recipe And Policy Packs (Next)
+## Phase 4: v0.2 Recipe And Policy Packs (Release Candidate)
 
 Goal:
 
@@ -100,10 +100,12 @@ Make the alpha workflow useful across common low-risk engineering tasks without 
 
 Tasks:
 
-- Add focused Goose recipes for docs-only changes, Python package maintenance, and test-fix workflows. Docs-only is started with `recipes/workbench-docs-only-acceptance.yaml`; Python package maintenance is started with `recipes/workbench-python-package-maintenance.yaml`; test-fix is started with `recipes/workbench-test-fix-acceptance.yaml`.
-- Add validation policy packs for docs-only, low-risk coding, package maintenance, and test-fix work. Docs-only is started with the `docs_only` validation profile; package maintenance is started with the `python_package_maintenance` validation profile; test-fix is started with the `test_fix` validation profile; low-risk coding is started with the `low_risk_coding` validation profile.
-- Add tests that recipes and policy packs are discoverable and reference valid validation profiles. Initial recipe/profile discovery coverage is in `tests/test_recipes.py`.
-- Add public examples and release notes for focused workflows. Initial command examples are in `examples/focused-workflows/README.md`; release summary is in `docs/releases/v0.2.0-alpha.md`.
+- Add focused Goose recipes for docs-only changes, Python package maintenance, and test-fix workflows.
+- Add validation policy packs for docs-only, low-risk coding, package maintenance, and test-fix work.
+- Add deterministic changed-file policy enforcement, starting with the `docs_only` profile.
+- Restore the approved 12-prompt public prompt library and document the prompt catalog.
+- Add tests that recipes, prompts, examples, and policy packs are discoverable and reference valid assets.
+- Add public examples, sanitized focused sample evidence, and release notes for focused workflows.
 - Keep the six-tool acceptance workflow stable.
 
 ## Phase 5: Acceptance Analytics
@@ -121,4 +123,4 @@ Tasks:
 
 ## Current Next Step
 
-Continue v0.2 hardening by adding sanitized sample evidence for one focused workflow and keeping validation-profile discovery strict. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Publish by tagging `v0.2.0-alpha` or pushing the release-candidate branch for PR review. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

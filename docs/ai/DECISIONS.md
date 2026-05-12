@@ -1,7 +1,7 @@
 # DECISIONS
 
 Owner: AI Workbench MCP
-Status: v0.1 alpha baseline
+Status: v0.2 alpha release candidate
 Created: 2026-05-12
 
 ## 1. Goose-First, Not Goose-Only

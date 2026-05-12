@@ -1,7 +1,7 @@
 # START_HERE
 
 Owner: AI Workbench MCP
-Status: v0.1 alpha baseline
+Status: v0.2 alpha release candidate
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -39,7 +39,7 @@ Workbench should provide:
 
 ## 3. Current State
 
-This is a v0.1 alpha-shaped repo, not a completed stable release.
+This is a v0.2 alpha-shaped repo, not a completed stable release.
 
 Copied core:
 

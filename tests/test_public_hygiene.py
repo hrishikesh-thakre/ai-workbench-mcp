@@ -3,6 +3,12 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+OPERATING_DOCS = [
+    ROOT / "docs" / "ai" / "START_HERE.md",
+    ROOT / "docs" / "ai" / "DECISIONS.md",
+    ROOT / "docs" / "ai" / "PROJECT_MAP.md",
+    ROOT / "docs" / "ai" / "ROADMAP_STATUS.md",
+]
 PUBLIC_ROOTS = [
     ROOT / "README.md",
     ROOT / "configs",
@@ -69,6 +75,20 @@ class PublicHygieneTests(unittest.TestCase):
             sample_names,
             ["accepted-docs-only-smoke", "accepted-tiny-python-fix"],
         )
+
+    def test_operating_docs_are_aligned_to_v02_release_candidate_state(self) -> None:
+        for path in OPERATING_DOCS:
+            with self.subTest(path=path.relative_to(ROOT)):
+                text = path.read_text(encoding="utf-8")
+                self.assertIn("Status: v0.2 alpha release candidate", text)
+                self.assertNotIn("Status: v0.1 alpha baseline", text)
+
+        roadmap = (ROOT / "docs" / "ai" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
+        self.assertIn("Phase 4: v0.2 Recipe And Policy Packs (Release Candidate)", roadmap)
+        self.assertIn("tagging `v0.2.0-alpha`", roadmap)
+        self.assertNotIn("passed 78 tests and 2 subtests", roadmap)
+        self.assertNotIn("Phase 4: v0.2 Recipe And Policy Packs (Next)", roadmap)
+        self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)
 
 
 if __name__ == "__main__":
