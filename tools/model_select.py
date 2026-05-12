@@ -466,11 +466,7 @@ def build_model_selection(
     }
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
-    validate_routing_args(parser, args)
-
+def select_model_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
     output_path = resolve_cli_path(args.out, project.root)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -498,11 +494,22 @@ def main() -> int:
         manual_override=policy.manual_override,
     )
     output_path.write_text(json.dumps(model_selection, indent=2) + "\n", encoding="utf-8")
+    return model_selection
+
+
+def main() -> int:
+    parser = build_parser()
+    args = parser.parse_args()
+    validate_routing_args(parser, args)
+
+    project = load_project_config(args.project)
+    output_path = resolve_cli_path(args.out, project.root)
+    model_selection = select_model_payload(args)
 
     print(f"project={args.project}")
     print(f"task_type={args.task_type}")
     print(f"risk={args.risk}")
-    print(f"selected_tier={selected_tier}")
+    print(f"selected_tier={model_selection['selected_tier']}")
     print(f"output={output_path}")
     return 0
 

@@ -12,19 +12,19 @@ Track the extraction from private AI Workbench lab repo to public Goose-first tr
 
 | Initiative | Status | Notes |
 |---|---|---|
-| Clean repo extraction | In progress | Core files copied; docs created |
-| Public-safe docs | In progress | Four operating docs created around Goose-first pivot |
+| Clean repo extraction | Done | Core files copied; docs created; scaffold validation passed |
+| Public-safe docs | Done | Four operating docs created around Goose-first pivot |
 | Private run history removal | Done | `runs/` is gitignored and not copied |
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
 | Goose MCP server | Not started | `src/ai_workbench_mcp/` placeholder exists |
 | Goose recipe MVP | Not started | `recipes/` placeholder exists |
-| Core JSON response contracts | Not started | Required before reliable MCP wrapper |
-| Validation of extracted tests | Passed | `python -m pytest -q` passed 29 tests |
+| Core JSON response contracts | In progress | Contract envelopes added; direct callable model selection extracted |
+| Validation of extracted tests | Passed | `python -m pytest -q` passed 39 tests |
 | Scaffold validation | Passed | `python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\smoke` passed |
 | Public README/install flow | Draft | Needs update after MCP server exists |
 
-## Phase 0: Repo Alignment
+## Phase 0: Repo Alignment (Complete)
 
 Goal:
 
@@ -42,8 +42,9 @@ Tasks:
 Exit criteria:
 
 - A new contributor can understand that Goose is the execution layer and Workbench is the acceptance layer.
+- Extracted tests and scaffold validation have passed.
 
-## Phase 1: Core Extraction Hardening
+## Phase 1: Core Extraction Hardening (Current)
 
 Goal:
 
@@ -51,9 +52,9 @@ Make copied logic stable enough to call from MCP.
 
 Tasks:
 
-- Define stable JSON contracts for selection, validation, quality gate, and analysis.
-- Preserve CLI behavior.
-- Add tests around response shapes.
+- Define stable JSON contracts for selection, validation, quality gate, and analysis. (In progress)
+- Preserve CLI behavior. (In progress)
+- Add tests around response shapes. (In progress)
 - Reduce assumptions inherited from the private lab repo.
 
 ## Phase 2: Goose MCP MVP
@@ -99,4 +100,4 @@ Tasks:
 
 ## Current Next Step
 
-Finish Phase 0 by validating the extracted repo and cleaning any remaining path or config assumptions.
+Continue Phase 1 by extracting deterministic validation into a direct callable core path while preserving CLI behavior and the stable response envelope.

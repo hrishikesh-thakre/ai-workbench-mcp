@@ -18,6 +18,7 @@ from model_select import (
     load_model_registry,
     load_selector_policy,
     select_model,
+    select_model_payload,
 )
 
 
@@ -169,6 +170,28 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertGreater(inferred.complexity_score, 8)
         routed_args = effective_args(args, inferred)
         self.assertEqual(routed_args.complexity_score, 8)
+
+    def test_select_model_payload_writes_existing_artifact_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                validation_strength="medium",
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+            written = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload, written)
+        self.assertEqual(payload["status"], "selected")
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["matched_rule"], "easy_moderate_local_coding")
+        self.assertEqual(payload["complexity_band"], "moderate")
+        self.assertEqual(payload["selected_model"]["provider"], "goose")
 
 
 if __name__ == "__main__":
