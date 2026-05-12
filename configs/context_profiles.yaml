@@ -1,0 +1,59 @@
+profiles:
+  default_docs_first:
+    description: Read public operating docs and approved prompts before broad search.
+    docs:
+      - docs/ai/START_HERE.md
+      - docs/ai/PROJECT_MAP.md
+      - docs/ai/DECISIONS.md
+      - docs/ai/ROADMAP_STATUS.md
+    include:
+      - docs/**/*.md
+      - prompts/approved/**/*.md
+      - tools/*.py
+      - configs/**/*.yaml
+    exclude:
+      - runs/**
+      - evals/**
+
+  prompt_and_policy:
+    description: Focus on policy docs, prompts, and config when tuning the Workbench trust layer.
+    docs:
+      - docs/ai/START_HERE.md
+      - docs/ai/DECISIONS.md
+      - docs/ai/ROADMAP_STATUS.md
+    include:
+      - docs/**/*.md
+      - prompts/approved/**/*.md
+      - configs/**/*.yaml
+    exclude:
+      - runs/**
+      - evals/**
+
+  nextjs_app:
+    description: Generic Next.js or React application target repository.
+    docs:
+      - AGENTS.md
+      - README.md
+      - package.json
+    include:
+      - AGENTS.md
+      - README.md
+      - package.json
+      - next.config.*
+      - tsconfig.json
+      - src/**/*
+      - app/**/*
+      - pages/**/*
+      - components/**/*
+      - lib/**/*
+      - scripts/**/*
+      - tests/**/*
+      - docs/**/*.md
+    exclude:
+      - .next/**
+      - node_modules/**
+      - runs/**
+      - coverage/**
+      - .codex-temp/**
+      - .playwright-mcp/**
+      - .chrome-*/**

@@ -1,0 +1,67 @@
+profiles:
+  scaffold:
+    description: Smoke validation for the extracted Workbench core.
+    commands:
+      - name: model_select_help
+        command: python tools/model_select.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: model_handoff_help
+        command: python tools/model_handoff.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: validate_run_help
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: run_log_help
+        command: python tools/run_log.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: quality_loop_help
+        command: python tools/quality_loop.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: run_analyze_help
+        command: python tools/run_analyze.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+
+  run_signoff:
+    description: Acceptance sign-off for a run folder with captured output.
+    commands:
+      - name: validate_run_help
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: quality_loop_help
+        command: python tools/quality_loop.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+
+  public_docs:
+    description: Verify public operating docs exist.
+    commands:
+      - name: verify_public_docs
+        command: python -c "from pathlib import Path; docs=('docs/ai/START_HERE.md','docs/ai/DECISIONS.md','docs/ai/PROJECT_MAP.md','docs/ai/ROADMAP_STATUS.md'); missing=[p for p in docs if not Path(p).read_text(encoding='utf-8').strip()]; raise SystemExit(1 if missing else 0)"
+        cwd: .
+        required: true
+        weight: 1.0

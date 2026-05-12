@@ -1,0 +1,3 @@
+# Core tools currently use only the Python standard library.
+# Install MCP support later with:
+#   pip install -e ".[mcp]"

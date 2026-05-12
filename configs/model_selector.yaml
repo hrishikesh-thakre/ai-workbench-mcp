@@ -1,0 +1,88 @@
+default_model: mid_cloud
+manual_override: true
+
+rules:
+  - name: high_risk_frontier
+    when:
+      risk: high
+    select: frontier
+    reason: High-risk work should default to the strongest available reasoning tier.
+
+  - name: security_privacy_frontier
+    when:
+      prompt: security_privacy_risk_review
+    select: frontier
+    reason: Security and privacy review should default to the strongest reviewer.
+
+  - name: very_hard_frontier
+    when:
+      complexity_min: 19
+    select: frontier
+    reason: Very hard and nasty hard tasks need frontier reasoning before sign-off.
+
+  - name: weak_validation_escalate
+    when:
+      validation_strength: weak
+    select: frontier
+    reason: Weak validation should be offset by stronger reasoning and review.
+
+  - name: context_summary_local
+    when:
+      task_type: context_summary
+    select: local_scout
+    reason: Local summarization and relevance ranking are good scout tasks.
+
+  - name: characterization_tests_mid_cloud
+    when:
+      task_type: test
+      test_complexity_min: 8
+    select: mid_cloud
+    reason: Legacy characterization tests require exact behavioral inference beyond the local coding tier.
+
+  - name: strict_instruction_mid_cloud
+    when:
+      instruction_following: strict
+    select: mid_cloud
+    reason: Strict output constraints and exact rule following should use a stronger coding tier.
+
+  - name: hard_work_mid_cloud
+    when:
+      complexity_min: 14
+    select: mid_cloud
+    reason: Hard tasks need stronger module-level reasoning than the local coding tier.
+
+  - name: local_test_generation
+    when:
+      task_type: test
+      risk: low_or_medium
+      test_complexity_max: 7
+    select: local_coding
+    reason: Local coding is acceptable for Level 1-7 test generation when risk is bounded and validation remains external.
+
+  - name: easy_moderate_local_coding
+    when:
+      risk: low_or_medium
+      complexity_max: 13
+    select: local_coding
+    reason: Easy and moderate low/medium-risk coding work can start on the local coding tier.
+
+  - name: bounded_work_local_default
+    when:
+      risk: low_or_medium
+    select: local_coding
+    reason: Recoverable bounded coding work can start locally, with validation and quality-loop review deciding acceptance.
+
+fallbacks:
+  local_scout:
+    - deterministic_tool
+  local_coding:
+    - cheap_cloud
+    - mid_cloud
+    - frontier
+  cheap_cloud:
+    - mid_cloud
+    - frontier
+  mid_cloud:
+    - frontier
+  frontier:
+    - human_review
