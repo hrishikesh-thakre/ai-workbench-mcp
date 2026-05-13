@@ -16,6 +16,7 @@ from model_select import (
     effective_args,
     infer_routing,
     load_model_registry,
+    load_routing_feedback_policy,
     load_selector_policy,
     select_model,
     select_model_payload,
@@ -31,6 +32,9 @@ def selector_args(
     complexity_score: int | None = None,
     test_complexity_level: int | None = None,
     instruction_following: str = "normal",
+    recipe: str | None = None,
+    validation_profile: str | None = None,
+    routing_feedback_path: str | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
         project="ai_workbench",
@@ -43,7 +47,46 @@ def selector_args(
         instruction_following=instruction_following,
         task_text="",
         code_file=[],
+        recipe=recipe,
+        validation_profile=validation_profile,
+        routing_feedback_path=routing_feedback_path,
     )
+
+
+def candidate_payload(
+    *,
+    recipe: str = "workbench-engineering-acceptance.yaml",
+    validation_profile: str = "low_risk_coding",
+    selected_tier: str = "local_coding",
+    risk: str = "medium",
+    complexity_band: str = "moderate",
+    accepted: int = 5,
+    review_required: int = 0,
+    failed: int = 0,
+    top_failure_reasons: dict[str, int] | None = None,
+) -> tuple[str, dict[str, object]]:
+    total = accepted + review_required + failed
+    key = "|".join([recipe, validation_profile, selected_tier, risk, complexity_band])
+    return key, {
+        "recipe": recipe,
+        "validation_profile": validation_profile,
+        "selected_tier": selected_tier,
+        "risk": risk,
+        "complexity_band": complexity_band,
+        "accepted": accepted,
+        "review_required": review_required,
+        "failed": failed,
+        "other": 0,
+        "total": total,
+        "acceptance_rate": round(accepted / max(1, total), 2),
+        "review_rate": round(review_required / max(1, total), 2),
+        "failure_rate": round(failed / max(1, total), 2),
+        "top_failure_reasons": top_failure_reasons or {},
+    }
+
+
+def write_feedback(path: Path, candidates: dict[str, dict[str, object]]) -> None:
+    path.write_text(json.dumps({"routing_feedback_candidates": candidates}), encoding="utf-8")
 
 
 class ModelSelectorRoutingTests(unittest.TestCase):
@@ -144,6 +187,13 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertEqual(payload["selected_model"]["provider"], "goose")
         self.assertEqual(payload["selected_model"]["model"], "unsloth/gemma-4-E4B-it-GGUF:Q4_K_M")
         self.assertIn("unsloth/gemma-4-E2B-it-GGUF:Q4_K_M", payload["selected_model"]["fallback_models"])
+        self.assertEqual(payload["routing_feedback"]["status"], "not_provided")
+        self.assertEqual(payload["routing_feedback"]["policy"], {
+            "min_runs": 5,
+            "strong_acceptance_rate": 0.8,
+            "high_review_rate": 0.5,
+            "high_failure_rate": 0.35,
+        })
 
     def test_inferred_routing_fills_missing_complexity_without_overriding_explicit_hints(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -192,6 +242,227 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertEqual(payload["matched_rule"], "easy_moderate_local_coding")
         self.assertEqual(payload["complexity_band"], "moderate")
         self.assertEqual(payload["selected_model"]["provider"], "goose")
+        self.assertEqual(payload["routing_feedback"]["status"], "not_provided")
+
+    def test_routing_feedback_policy_loads_conservative_defaults(self) -> None:
+        policy = load_routing_feedback_policy()
+
+        self.assertEqual(policy.min_runs, 5)
+        self.assertEqual(policy.strong_acceptance_rate, 0.8)
+        self.assertEqual(policy.high_review_rate, 0.5)
+        self.assertEqual(policy.high_failure_rate, 0.35)
+
+    def test_missing_routing_feedback_source_is_non_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_path = Path(tmpdir) / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(Path(tmpdir) / "missing.json"),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["routing_feedback"]["status"], "source_missing")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "no_change")
+
+    def test_invalid_routing_feedback_source_is_non_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            feedback_path.write_text("{invalid", encoding="utf-8")
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["routing_feedback"]["status"], "source_invalid")
+
+    def test_wrong_routing_feedback_schema_is_non_fatal(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            feedback_path.write_text(
+                json.dumps({"routing_feedback_candidates": {"bad": {"total": 1}}}),
+                encoding="utf-8",
+            )
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "source_invalid")
+
+    def test_no_matching_routing_feedback_candidate_collects_more_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(risk="low")
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "no_match")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "collect_more_evidence")
+
+    def test_routing_feedback_below_minimum_runs_is_insufficient_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(accepted=1)
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "insufficient_evidence")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "collect_more_evidence")
+        self.assertEqual(payload["routing_feedback"]["candidate"]["total"], 1)
+
+    def test_related_sample_feedback_below_minimum_runs_is_insufficient_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(selected_tier="frontier", accepted=0, review_required=1)
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["routing_feedback"]["status"], "insufficient_evidence")
+        self.assertEqual(payload["routing_feedback"]["candidate"]["related_candidate_keys"], [key])
+
+    def test_high_acceptance_routing_feedback_prefers_current_tier(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(accepted=5)
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "prefer_current_tier")
+        self.assertEqual(payload["routing_feedback"]["candidate_key"], key)
+
+    def test_high_review_routing_feedback_suggests_escalation_for_non_frontier(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(
+                accepted=2,
+                review_required=3,
+                top_failure_reasons={"command_failed:full_test_suite": 3},
+            )
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "consider_escalation")
+        self.assertEqual(
+            payload["routing_feedback"]["candidate"]["top_failure_reasons"]["command_failed:full_test_suite"],
+            3,
+        )
+
+    def test_high_review_routing_feedback_requires_human_review_for_frontier(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(
+                selected_tier="frontier",
+                risk="high",
+                accepted=2,
+                review_required=3,
+            )
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="high",
+                complexity_score=13,
+                recipe="workbench-engineering-acceptance.yaml",
+                validation_profile="low_risk_coding",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(args)
+
+        self.assertEqual(payload["selected_tier"], "frontier")
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "require_human_review")
 
 
 if __name__ == "__main__":

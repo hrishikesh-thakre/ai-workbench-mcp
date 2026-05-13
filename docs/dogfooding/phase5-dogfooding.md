@@ -90,6 +90,8 @@ Use `routing_feedback_candidates` to identify candidate policy changes. Review e
 
 Do not wire candidates into `model_select.py` until enough real runs exist to justify the rule. Synthetic sample runs can verify report shape, but they should not drive routing policy.
 
+In the current advisory loop, `workbench_select_model` may read `routing_feedback_candidates` and persist a `routing_feedback` advisory. That advisory can recommend collecting more evidence, keeping the current tier, escalating, or requiring human review, but it does not change the selected tier.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:

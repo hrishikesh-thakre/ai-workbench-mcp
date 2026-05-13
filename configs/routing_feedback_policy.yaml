@@ -1,0 +1,4 @@
+min_runs: 5
+strong_acceptance_rate: 0.8
+high_review_rate: 0.5
+high_failure_rate: 0.35

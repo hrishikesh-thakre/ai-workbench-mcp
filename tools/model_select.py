@@ -40,6 +40,14 @@ class SelectorPolicy:
 
 
 @dataclass
+class RoutingFeedbackPolicy:
+    min_runs: int
+    strong_acceptance_rate: float
+    high_review_rate: float
+    high_failure_rate: float
+
+
+@dataclass
 class InferredRouting:
     complexity_score: int | None
     test_complexity_level: int | None
@@ -106,6 +114,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="Optional Python files to inspect for advisory complexity/test routing inference.",
     )
+    parser.add_argument("--recipe", help="Optional Goose recipe filename for routing feedback matching.")
+    parser.add_argument("--validation-profile", help="Optional validation profile for routing feedback matching.")
+    parser.add_argument(
+        "--routing-feedback-path",
+        help="Optional run_metrics.json or routing_feedback_candidates JSON file from workbench_analyze_runs.",
+    )
     parser.add_argument("--out", required=True, help="Path for model_selection.json output.")
     return parser
 
@@ -167,6 +181,26 @@ def load_selector_policy() -> SelectorPolicy:
             if isinstance(value, list)
         },
     )
+
+
+def load_routing_feedback_policy() -> RoutingFeedbackPolicy:
+    config_path = WORKBENCH_ROOT / "configs" / "routing_feedback_policy.yaml"
+    raw_data = load_simple_yaml(config_path) if config_path.exists() else {}
+    return RoutingFeedbackPolicy(
+        min_runs=int(raw_data.get("min_runs", 5)),
+        strong_acceptance_rate=float(raw_data.get("strong_acceptance_rate", 0.8)),
+        high_review_rate=float(raw_data.get("high_review_rate", 0.5)),
+        high_failure_rate=float(raw_data.get("high_failure_rate", 0.35)),
+    )
+
+
+def routing_feedback_policy_payload(policy: RoutingFeedbackPolicy) -> dict[str, object]:
+    return {
+        "min_runs": policy.min_runs,
+        "strong_acceptance_rate": policy.strong_acceptance_rate,
+        "high_review_rate": policy.high_review_rate,
+        "high_failure_rate": policy.high_failure_rate,
+    }
 
 
 def clamp(value: int, minimum: int, maximum: int) -> int:
@@ -399,6 +433,332 @@ def select_model(policy: SelectorPolicy, args: argparse.Namespace) -> tuple[str,
     return policy.default_model, "No explicit rule matched; selected the configured default model tier.", None
 
 
+def safe_int(value: object, default: int = 0) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return default
+
+
+def safe_float(value: object, default: float = 0.0) -> float:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    return default
+
+
+def routing_candidate_key(
+    *,
+    recipe: str | None,
+    validation_profile: str | None,
+    selected_tier: str | None,
+    risk: str | None,
+    complexity: str | None,
+) -> str:
+    return "|".join(
+        [
+            recipe or "unknown",
+            validation_profile or "unknown",
+            selected_tier or "unknown",
+            risk or "unknown",
+            complexity or "unknown",
+        ]
+    )
+
+
+def routing_feedback_base(
+    *,
+    status: str,
+    candidate_key: str,
+    policy: RoutingFeedbackPolicy,
+    recommendation: str,
+    reason: str,
+    source_path: str | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "status": status,
+        "candidate_key": candidate_key,
+        "candidate": None,
+        "policy": routing_feedback_policy_payload(policy),
+        "recommendation": recommendation,
+        "reason": reason,
+    }
+    if source_path is not None:
+        payload["source_path"] = source_path
+    return payload
+
+
+def normalize_failure_reasons(value: object) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+    return {str(key): safe_int(count) for key, count in value.items()}
+
+
+def normalize_candidate(key: str, value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    required_fields = {"total", "acceptance_rate", "review_rate", "failure_rate"}
+    if not required_fields.issubset(value):
+        return None
+    parts = (key.split("|") + ["unknown"] * 5)[:5]
+    recipe, profile, tier, risk, complexity = parts
+    top_failure_reasons = value.get("top_failure_reasons", {})
+    if top_failure_reasons is not None and not isinstance(top_failure_reasons, dict):
+        return None
+    return {
+        "recipe": str(value.get("recipe") or recipe),
+        "validation_profile": str(value.get("validation_profile") or profile),
+        "selected_tier": str(value.get("selected_tier") or tier),
+        "risk": str(value.get("risk") or risk),
+        "complexity_band": str(value.get("complexity_band") or complexity),
+        "accepted": safe_int(value.get("accepted")),
+        "review_required": safe_int(value.get("review_required")),
+        "failed": safe_int(value.get("failed")),
+        "other": safe_int(value.get("other")),
+        "total": safe_int(value.get("total")),
+        "acceptance_rate": round(safe_float(value.get("acceptance_rate")), 2),
+        "review_rate": round(safe_float(value.get("review_rate")), 2),
+        "failure_rate": round(safe_float(value.get("failure_rate")), 2),
+        "top_failure_reasons": normalize_failure_reasons(top_failure_reasons),
+    }
+
+
+def extract_routing_feedback_candidates(payload: object) -> dict[str, dict[str, object]] | None:
+    if not isinstance(payload, dict):
+        return None
+    raw_candidates = payload.get("routing_feedback_candidates") if "routing_feedback_candidates" in payload else payload
+    if not isinstance(raw_candidates, dict):
+        return None
+
+    candidates: dict[str, dict[str, object]] = {}
+    for key, value in raw_candidates.items():
+        if not isinstance(key, str):
+            return None
+        normalized = normalize_candidate(key, value)
+        if normalized is None:
+            return None
+        candidates[key] = normalized
+    return candidates
+
+
+def aggregate_related_candidates(
+    *,
+    candidates: dict[str, dict[str, object]],
+    recipe: str | None,
+    validation_profile: str | None,
+    risk: str | None,
+    complexity: str | None,
+    selected_tier: str,
+) -> tuple[dict[str, object] | None, list[str]]:
+    related: list[tuple[str, dict[str, object]]] = []
+    for key, candidate in candidates.items():
+        if (
+            candidate.get("recipe") == (recipe or "unknown")
+            and candidate.get("validation_profile") == (validation_profile or "unknown")
+            and candidate.get("risk") == (risk or "unknown")
+            and candidate.get("complexity_band") == (complexity or "unknown")
+        ):
+            related.append((key, candidate))
+    if not related:
+        return None, []
+
+    accepted = sum(safe_int(candidate.get("accepted")) for _key, candidate in related)
+    review_required = sum(safe_int(candidate.get("review_required")) for _key, candidate in related)
+    failed = sum(safe_int(candidate.get("failed")) for _key, candidate in related)
+    other = sum(safe_int(candidate.get("other")) for _key, candidate in related)
+    total = accepted + review_required + failed + other
+    failure_reasons: dict[str, int] = {}
+    for _key, candidate in related:
+        for reason, count in normalize_failure_reasons(candidate.get("top_failure_reasons")).items():
+            failure_reasons[reason] = failure_reasons.get(reason, 0) + count
+
+    return (
+        {
+            "recipe": recipe or "unknown",
+            "validation_profile": validation_profile or "unknown",
+            "selected_tier": selected_tier,
+            "risk": risk or "unknown",
+            "complexity_band": complexity or "unknown",
+            "accepted": accepted,
+            "review_required": review_required,
+            "failed": failed,
+            "other": other,
+            "total": total,
+            "acceptance_rate": round(accepted / max(1, total), 2),
+            "review_rate": round(review_required / max(1, total), 2),
+            "failure_rate": round(failed / max(1, total), 2),
+            "top_failure_reasons": dict(sorted(failure_reasons.items(), key=lambda item: item[1], reverse=True)[:5]),
+            "related_candidate_keys": [key for key, _candidate in related],
+        },
+        [key for key, _candidate in related],
+    )
+
+
+def advisory_recommendation(
+    *,
+    candidate: dict[str, object],
+    selected_tier: str,
+    policy: RoutingFeedbackPolicy,
+) -> tuple[str, str]:
+    acceptance_rate = safe_float(candidate.get("acceptance_rate"))
+    review_rate = safe_float(candidate.get("review_rate"))
+    failure_rate = safe_float(candidate.get("failure_rate"))
+    if review_rate >= policy.high_review_rate or failure_rate >= policy.high_failure_rate:
+        if selected_tier == "frontier":
+            return (
+                "require_human_review",
+                "Historical feedback shows high review or failure pressure even on the frontier tier.",
+            )
+        return (
+            "consider_escalation",
+            "Historical feedback shows high review or failure pressure for this route bucket.",
+        )
+    if acceptance_rate >= policy.strong_acceptance_rate:
+        return (
+            "prefer_current_tier",
+            "Historical feedback supports the current tier for this route bucket.",
+        )
+    return (
+        "no_change",
+        "Historical feedback is sufficient but does not cross an advisory threshold.",
+    )
+
+
+def evaluate_routing_feedback(
+    *,
+    args: argparse.Namespace,
+    project_root: Path,
+    selected_tier: str,
+    policy: RoutingFeedbackPolicy,
+) -> dict[str, object]:
+    recipe = getattr(args, "recipe", None)
+    validation_profile = getattr(args, "validation_profile", None)
+    complexity = complexity_band(getattr(args, "complexity_score", None))
+    candidate_key = routing_candidate_key(
+        recipe=recipe,
+        validation_profile=validation_profile,
+        selected_tier=selected_tier,
+        risk=getattr(args, "risk", None),
+        complexity=complexity,
+    )
+    path_text = getattr(args, "routing_feedback_path", None)
+    if not path_text:
+        return routing_feedback_base(
+            status="not_provided",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="no_change",
+            reason="No routing feedback path was provided.",
+        )
+
+    feedback_path = resolve_cli_path(str(path_text), project_root)
+    source_path = relative_path(feedback_path, project_root)
+    if not feedback_path.exists():
+        return routing_feedback_base(
+            status="source_missing",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="no_change",
+            reason="Routing feedback source was not found; deterministic selection was used.",
+            source_path=source_path,
+        )
+
+    try:
+        payload = json.loads(feedback_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return routing_feedback_base(
+            status="source_invalid",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="no_change",
+            reason="Routing feedback source could not be parsed as valid JSON.",
+            source_path=source_path,
+        )
+
+    candidates = extract_routing_feedback_candidates(payload)
+    if candidates is None:
+        return routing_feedback_base(
+            status="source_invalid",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="no_change",
+            reason="Routing feedback source does not contain valid routing_feedback_candidates.",
+            source_path=source_path,
+        )
+    if not candidates:
+        return routing_feedback_base(
+            status="no_candidates",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="collect_more_evidence",
+            reason="Routing feedback source did not contain any candidates.",
+            source_path=source_path,
+        )
+
+    candidate = candidates.get(candidate_key)
+    if candidate is None:
+        related_candidate, related_keys = aggregate_related_candidates(
+            candidates=candidates,
+            recipe=recipe,
+            validation_profile=validation_profile,
+            risk=getattr(args, "risk", None),
+            complexity=complexity,
+            selected_tier=selected_tier,
+        )
+        if related_candidate is not None and safe_int(related_candidate.get("total")) < policy.min_runs:
+            result = routing_feedback_base(
+                status="insufficient_evidence",
+                candidate_key=candidate_key,
+                policy=policy,
+                recommendation="collect_more_evidence",
+                reason="Related routing feedback exists, but not enough evidence exists for a tier-specific advisory.",
+                source_path=source_path,
+            )
+            result["candidate"] = related_candidate
+            result["related_candidate_keys"] = related_keys
+            return result
+        return routing_feedback_base(
+            status="no_match",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="collect_more_evidence",
+            reason="No routing feedback candidate matched this route bucket.",
+            source_path=source_path,
+        )
+
+    if safe_int(candidate.get("total")) < policy.min_runs:
+        result = routing_feedback_base(
+            status="insufficient_evidence",
+            candidate_key=candidate_key,
+            policy=policy,
+            recommendation="collect_more_evidence",
+            reason="Matched routing feedback has fewer runs than the configured minimum.",
+            source_path=source_path,
+        )
+        result["candidate"] = candidate
+        return result
+
+    recommendation, reason = advisory_recommendation(
+        candidate=candidate,
+        selected_tier=selected_tier,
+        policy=policy,
+    )
+    result = routing_feedback_base(
+        status="advisory",
+        candidate_key=candidate_key,
+        policy=policy,
+        recommendation=recommendation,
+        reason=reason,
+        source_path=source_path,
+    )
+    result["candidate"] = candidate
+    return result
+
+
 def build_model_selection(
     args: argparse.Namespace,
     original_args: argparse.Namespace,
@@ -412,6 +772,7 @@ def build_model_selection(
     fallbacks: list[str],
     registry: dict[str, ModelTier],
     manual_override: bool,
+    routing_feedback: dict[str, object] | None = None,
 ) -> dict[str, object]:
     run_id = output_path.parent.name
     normalized_task_type = TASK_TYPE_LABELS.get(args.task_type, args.task_type)
@@ -424,6 +785,8 @@ def build_model_selection(
         "execution_boundary": "automatic_provider_execution_with_validation",
         "risk": args.risk,
         "validation_strength": args.validation_strength,
+        "recipe": getattr(args, "recipe", None),
+        "validation_profile": getattr(args, "validation_profile", None),
         "complexity_score": args.complexity_score,
         "complexity_band": complexity_band(args.complexity_score),
         "test_complexity_level": args.test_complexity_level,
@@ -462,6 +825,20 @@ def build_model_selection(
             for fallback in fallbacks
         ],
         "output_path": relative_path(output_path, project_root),
+        "routing_feedback": routing_feedback
+        or routing_feedback_base(
+            status="not_provided",
+            candidate_key=routing_candidate_key(
+                recipe=getattr(args, "recipe", None),
+                validation_profile=getattr(args, "validation_profile", None),
+                selected_tier=selected_tier,
+                risk=getattr(args, "risk", None),
+                complexity=complexity_band(getattr(args, "complexity_score", None)),
+            ),
+            policy=load_routing_feedback_policy(),
+            recommendation="no_change",
+            reason="No routing feedback path was provided.",
+        ),
         "status": "selected",
     }
 
@@ -473,11 +850,18 @@ def select_model_payload(args: argparse.Namespace) -> dict[str, object]:
 
     registry = load_model_registry()
     policy = load_selector_policy()
+    feedback_policy = load_routing_feedback_policy()
     inferred_routing = infer_routing(args, project.root)
     routed_args = effective_args(args, inferred_routing)
     selected_tier, selection_reason, matched_rule = select_model(policy, routed_args)
     if selected_tier not in registry:
         raise ValueError(f"Selected model tier is not defined in model_registry.yaml: {selected_tier}")
+    routing_feedback = evaluate_routing_feedback(
+        args=routed_args,
+        project_root=project.root,
+        selected_tier=selected_tier,
+        policy=feedback_policy,
+    )
 
     model_selection = build_model_selection(
         args=routed_args,
@@ -492,6 +876,7 @@ def select_model_payload(args: argparse.Namespace) -> dict[str, object]:
         fallbacks=policy.fallbacks.get(selected_tier, []),
         registry=registry,
         manual_override=policy.manual_override,
+        routing_feedback=routing_feedback,
     )
     output_path.write_text(json.dumps(model_selection, indent=2) + "\n", encoding="utf-8")
     return model_selection

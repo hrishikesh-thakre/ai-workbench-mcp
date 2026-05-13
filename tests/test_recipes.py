@@ -81,6 +81,7 @@ class WorkbenchRecipeTests(unittest.TestCase):
             "risk",
             "validation_strength",
             "validation_profile",
+            "routing_feedback_path",
             "prompt",
             "complexity_score",
         ):
@@ -149,6 +150,8 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIsNotNone(default_profile)
                 self.assertIn(default_profile, profiles)
                 self.assertIn('profile="{{ validation_profile }}"', text)
+                self.assertIn('validation_profile="{{ validation_profile }}"', text)
+                self.assertIn('routing_feedback_path="{{ routing_feedback_path }}"', text)
 
     def test_validation_policy_profiles_are_discoverable(self) -> None:
         profiles = validation_profiles()
@@ -244,6 +247,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("Do not claim the run is accepted", text)
                 self.assertIn("Call workbench_record_execution exactly once", text)
                 self.assertIn('status="response_captured"', text)
+                self.assertIn('routing_feedback_path="{{ routing_feedback_path }}"', text)
 
     def test_docs_only_recipe_matches_docs_only_policy_profile(self) -> None:
         text = DOCS_ONLY_RECIPE_PATH.read_text(encoding="utf-8")

@@ -57,6 +57,18 @@ Each candidate includes:
 
 Use this data to identify which recipe/profile/tier combinations are producing accepted work and which combinations need stronger routing, validation, or human review.
 
+## Advisory Routing Feedback
+
+`workbench_select_model` can read either a full `run_metrics.json` report or a raw `routing_feedback_candidates` JSON object. The selector writes a `routing_feedback` object into `model_selection.json` with:
+
+- `status`: `not_provided`, `source_missing`, `source_invalid`, `no_candidates`, `no_match`, `insufficient_evidence`, or `advisory`
+- `candidate_key`: `recipe|validation_profile|selected_tier|risk|complexity_band`
+- `candidate`: matched totals, rates, and top failure reasons when evidence exists
+- `policy`: the thresholds used for the advisory
+- `recommendation`: `no_change`, `prefer_current_tier`, `consider_escalation`, `require_human_review`, or `collect_more_evidence`
+
+The selector does not mutate `selected_tier`. Synthetic samples should normally return `insufficient_evidence` because the default policy requires at least five runs before producing a real advisory.
+
 ## Cost Tracking
 
 Cost tracking is optional provider metadata. Empty or zero cost fields mean no provider cost evidence was found in the scanned run folders. They do not mean the run was free.

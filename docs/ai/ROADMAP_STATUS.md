@@ -28,7 +28,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.2 recipe and policy discovery | Release candidate | Folder-level recipe discovery and validation-profile reference tests cover docs-only, Python package maintenance, test-fix, and low-risk coding profiles |
 | v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
-| Acceptance analytics | Hardening | `workbench_analyze_runs` now summarizes accepted, review-required, and failed runs with routing feedback candidates |
+| Acceptance analytics | Hardening | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; `workbench_select_model` can now record advisory routing feedback without changing tiers |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -124,6 +124,7 @@ Tasks:
 - Track cost per accepted artifact when real provider cost evidence exists.
 - Promote sanitized golden cases.
 - Run the Phase 5 dogfooding protocol across 20-50 real Goose tasks.
+- Keep the analytics-to-routing loop advisory until enough real dogfood evidence exists.
 - Feed historical evidence back into routing recommendations.
 
 ## Current Next Step

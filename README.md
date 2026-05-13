@@ -149,6 +149,12 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 
 The sample set includes accepted, docs-only accepted, and revision-required test-fix evidence. Read [the analytics guide](docs/analytics/acceptance-analytics.md) to interpret `run_metrics.json`, `run_summary.md`, outcome buckets, failure reasons, routing feedback candidates, and optional cost fields.
 
+## Advisory Routing Feedback
+
+`workbench_select_model` can optionally read `routing_feedback_candidates` from a previous analytics report. The feedback is advisory only: it records whether historical evidence supports the current tier, suggests escalation, or asks for more evidence, but it never changes `selected_tier`.
+
+Focused recipes pass `runs/_reports/run_metrics.json` as the default feedback source. Missing, invalid, or low-volume feedback is non-fatal and is recorded in `model_selection.json` under `routing_feedback`.
+
 ## Six MCP Tools
 
 ```text

@@ -75,6 +75,11 @@ class OperationContractTests(unittest.TestCase):
                 "complexity_band": "easy",
                 "matched_rule": "bounded_work_local_default",
                 "reason": "Recoverable bounded coding work can start locally.",
+                "routing_feedback": {
+                    "status": "advisory",
+                    "recommendation": "prefer_current_tier",
+                    "candidate_key": "recipe|profile|local_coding|medium|easy",
+                },
             },
             artifacts={"model_selection": "runs/run1/model_selection.json"},
         )
@@ -85,6 +90,8 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["selected_tier"], "local_coding")
         self.assertEqual(response["summary"]["provider"], "goose")
         self.assertEqual(response["summary"]["model"], "example-model")
+        self.assertEqual(response["summary"]["routing_feedback_status"], "advisory")
+        self.assertEqual(response["summary"]["routing_feedback_recommendation"], "prefer_current_tier")
 
     def test_validation_response_requires_passed_signoff_for_ok(self) -> None:
         response = validation_response(
@@ -195,6 +202,8 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["validation_strength"], "medium")
         self.assertEqual(response["summary"]["complexity_band"], "moderate")
         self.assertEqual(response["summary"]["matched_rule"], "easy_moderate_local_coding")
+        self.assertEqual(written["routing_feedback"]["status"], "not_provided")
+        self.assertEqual(response["summary"]["routing_feedback_status"], "not_provided")
 
     def test_select_model_rejects_invalid_risk(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -63,6 +63,9 @@ def register_tools(mcp: Any) -> Any:
         instruction_following: str = "normal",
         task_text: str | None = None,
         code_files: list[str] | None = None,
+        recipe: str | None = None,
+        validation_profile: str | None = None,
+        routing_feedback_path: str | None = None,
     ) -> JsonObject:
         """Select a Workbench model tier and write model_selection.json."""
 
@@ -79,6 +82,9 @@ def register_tools(mcp: Any) -> Any:
                 instruction_following=instruction_following,
                 task_text=task_text,
                 code_files=code_files,
+                recipe=recipe,
+                validation_profile=validation_profile,
+                routing_feedback_path=routing_feedback_path,
             )
         except Exception as exc:
             return _tool_error("workbench_select_model", exc)

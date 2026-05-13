@@ -156,6 +156,8 @@ def _load_run_log_module() -> Any:
 def model_selection_response(selection: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
     selected_model = selection.get("selected_model", {})
     selected_model = selected_model if isinstance(selected_model, dict) else {}
+    routing_feedback = selection.get("routing_feedback", {})
+    routing_feedback = routing_feedback if isinstance(routing_feedback, dict) else {}
     status = str(selection.get("status") or "selected")
     return response_envelope(
         operation="workbench_select_model",
@@ -174,6 +176,9 @@ def model_selection_response(selection: JsonObject, artifacts: JsonObject | None
             "complexity_band": selection.get("complexity_band"),
             "matched_rule": selection.get("matched_rule"),
             "reason": selection.get("reason"),
+            "routing_feedback_status": routing_feedback.get("status"),
+            "routing_feedback_recommendation": routing_feedback.get("recommendation"),
+            "routing_feedback_candidate_key": routing_feedback.get("candidate_key"),
         },
     )
 
@@ -620,6 +625,9 @@ def select_model(
     instruction_following: str = "normal",
     task_text: str | None = None,
     code_files: list[str] | None = None,
+    recipe: str | None = None,
+    validation_profile: str | None = None,
+    routing_feedback_path: str | Path | None = None,
 ) -> JsonObject:
     try:
         _require_choice("risk", risk, ALLOWED_RISKS)
@@ -641,6 +649,9 @@ def select_model(
         instruction_following=instruction_following,
         task_text=task_text,
         code_file=code_files or [],
+        recipe=recipe,
+        validation_profile=validation_profile,
+        routing_feedback_path=str(routing_feedback_path) if routing_feedback_path is not None else None,
         out=str(output_path),
     )
     try:

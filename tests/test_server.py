@@ -148,6 +148,9 @@ class ServerToolHandlerTests(unittest.TestCase):
             instruction_following="normal",
             task_text=None,
             code_files=["src/example.py"],
+            recipe=None,
+            validation_profile=None,
+            routing_feedback_path=None,
         )
 
     def test_workbench_record_execution_returns_core_envelope(self) -> None:

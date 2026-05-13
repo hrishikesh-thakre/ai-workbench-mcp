@@ -51,6 +51,7 @@ NON_PROMPT_IDENTIFIERS = {
     "missing_needs_review",
     "model_output_status_needs_review",
     "most_common_missing_context_needs_review",
+    "require_human_review",
     "runs_needs_review",
     "unresolved_blocking_review",
     "validate_missing_context_review",
