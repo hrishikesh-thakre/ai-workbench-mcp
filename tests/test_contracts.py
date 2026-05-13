@@ -12,6 +12,7 @@ from ai_workbench_mcp.core import (
     model_selection_response,
     quality_gate_response,
     quality_gate,
+    run_analysis_file_response,
     run_analysis_response,
     analyze_runs,
     select_model,
@@ -405,6 +406,7 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["status"], "completed")
         self.assertEqual(response["artifacts"]["run_metrics"], str(out_dir / "run_metrics.json"))
         self.assertEqual(response["artifacts"]["run_summary"], str(out_dir / "run_summary.md"))
+        self.assertEqual(response["artifacts"]["dashboard"], str(out_dir / "run_dashboard.html"))
         self.assertEqual(written["runs_total"], 1)
         self.assertEqual(response["summary"]["runs_total"], 1)
         self.assertEqual(response["summary"]["runs_passed"], 1)
@@ -415,6 +417,23 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["artifacts"]["events"], str(out_dir / "events.jsonl"))
         self.assertEqual(events[0]["operation"], "workbench_analyze_runs")
         self.assertEqual(events[0]["status"], "completed")
+
+    def test_run_analysis_file_response_records_dashboard_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            metrics = root / "run_metrics.json"
+            summary = root / "run_summary.md"
+            dashboard = root / "run_dashboard.html"
+            metrics.write_text(json.dumps({"runs_total": 1, "runs_passed": 1}), encoding="utf-8")
+            summary.write_text("# Summary\n", encoding="utf-8")
+            dashboard.write_text("<!doctype html>\n", encoding="utf-8")
+
+            response = run_analysis_file_response(metrics, summary, dashboard)
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["artifacts"]["run_metrics"], str(metrics))
+        self.assertEqual(response["artifacts"]["run_summary"], str(summary))
+        self.assertEqual(response["artifacts"]["dashboard"], str(dashboard))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
 SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
 ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
+EVIDENCE_DASHBOARD_GUIDE = ROOT / "docs" / "analytics" / "evidence-dashboard.md"
 EVENT_LEDGER_GUIDE = ROOT / "docs" / "analytics" / "event-ledger.md"
 MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
@@ -195,6 +196,7 @@ class PublicExamplesTests(unittest.TestCase):
     def test_sample_runs_readme_and_analytics_guide_document_phase5_reports(self) -> None:
         sample_text = SAMPLE_RUNS_README.read_text(encoding="utf-8")
         guide_text = ANALYTICS_GUIDE.read_text(encoding="utf-8")
+        dashboard_guide_text = EVIDENCE_DASHBOARD_GUIDE.read_text(encoding="utf-8")
         event_guide_text = EVENT_LEDGER_GUIDE.read_text(encoding="utf-8")
         model_registry_text = MODEL_REGISTRY_GUIDE.read_text(encoding="utf-8")
         dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
@@ -208,6 +210,10 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
+        self.assertIn("docs/analytics/evidence-dashboard.md", sample_text)
+        self.assertIn("docs/analytics/evidence-dashboard.md", readme_text)
+        self.assertIn("docs/analytics/evidence-dashboard.md", start_here_text)
+        self.assertIn("docs/analytics/evidence-dashboard.md", project_map_text)
         self.assertIn("docs/analytics/event-ledger.md", readme_text)
         self.assertIn("docs/analytics/event-ledger.md", start_here_text)
         self.assertIn("docs/analytics/event-ledger.md", project_map_text)
@@ -223,11 +229,15 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)
+        self.assertIn("run_dashboard.html", guide_text)
         self.assertIn("routing_feedback_candidates", guide_text)
         self.assertIn("Advisory Routing Feedback", guide_text)
         self.assertIn("source_invalid", guide_text)
         self.assertIn("does not mutate `selected_tier`", guide_text)
         self.assertIn("Cost tracking is optional provider metadata", guide_text)
+        self.assertIn("run_dashboard.html", dashboard_guide_text)
+        self.assertIn("does not embed raw model output", dashboard_guide_text)
+        self.assertIn("relative path", dashboard_guide_text)
         self.assertIn("events.jsonl", event_guide_text)
         self.assertIn("best-effort and non-fatal", event_guide_text)
         self.assertIn("should stay local", event_guide_text)

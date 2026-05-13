@@ -12,6 +12,7 @@ This writes:
 
 - `run_metrics.json`: machine-readable metrics for routing, reporting, and future policy work.
 - `run_summary.md`: human-readable tables for reviewing acceptance outcomes.
+- `run_dashboard.html`: static local dashboard for scanning outcomes, failure reasons, routing candidates, and evidence links.
 
 ## Outcome Buckets
 
@@ -84,3 +85,5 @@ Open `run_summary.md` when you want a quick human review:
 - `Public Outcomes By Recipe` shows which recipes are producing accepted or review-required runs.
 - `Routing Feedback Candidates` shows the future policy input shape.
 - `Cost Tracking` states whether provider cost evidence was available.
+
+Open `run_dashboard.html` when you want a single-file visual scan of the same evidence. The dashboard links to standard run artifacts by relative path and does not embed raw model output or provider logs. See `docs/analytics/evidence-dashboard.md` for the dashboard hygiene boundary.

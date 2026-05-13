@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 from datetime import datetime
+import html
 import json
+import os
 from pathlib import Path
 
 from .config_loader import load_simple_yaml
@@ -45,6 +47,14 @@ def read_jsonl(file_path: Path) -> list[dict[str, object]]:
     return rows
 
 
+def html_escape(value: object) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def html_attr(value: object) -> str:
+    return html.escape(str(value), quote=True)
+
+
 def as_float(value: object) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
@@ -63,6 +73,266 @@ def as_int(value: object) -> int | None:
 
 def as_dict(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
+
+
+def relative_artifact_href(out_dir: Path, artifact_path: Path) -> str:
+    try:
+        relative = os.path.relpath(artifact_path, start=out_dir)
+    except ValueError:
+        relative = artifact_path.name
+    return Path(relative).as_posix()
+
+
+def html_table(headers: list[str], rows: list[list[object]]) -> str:
+    rendered = [
+        "<table>",
+        "<thead><tr>" + "".join(f"<th>{html_escape(header)}</th>" for header in headers) + "</tr></thead>",
+        "<tbody>",
+    ]
+    if rows:
+        for row in rows:
+            rendered.append("<tr>" + "".join(f"<td>{html_escape(cell)}</td>" for cell in row) + "</tr>")
+    else:
+        rendered.append(f"<tr><td colspan=\"{len(headers)}\">No evidence found.</td></tr>")
+    rendered.extend(["</tbody>", "</table>"])
+    return "\n".join(rendered)
+
+
+def html_mapping_table(title: str, mapping: object, headers: tuple[str, str] = ("Name", "Count")) -> str:
+    rows: list[list[object]] = []
+    for key, value in as_dict(mapping).items():
+        rows.append([key, value])
+    return "\n".join([f"<h3>{html_escape(title)}</h3>", html_table([headers[0], headers[1]], rows)])
+
+
+def html_breakdown_table(title: str, mapping: object) -> str:
+    rows: list[list[object]] = []
+    for key, data in as_dict(mapping).items():
+        data = as_dict(data)
+        rows.append(
+            [
+                key,
+                data.get("accepted", 0),
+                data.get("review_required", data.get("needs_review", 0)),
+                data.get("failed", 0),
+                data.get("other", 0),
+                data.get("total", 0),
+                data.get("acceptance_rate", 0.0),
+                data.get("review_rate", ""),
+                data.get("failure_rate", ""),
+            ]
+        )
+    return "\n".join(
+        [
+            f"<h3>{html_escape(title)}</h3>",
+            html_table(
+                [
+                    "Name",
+                    "Accepted",
+                    "Review Required",
+                    "Failed",
+                    "Other",
+                    "Total",
+                    "Acceptance Rate",
+                    "Review Rate",
+                    "Failure Rate",
+                ],
+                rows,
+            ),
+        ]
+    )
+
+
+def html_artifact_links(out_dir: Path, run_dir: Path) -> str:
+    artifact_names = [
+        "task_metadata.json",
+        "final_prompt.md",
+        "model_selection.json",
+        "model_output.md",
+        "validation_report.json",
+        "revision_decision.json",
+        "run_log.jsonl",
+    ]
+    links: list[str] = []
+    for artifact_name in artifact_names:
+        artifact_path = run_dir / artifact_name
+        if artifact_path.exists():
+            href = html_attr(relative_artifact_href(out_dir, artifact_path))
+            label = html_escape(artifact_name)
+            links.append(f"<a href=\"{href}\">{label}</a>")
+    return " ".join(links) if links else "No standard artifacts found."
+
+
+def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
+    rows: list[str] = [
+        "<table>",
+        (
+            "<thead><tr>"
+            "<th>Run ID</th><th>Outcome</th><th>Task Type</th><th>Recipe</th>"
+            "<th>Profile</th><th>Tier</th><th>Risk</th><th>Complexity</th>"
+            "<th>Quality Gate</th><th>Evidence Links</th>"
+            "</tr></thead>"
+        ),
+        "<tbody>",
+    ]
+    if not runs:
+        rows.append("<tr><td colspan=\"10\">No run folders were scanned.</td></tr>")
+    for run in runs:
+        logs = run.get("logs", [])
+        logs = logs if isinstance(logs, list) else []
+        report = as_dict(run.get("report"))
+        decision = as_dict(run.get("decision"))
+        selection = as_dict(run.get("selection"))
+        metadata = as_dict(run.get("metadata"))
+        recipe = recipe_for(metadata, selection, report, logs)
+        profile = str(report.get("profile", "unknown"))
+        selected_tier = latest_tier(logs, selection)
+        risk = str(selection.get("risk", "unknown"))
+        complexity = str(selection.get("complexity_band", "unknown"))
+        run_dir = Path(str(run.get("path", "")))
+        cells = [
+            html_escape(run.get("run_id", "unknown")),
+            html_escape(public_outcome_bucket(report, decision)),
+            html_escape(run.get("task_type", "unknown")),
+            html_escape(recipe),
+            html_escape(profile),
+            html_escape(selected_tier),
+            html_escape(risk),
+            html_escape(complexity),
+            html_escape(quality_gate_outcome(decision)),
+        ]
+        rows.append(
+            "<tr>"
+            + "".join(f"<td>{cell}</td>" for cell in cells)
+            + f"<td>{html_artifact_links(out_dir, run_dir)}</td>"
+            + "</tr>"
+        )
+    rows.extend(["</tbody>", "</table>"])
+    return "\n".join(rows)
+
+
+def html_routing_candidates(candidates: object) -> str:
+    rows: list[list[object]] = []
+    for key, data in as_dict(candidates).items():
+        data = as_dict(data)
+        reasons = as_dict(data.get("top_failure_reasons"))
+        reason_text = ", ".join(f"{reason}={count}" for reason, count in reasons.items())
+        rows.append(
+            [
+                key,
+                data.get("recipe", "unknown"),
+                data.get("validation_profile", "unknown"),
+                data.get("selected_tier", "unknown"),
+                data.get("risk", "unknown"),
+                data.get("complexity_band", "unknown"),
+                data.get("total", 0),
+                data.get("acceptance_rate", 0.0),
+                data.get("review_rate", 0.0),
+                data.get("failure_rate", 0.0),
+                reason_text,
+            ]
+        )
+    return html_table(
+        [
+            "Candidate Key",
+            "Recipe",
+            "Profile",
+            "Tier",
+            "Risk",
+            "Complexity",
+            "Total",
+            "Acceptance Rate",
+            "Review Rate",
+            "Failure Rate",
+            "Top Failure Reasons",
+        ],
+        rows,
+    )
+
+
+def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], out_dir: Path) -> Path:
+    dashboard_path = out_dir / "run_dashboard.html"
+    outcome_counts = as_dict(metrics.get("outcome_counts"))
+    cost_tracking = as_dict(metrics.get("cost_tracking"))
+    cost_note = (
+        "No provider cost evidence was found. Empty or zero cost fields do not mean execution was free."
+        if not cost_tracking.get("runs_with_cost_data")
+        else "Provider cost evidence was found in model_call_metadata.json artifacts."
+    )
+    outcome_breakdown = as_dict(metrics.get("outcome_breakdown"))
+
+    html_text = "\n".join(
+        [
+            "<!doctype html>",
+            "<html lang=\"en\">",
+            "<head>",
+            "<meta charset=\"utf-8\">",
+            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+            "<title>Workbench Evidence Dashboard</title>",
+            "<style>",
+            (
+                "body{font-family:Arial,sans-serif;margin:0;background:#f8fafc;color:#111827;}"
+                "main{max-width:1180px;margin:0 auto;padding:32px 20px 48px;}"
+                "section{margin-top:28px;}h1{font-size:32px;margin:0 0 8px;}h2{font-size:22px;margin:0 0 12px;}"
+                "h3{font-size:16px;margin:20px 0 8px;}.muted{color:#4b5563;}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}"
+                ".metric{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:14px;}"
+                ".metric strong{display:block;font-size:26px;margin-top:6px;}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #d1d5db;}"
+                "th,td{padding:8px 10px;border-top:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:14px;}"
+                "th{background:#f3f4f6;font-size:12px;text-transform:uppercase;letter-spacing:.04em;}a{color:#075985;text-decoration:none;}a:hover{text-decoration:underline;}"
+                ".note{background:#fff;border-left:4px solid #64748b;padding:12px 14px;}"
+            ),
+            "</style>",
+            "</head>",
+            "<body>",
+            "<main>",
+            "<h1>Workbench Evidence Dashboard</h1>",
+            (
+                f"<p class=\"muted\">Generated from run evidence at "
+                f"<code>{html_escape(metrics.get('generated_at', 'unknown'))}</code>. "
+                "This static report links to evidence artifacts but does not embed model outputs or provider logs.</p>"
+            ),
+            "<section class=\"grid\" aria-label=\"Outcome metrics\">",
+            f"<div class=\"metric\">Runs Total<strong>{html_escape(metrics.get('runs_total', 0))}</strong></div>",
+            f"<div class=\"metric\">Accepted<strong>{html_escape(outcome_counts.get('accepted', 0))}</strong></div>",
+            f"<div class=\"metric\">Review Required<strong>{html_escape(outcome_counts.get('review_required', 0))}</strong></div>",
+            f"<div class=\"metric\">Failed<strong>{html_escape(outcome_counts.get('failed', 0))}</strong></div>",
+            f"<div class=\"metric\">Acceptance Rate<strong>{html_escape(metrics.get('acceptance_rate', 0.0))}</strong></div>",
+            f"<div class=\"metric\">Average Confidence<strong>{html_escape(metrics.get('average_confidence', 0.0))}</strong></div>",
+            "</section>",
+            "<section>",
+            "<h2>Outcome Buckets</h2>",
+            html_mapping_table("Public Outcome Counts", metrics.get("outcome_counts")),
+            html_mapping_table("Quality Gate Outcomes", metrics.get("quality_gate_outcomes")),
+            html_mapping_table("Failure Reasons", metrics.get("failure_reasons")),
+            "</section>",
+            "<section>",
+            "<h2>Breakdowns</h2>",
+            html_breakdown_table("By Recipe", as_dict(outcome_breakdown.get("by_recipe"))),
+            html_breakdown_table("By Validation Profile", as_dict(outcome_breakdown.get("by_validation_profile"))),
+            html_breakdown_table("By Selected Tier", as_dict(outcome_breakdown.get("by_selected_tier"))),
+            html_breakdown_table("By Quality Gate Outcome", as_dict(outcome_breakdown.get("by_quality_gate_outcome"))),
+            "</section>",
+            "<section>",
+            "<h2>Routing Feedback Candidates</h2>",
+            html_routing_candidates(metrics.get("routing_feedback_candidates")),
+            "</section>",
+            "<section>",
+            "<h2>Cost Evidence</h2>",
+            f"<p class=\"note\">{html_escape(cost_note)}</p>",
+            html_mapping_table("Cost Tracking", cost_tracking),
+            "</section>",
+            "<section>",
+            "<h2>Run Evidence</h2>",
+            "<p class=\"muted\">Links are relative references to standard evidence artifacts; artifact contents are not embedded.</p>",
+            html_run_rows(runs, out_dir),
+            "</section>",
+            "</main>",
+            "</body>",
+            "</html>",
+        ]
+    )
+    dashboard_path.write_text(html_text + "\n", encoding="utf-8")
+    return dashboard_path
 
 
 def first_non_none(*values: object) -> object | None:
@@ -1093,6 +1363,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
 
     metrics_path = out_dir / "run_metrics.json"
     summary_path = out_dir / "run_summary.md"
+    dashboard_path = out_dir / "run_dashboard.html"
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
 
     lines = [
@@ -1229,6 +1500,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             f"| {run['run_id']} | {run['status']} | {run['task_type']} | {str(run['eligible_for_golden_case']).lower()} |"
         )
     summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    write_dashboard(metrics, runs, out_dir)
+    if not dashboard_path.exists():
+        raise RuntimeError(f"run_dashboard_missing={dashboard_path}")
     return metrics
 
 
@@ -1246,9 +1520,11 @@ def main() -> int:
     out_dir = Path(args.out_dir) if args.out_dir else runs_dir / "_reports"
     metrics_path = out_dir / "run_metrics.json"
     summary_path = out_dir / "run_summary.md"
+    dashboard_path = out_dir / "run_dashboard.html"
 
     print(f"run_metrics={metrics_path}")
     print(f"run_summary={summary_path}")
+    print(f"run_dashboard={dashboard_path}")
     print(f"runs_total={metrics['runs_total']}")
     return 0
 

@@ -266,10 +266,16 @@ def quality_gate_file_response(path: str | Path) -> JsonObject:
     )
 
 
-def run_analysis_file_response(path: str | Path, summary_path: str | Path | None = None) -> JsonObject:
+def run_analysis_file_response(
+    path: str | Path,
+    summary_path: str | Path | None = None,
+    dashboard_path: str | Path | None = None,
+) -> JsonObject:
     artifacts: dict[str, Any] = {"run_metrics": Path(path)}
     if summary_path is not None:
         artifacts["run_summary"] = Path(summary_path)
+    if dashboard_path is not None:
+        artifacts["dashboard"] = Path(dashboard_path)
     return run_analysis_response(read_json_artifact(path), artifacts=artifacts)
 
 
@@ -694,6 +700,7 @@ def analyze_runs(
     report_dir = _workbench_path(out_dir) if out_dir is not None else _workbench_path(runs_dir) / "_reports"
     metrics_path = report_dir / "run_metrics.json"
     summary_path = report_dir / "run_summary.md"
+    dashboard_path = report_dir / "run_dashboard.html"
     args = SimpleNamespace(
         runs_dir=str(_workbench_path(runs_dir)),
         task_type=task_type,
@@ -708,7 +715,10 @@ def analyze_runs(
             operation="workbench_analyze_runs",
             code="run_analysis_failed",
             message=str(exc),
-            details={"run_metrics": str(metrics_path)},
+            details={"run_metrics": str(metrics_path), "dashboard": str(dashboard_path)},
         )
-    response = run_analysis_response(metrics, artifacts={"run_metrics": metrics_path, "run_summary": summary_path})
+    response = run_analysis_response(
+        metrics,
+        artifacts={"run_metrics": metrics_path, "run_summary": summary_path, "dashboard": dashboard_path},
+    )
     return response_with_event(response, report_dir / "events.jsonl")

@@ -1,4 +1,7 @@
 import json
+import re
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -219,6 +222,7 @@ class RunAnalyzePayloadTests(unittest.TestCase):
             metrics = run_analysis_payload(args)
             written = json.loads((out_dir / "run_metrics.json").read_text(encoding="utf-8"))
             summary = (out_dir / "run_summary.md").read_text(encoding="utf-8")
+            dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
 
         self.assertEqual(metrics, written)
         self.assertEqual(metrics["runs_total"], 1)
@@ -240,6 +244,12 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertIn("## Acceptance Analytics", summary)
         self.assertIn("| workbench-engineering-acceptance.yaml | 1 | 0 | 0 | 0 | 1 | 1.0 | 0.0 | 0.0 |", summary)
         self.assertIn("| run1 | passed | implementation | false |", summary)
+        self.assertIn("Workbench Evidence Dashboard", dashboard)
+        self.assertIn("Accepted", dashboard)
+        self.assertIn("Review Required", dashboard)
+        self.assertIn("Failed", dashboard)
+        self.assertIn("workbench-engineering-acceptance.yaml", dashboard)
+        self.assertIn("task_metadata.json", dashboard)
 
     def test_run_analysis_payload_summarizes_acceptance_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -258,6 +268,7 @@ class RunAnalyzePayloadTests(unittest.TestCase):
 
             metrics = run_analysis_payload(args)
             summary = (out_dir / "run_summary.md").read_text(encoding="utf-8")
+            dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
 
         self.assertEqual(metrics["runs_total"], 2)
         self.assertEqual(metrics["accepted_runs_total"], 1)
@@ -309,6 +320,9 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["cost_tracking"]["total_estimated_cost_usd"], 0.0)
         self.assertEqual(metrics["cost_tracking"]["runs_with_cost_data"], 0)
         self.assertIn("| workbench-test-fix-acceptance.yaml | 0 | 1 | 0 | 0 | 1 | 0.0 | 1.0 | 0.0 |", summary)
+        self.assertIn("Routing Feedback Candidates", dashboard)
+        self.assertIn("command_failed:full_test_suite=1", dashboard)
+        self.assertIn("No provider cost evidence was found", dashboard)
 
     def test_run_analysis_payload_keeps_failed_bucket_separate_from_review_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -353,6 +367,73 @@ class RunAnalyzePayloadTests(unittest.TestCase):
                 run_analysis_payload(args)
 
         self.assertIn("runs_dir_missing=", str(raised.exception))
+
+    def test_dashboard_uses_relative_links_and_does_not_embed_sensitive_content(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            run_dir = write_sample_run(runs_dir)
+            (run_dir / "model_output.md").write_text(
+                "# Model Output\n\nRAW MODEL OUTPUT BODY SHOULD NOT APPEAR\n",
+                encoding="utf-8",
+            )
+            write_json(
+                run_dir / "task_metadata.json",
+                {
+                    "run_id": "run1",
+                    "project": "ai_workbench_mcp",
+                    "task_type": "implementation",
+                    "prompt": "implement_request_change_request",
+                    "recipe": "<script>alert('x')</script>",
+                },
+            )
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            run_analysis_payload(args)
+            dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
+
+        self.assertNotRegex(dashboard, re.compile(r"(?<![A-Za-z])[A-Za-z]:\\"))
+        self.assertNotIn(str(tmp_path), dashboard)
+        self.assertNotIn("RAW MODEL OUTPUT BODY SHOULD NOT APPEAR", dashboard)
+        self.assertNotIn("<script>alert('x')</script>", dashboard)
+        self.assertIn("&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;", dashboard)
+        self.assertIn("href=\"../runs/run1/model_output.md\"", dashboard)
+        self.assertIn(">model_output.md</a>", dashboard)
+
+    def test_cli_output_prints_dashboard_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            write_sample_run(runs_dir)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "tools/run_analyze.py",
+                    "--runs-dir",
+                    str(runs_dir),
+                    "--out-dir",
+                    str(out_dir),
+                    "--evals-dir",
+                    str(tmp_path / "evals"),
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("run_metrics=", result.stdout)
+        self.assertIn("run_summary=", result.stdout)
+        self.assertIn("run_dashboard=", result.stdout)
 
 
 if __name__ == "__main__":
