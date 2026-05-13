@@ -30,6 +30,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
 | Acceptance analytics | Hardening | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; `workbench_select_model` can now record advisory routing feedback without changing tiers |
 | User-extensible model registry | Public-readiness hardening | Local ignored registry overrides let adopters bring their own model IDs while preserving committed defaults and selector validation |
+| Minimal event envelopes | Public-readiness hardening | Core MCP operations write best-effort local `events.jsonl` ledgers from final response envelopes |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -128,6 +129,7 @@ Tasks:
 - Keep the analytics-to-routing loop advisory until enough real dogfood evidence exists.
 - Feed historical evidence back into routing recommendations.
 - Allow adopters to use local ignored model-registry overrides without editing committed defaults.
+- Emit local best-effort operation events for future analytics and CI integration.
 
 ## Current Next Step
 

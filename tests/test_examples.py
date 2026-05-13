@@ -12,11 +12,13 @@ NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
 SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
 ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
+EVENT_LEDGER_GUIDE = ROOT / "docs" / "analytics" / "event-ledger.md"
 MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 README = ROOT / "README.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
+PROJECT_MAP = ROOT / "docs" / "ai" / "PROJECT_MAP.md"
 V02_RELEASE = ROOT / "docs" / "releases" / "v0.2.0-alpha.md"
 
 REQUIRED_SAMPLE_ARTIFACTS = [
@@ -146,6 +148,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
+        self.assertIn("docs/analytics/event-ledger.md", text)
         self.assertIn("docs/configuration/model-registry.md", text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
         self.assertIn("docs/github/launch-issues.md", text)
@@ -180,16 +183,21 @@ class PublicExamplesTests(unittest.TestCase):
     def test_sample_runs_readme_and_analytics_guide_document_phase5_reports(self) -> None:
         sample_text = SAMPLE_RUNS_README.read_text(encoding="utf-8")
         guide_text = ANALYTICS_GUIDE.read_text(encoding="utf-8")
+        event_guide_text = EVENT_LEDGER_GUIDE.read_text(encoding="utf-8")
         model_registry_text = MODEL_REGISTRY_GUIDE.read_text(encoding="utf-8")
         dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
         launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
+        project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
+        self.assertIn("docs/analytics/event-ledger.md", readme_text)
+        self.assertIn("docs/analytics/event-ledger.md", start_here_text)
+        self.assertIn("docs/analytics/event-ledger.md", project_map_text)
         self.assertIn("docs/configuration/model-registry.md", readme_text)
         self.assertIn("docs/configuration/model-registry.md", start_here_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", sample_text)
@@ -205,6 +213,10 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("source_invalid", guide_text)
         self.assertIn("does not mutate `selected_tier`", guide_text)
         self.assertIn("Cost tracking is optional provider metadata", guide_text)
+        self.assertIn("events.jsonl", event_guide_text)
+        self.assertIn("best-effort and non-fatal", event_guide_text)
+        self.assertIn("should stay local", event_guide_text)
+        self.assertIn("not required sign-off artifacts", event_guide_text)
         self.assertIn("configs/model_registry.local.yaml", model_registry_text)
         self.assertIn("dictionaries merge recursively", model_registry_text)
         self.assertIn("selector reference", model_registry_text.lower())

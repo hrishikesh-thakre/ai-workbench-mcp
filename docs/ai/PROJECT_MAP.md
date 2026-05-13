@@ -42,6 +42,7 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/tools/run_analyze.py` | Aggregated run and routing analytics |
 | `src/ai_workbench_mcp/tools/model_handoff.py` | Captures external output into Workbench evidence format |
 | `src/ai_workbench_mcp/tools/context_scout.py` | Deterministic context/evidence packet builder |
+| `src/ai_workbench_mcp/events.py` | Best-effort local operation event envelopes and JSONL sink |
 | `src/ai_workbench_mcp/tools/config_loader.py` | Small YAML subset loader used by core tools |
 | `src/ai_workbench_mcp/tools/response_format.py` | Response parsing and required-section helpers |
 | `tools/` | Backward-compatible CLI wrappers for existing `python tools/*.py` commands |
@@ -51,6 +52,7 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/` | Installable MCP server package, runtime-agnostic core wrappers, and packaged tool logic |
 | `tests/` | Focused tests for core contracts, tool payloads, recipes, and MCP runtime smoke |
 | `docs/ai/` | Operating docs for the Goose-first pivot |
+| `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 
 ## 4. MCP Tool Boundary
 

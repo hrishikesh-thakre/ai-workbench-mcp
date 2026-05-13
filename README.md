@@ -149,6 +149,8 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 
 The sample set includes accepted, docs-only accepted, and revision-required test-fix evidence. Read [the analytics guide](docs/analytics/acceptance-analytics.md) to interpret `run_metrics.json`, `run_summary.md`, outcome buckets, failure reasons, routing feedback candidates, and optional cost fields.
 
+Core MCP operations also write best-effort local `events.jsonl` ledgers beside evidence artifacts. Read [the event ledger guide](docs/analytics/event-ledger.md) before using operation events in analytics or CI prototypes.
+
 ## Advisory Routing Feedback
 
 `workbench_select_model` can optionally read `routing_feedback_candidates` from a previous analytics report. The feedback is advisory only: it records whether historical evidence supports the current tier, suggests escalation, or asks for more evidence, but it never changes `selected_tier`.
@@ -233,6 +235,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
 - [Sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized synthetic evidence showing failed validation and a revision-required quality gate.
 - [Acceptance analytics guide](docs/analytics/acceptance-analytics.md): how to read `run_metrics.json`, `run_summary.md`, outcome buckets, routing feedback candidates, and optional cost fields.
+- [Event ledger guide](docs/analytics/event-ledger.md): how local `events.jsonl` operation telemetry is written and why it stays out of committed runs by default.
 - [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): how to collect real Goose acceptance runs before changing routing policy.
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.

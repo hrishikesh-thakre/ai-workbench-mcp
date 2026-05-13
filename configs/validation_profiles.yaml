@@ -37,6 +37,11 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
+      - name: event_ledger_import_smoke
+        command: python -c "from pathlib import Path; from ai_workbench_mcp import events; assert hasattr(events, 'build_event'); assert hasattr(events, 'response_with_event'); assert Path('docs/analytics/event-ledger.md').is_file()"
+        cwd: .
+        required: true
+        weight: 1.0
 
   run_signoff:
     description: Acceptance sign-off for a run folder with captured output.
@@ -141,7 +146,7 @@ profiles:
         required: true
         weight: 1.0
       - name: package_import_smoke
-        command: python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run; assert hasattr(server, 'register_tools'); assert hasattr(model_select, 'select_model_payload'); assert hasattr(validate_run, 'validate_run_payload')"
+        command: python -c "import ai_workbench_mcp; from ai_workbench_mcp import events, server; from ai_workbench_mcp.tools import model_select, validate_run; assert hasattr(server, 'register_tools'); assert hasattr(events, 'build_event'); assert hasattr(model_select, 'select_model_payload'); assert hasattr(validate_run, 'validate_run_payload')"
         cwd: .
         required: true
         weight: 1.0

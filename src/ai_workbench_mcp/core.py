@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from .contracts import JsonObject, error_envelope, response_envelope
+from .events import response_with_event
 from .tools import context_scout as context_scout_tool
 from .tools import model_handoff as model_handoff_tool
 from .tools import model_select as model_select_tool
@@ -436,7 +437,7 @@ def open_run(
             message=str(exc),
         )
 
-    return open_run_response(
+    response = open_run_response(
         payload,
         artifacts={
             "run_dir": output_dir,
@@ -446,6 +447,7 @@ def open_run(
             "expert_packet": output_dir / "expert_packet.md",
         },
     )
+    return response_with_event(response, output_dir / "events.jsonl")
 
 
 def record_execution(
@@ -546,13 +548,14 @@ def record_execution(
             message=str(exc),
         )
 
-    return record_execution_response(
+    response = record_execution_response(
         payload,
         artifacts={
             "model_output": model_output_path,
             "run_log": run_log_path,
         },
     )
+    return response_with_event(response, run_dir_path / "events.jsonl")
 
 
 def select_model(
@@ -605,7 +608,8 @@ def select_model(
             code="model_selection_failed",
             message=str(exc),
         )
-    return model_selection_response(payload, artifacts={"model_selection": output_path})
+    response = model_selection_response(payload, artifacts={"model_selection": output_path})
+    return response_with_event(response, output_path.parent / "events.jsonl")
 
 
 def validate_run(
@@ -633,7 +637,8 @@ def validate_run(
             message=str(exc),
             details={"validation_report": str(report_path)},
         )
-    return validation_response(report, artifacts={"validation_report": report_path})
+    response = validation_response(report, artifacts={"validation_report": report_path})
+    return response_with_event(response, report_path.parent / "events.jsonl")
 
 
 def quality_gate(
@@ -674,7 +679,8 @@ def quality_gate(
             message=str(exc),
             details={"revision_decision": str(decision_path)},
         )
-    return quality_gate_response(decision, artifacts={"revision_decision": decision_path})
+    response = quality_gate_response(decision, artifacts={"revision_decision": decision_path})
+    return response_with_event(response, decision_path.parent / "events.jsonl")
 
 
 def analyze_runs(
@@ -704,4 +710,5 @@ def analyze_runs(
             message=str(exc),
             details={"run_metrics": str(metrics_path)},
         )
-    return run_analysis_response(metrics, artifacts={"run_metrics": metrics_path, "run_summary": summary_path})
+    response = run_analysis_response(metrics, artifacts={"run_metrics": metrics_path, "run_summary": summary_path})
+    return response_with_event(response, report_dir / "events.jsonl")

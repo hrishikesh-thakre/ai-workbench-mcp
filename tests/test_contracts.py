@@ -20,6 +20,10 @@ from ai_workbench_mcp.core import (
 )
 
 
+def read_jsonl(path: Path) -> list[dict[str, object]]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
 class ContractEnvelopeTests(unittest.TestCase):
     def test_response_envelope_has_stable_common_fields(self) -> None:
         response = response_envelope(
@@ -184,6 +188,7 @@ class OperationContractTests(unittest.TestCase):
                     complexity_score=13,
                 )
             written = json.loads(artifact.read_text(encoding="utf-8"))
+            events = read_jsonl(Path(tmpdir) / "events.jsonl")
 
         self.assertEqual(written["selected_tier"], "local_coding")
         self.assertTrue(response["ok"])
@@ -198,6 +203,28 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["matched_rule"], "easy_moderate_local_coding")
         self.assertEqual(written["routing_feedback"]["status"], "not_provided")
         self.assertEqual(response["summary"]["routing_feedback_status"], "not_provided")
+        self.assertEqual(response["artifacts"]["events"], str(Path(tmpdir) / "events.jsonl"))
+        self.assertEqual(events[0]["operation"], "workbench_select_model")
+        self.assertEqual(events[0]["artifacts"]["events"], str(Path(tmpdir) / "events.jsonl"))
+
+    def test_event_write_failure_does_not_change_core_response(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifact = Path(tmpdir) / "model_selection.json"
+
+            with patch("ai_workbench_mcp.events.append_response_event", side_effect=OSError("readonly")):
+                response = select_model(
+                    project="ai_workbench_mcp",
+                    task_type="implement",
+                    risk="medium",
+                    out=artifact,
+                    prompt="implement_request_change_request",
+                    complexity_score=13,
+                )
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["status"], "selected")
+        self.assertEqual(response["artifacts"]["model_selection"], str(artifact))
+        self.assertNotIn("events", response["artifacts"])
 
     def test_select_model_rejects_invalid_risk(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -233,6 +260,7 @@ class OperationContractTests(unittest.TestCase):
                     profile="scaffold",
                 )
             written = json.loads((Path(tmpdir) / "validation_report.json").read_text(encoding="utf-8"))
+            events = read_jsonl(Path(tmpdir) / "events.jsonl")
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_validate_run")
@@ -242,15 +270,17 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["project"], "ai_workbench_mcp")
         self.assertEqual(response["summary"]["profile"], "scaffold")
         self.assertTrue(response["summary"]["sign_off_ready"])
-        self.assertEqual(response["summary"]["commands_passed"], 7)
+        self.assertEqual(response["summary"]["commands_passed"], 8)
         self.assertEqual(response["summary"]["commands_failed"], 0)
-        self.assertIn(
-            "model_registry_override_support",
-            [command["name"] for command in written["commands_run"]],
-        )
+        command_names = [command["name"] for command in written["commands_run"]]
+        self.assertIn("model_registry_override_support", command_names)
+        self.assertIn("event_ledger_import_smoke", command_names)
         self.assertEqual(response["summary"]["checks_passed"], 3)
         self.assertEqual(response["summary"]["checks_needs_review"], 0)
         self.assertEqual(response["summary"]["checks_failed"], 0)
+        self.assertEqual(response["artifacts"]["events"], str(Path(tmpdir) / "events.jsonl"))
+        self.assertEqual(events[0]["operation"], "workbench_validate_run")
+        self.assertEqual(events[0]["status"], "passed")
 
     def test_quality_gate_direct_call_writes_artifact_and_wraps_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -300,6 +330,7 @@ class OperationContractTests(unittest.TestCase):
                     risk="low",
                 )
             written = json.loads((run_dir / "revision_decision.json").read_text(encoding="utf-8"))
+            events = read_jsonl(run_dir / "events.jsonl")
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_quality_gate")
@@ -311,6 +342,9 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["accepted_pass"], 1)
         self.assertEqual(response["summary"]["blocking_findings"], 0)
         self.assertEqual(response["summary"]["non_blocking_findings"], 0)
+        self.assertEqual(response["artifacts"]["events"], str(run_dir / "events.jsonl"))
+        self.assertEqual(events[0]["operation"], "workbench_quality_gate")
+        self.assertEqual(events[0]["status"], "accepted")
 
     def test_analyze_runs_direct_call_writes_artifacts_and_wraps_payload(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -364,6 +398,7 @@ class OperationContractTests(unittest.TestCase):
                     evals_dir=root / "evals",
                 )
             written = json.loads((out_dir / "run_metrics.json").read_text(encoding="utf-8"))
+            events = read_jsonl(out_dir / "events.jsonl")
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_analyze_runs")
@@ -377,6 +412,9 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["runs_needs_review"], 0)
         self.assertEqual(response["summary"]["workflow_signoff_pass_rate"], 1.0)
         self.assertEqual(response["summary"]["average_confidence"], 0.9)
+        self.assertEqual(response["artifacts"]["events"], str(out_dir / "events.jsonl"))
+        self.assertEqual(events[0]["operation"], "workbench_analyze_runs")
+        self.assertEqual(events[0]["status"], "completed")
 
 
 if __name__ == "__main__":

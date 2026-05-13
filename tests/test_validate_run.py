@@ -64,12 +64,11 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(report["profile"], "scaffold")
         self.assertEqual(report["overall_status"], "passed")
         self.assertTrue(report["sign_off_ready"])
-        self.assertEqual(report["summary"]["commands_passed"], 7)
+        self.assertEqual(report["summary"]["commands_passed"], 8)
         self.assertEqual(report["summary"]["commands_failed"], 0)
-        self.assertIn(
-            "model_registry_override_support",
-            [command["name"] for command in report["commands_run"]],
-        )
+        command_names = [command["name"] for command in report["commands_run"]]
+        self.assertIn("model_registry_override_support", command_names)
+        self.assertIn("event_ledger_import_smoke", command_names)
         self.assertEqual(report["summary"]["checks_passed"], 3)
 
     def test_response_captured_without_preferred_sections_needs_review(self) -> None:

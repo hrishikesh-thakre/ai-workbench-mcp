@@ -7,6 +7,10 @@ from ai_workbench_mcp.core import open_run, record_execution, select_model
 from ai_workbench_mcp.tools.model_handoff import parse_final_prompt
 
 
+def read_jsonl(path: Path) -> list[dict[str, object]]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
 class EvidenceLifecycleTests(unittest.TestCase):
     def test_open_run_writes_model_handoff_compatible_final_prompt(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -23,12 +27,14 @@ class EvidenceLifecycleTests(unittest.TestCase):
             prompt_summary = parse_final_prompt(run_dir / "final_prompt.md")
             metadata = json.loads((run_dir / "task_metadata.json").read_text(encoding="utf-8"))
             log_lines = (run_dir / "run_log.jsonl").read_text(encoding="utf-8").splitlines()
+            events = read_jsonl(run_dir / "events.jsonl")
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_open_run")
         self.assertEqual(response["status"], "opened")
         self.assertEqual(response["summary"]["run_id"], "run1")
         self.assertEqual(response["artifacts"]["final_prompt"], str(run_dir / "final_prompt.md"))
+        self.assertEqual(response["artifacts"]["events"], str(run_dir / "events.jsonl"))
         self.assertEqual(prompt_summary.run_id, "run1")
         self.assertEqual(prompt_summary.project, "ai_workbench_mcp")
         self.assertEqual(prompt_summary.mode, "goose")
@@ -39,6 +45,9 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(response["summary"]["recipe"], "workbench-engineering-acceptance.yaml")
         self.assertEqual(len(log_lines), 1)
         self.assertEqual(json.loads(log_lines[0])["decision"], "run_opened")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["operation"], "workbench_open_run")
+        self.assertEqual(events[0]["summary"]["task"], task)
 
     def test_open_run_repeated_call_does_not_duplicate_initial_log_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -57,11 +66,14 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 risk="low",
             )
             log_lines = (run_dir / "run_log.jsonl").read_text(encoding="utf-8").splitlines()
+            events = read_jsonl(run_dir / "events.jsonl")
 
         self.assertTrue(first["ok"])
         self.assertTrue(second["ok"])
         self.assertEqual(len(log_lines), 1)
         self.assertEqual(json.loads(log_lines[0])["decision"], "run_opened")
+        self.assertEqual(len(events), 2)
+        self.assertEqual([event["operation"] for event in events], ["workbench_open_run", "workbench_open_run"])
 
     def test_open_run_rejects_invalid_risk(self) -> None:
         response = open_run(
@@ -121,11 +133,13 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 json.loads(line)
                 for line in (run_dir / "run_log.jsonl").read_text(encoding="utf-8").splitlines()
             ]
+            events = read_jsonl(run_dir / "events.jsonl")
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["operation"], "workbench_record_execution")
         self.assertEqual(response["status"], "response_captured")
         self.assertEqual(response["artifacts"]["model_output"], str(run_dir / "model_output.md"))
+        self.assertEqual(response["artifacts"]["events"], str(run_dir / "events.jsonl"))
         self.assertIn("- Status: `response_captured`", model_output)
         self.assertIn("- Response source: goose", model_output)
         self.assertIn("## Captured Response", model_output)
@@ -133,6 +147,11 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(log_entries[-1]["decision"], "model_response_captured")
         self.assertEqual(log_entries[-1]["status"], "in_progress")
         self.assertEqual(log_entries[-1]["files_touched"], ["src/ai_workbench_mcp/core.py"])
+        self.assertEqual([event["operation"] for event in events], [
+            "workbench_open_run",
+            "workbench_select_model",
+            "workbench_record_execution",
+        ])
 
     def test_record_execution_repeated_call_does_not_overwrite_or_duplicate_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -169,6 +188,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 json.loads(line)
                 for line in (run_dir / "run_log.jsonl").read_text(encoding="utf-8").splitlines()
             ]
+            events = read_jsonl(run_dir / "events.jsonl")
 
         self.assertTrue(first["ok"])
         self.assertFalse(first["summary"]["duplicate_ignored"])
@@ -178,6 +198,9 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(log_entries[-1]["decision"], "model_response_captured")
         self.assertIn("First captured response.", model_output)
         self.assertNotIn("Second response should be ignored.", model_output)
+        self.assertEqual(len(events), 4)
+        self.assertEqual(events[-1]["operation"], "workbench_record_execution")
+        self.assertTrue(events[-1]["summary"]["duplicate_ignored"])
 
     def test_record_execution_rejects_invalid_status_values_before_writes(self) -> None:
         response = record_execution(
