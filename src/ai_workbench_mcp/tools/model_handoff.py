@@ -14,6 +14,7 @@ from .response_format import normalize_response_text
 class FinalPromptSummary:
     run_id: str | None
     project: str | None
+    execution_host: str | None
     mode: str | None
     task_type: str | None
     risk: str | None
@@ -82,6 +83,7 @@ def parse_final_prompt(file_path: Path) -> FinalPromptSummary:
     return FinalPromptSummary(
         run_id=parse_field(text, r"- Run ID: `([^`]+)`"),
         project=parse_field(text, r"- Project: `([^`]+)`"),
+        execution_host=parse_field(text, r"- Execution Host: `([^`]+)`"),
         mode=parse_field(text, r"- Mode: `([^`]+)`"),
         task_type=parse_field(text, r"- Task Type: `([^`]+)`"),
         risk=parse_field(text, r"- Risk: `([^`]+)`"),
@@ -132,7 +134,9 @@ def build_model_output(
     normalized_response_text: str | None,
     normalization_notes: list[str] | None,
     response_source: str | None,
+    execution_host: str | None,
 ) -> str:
+    resolved_execution_host = execution_host or prompt_summary.execution_host or prompt_summary.mode or "unknown"
     lines: list[str] = [
         "# Model Output",
         "",
@@ -146,12 +150,14 @@ def build_model_output(
         f"- Provider: `{selection_summary.provider}`",
         f"- Model: `{selection_summary.model}`",
         f"- Prompt: `{selection_summary.prompt or 'unknown'}`",
+        f"- Execution Host: `{resolved_execution_host}`",
         f"- Mode: `{prompt_summary.mode or 'unknown'}`",
         f"- Task Type: `{prompt_summary.task_type or 'unknown'}`",
         f"- Risk: `{prompt_summary.risk or 'unknown'}`",
         f"- Final Prompt Path: `{relative_path(prompt_path, project_root)}`",
         f"- Model Selection Path: `{relative_path(selection_path, project_root)}`",
         f"- Output Path: `{relative_path(output_path, project_root)}`",
+        f"- Response Source: `{response_source or 'unknown'}`",
         f"- Status: `{status}`",
         "",
         "## Task Summary",
@@ -165,8 +171,6 @@ def build_model_output(
 
     if selection_summary.reason:
         lines.append(f"- Model selection reason: {selection_summary.reason}")
-    if response_source:
-        lines.append(f"- Response source: {response_source}")
     if normalization_notes:
         for note in normalization_notes:
             lines.append(f"- Response normalization note: {note}")
@@ -218,6 +222,7 @@ def model_handoff_payload(args: argparse.Namespace) -> dict[str, object]:
     response_path = resolve_cli_path(response_file, project.root) if response_file else None
     inline_response_text = getattr(args, "response_text", None)
     inline_response_source = getattr(args, "response_source", None)
+    execution_host = getattr(args, "execution_host", None)
     model_output_status = getattr(args, "model_output_status", None)
 
     if not selection_path.exists():
@@ -277,6 +282,7 @@ def model_handoff_payload(args: argparse.Namespace) -> dict[str, object]:
             normalized_response_text=normalized_response_text,
             normalization_notes=normalization_notes,
             response_source=response_source,
+            execution_host=str(execution_host) if execution_host is not None else None,
         ),
         encoding="utf-8",
     )
@@ -288,6 +294,7 @@ def model_handoff_payload(args: argparse.Namespace) -> dict[str, object]:
         "provider": selection_summary.provider,
         "model": selection_summary.model,
         "output": str(output_path),
+        "execution_host": str(execution_host or prompt_summary.execution_host or prompt_summary.mode or "unknown"),
         "response_source": response_source,
         "normalization_notes": normalization_notes,
     }

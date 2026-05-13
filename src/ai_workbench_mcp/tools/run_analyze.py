@@ -7,6 +7,7 @@ import html
 import json
 import os
 from pathlib import Path
+import re
 
 from .config_loader import load_simple_yaml
 
@@ -169,6 +170,7 @@ def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
         (
             "<thead><tr>"
             "<th>Run ID</th><th>Outcome</th><th>Task Type</th><th>Recipe</th>"
+            "<th>Execution Host</th><th>Response Source</th>"
             "<th>Profile</th><th>Tier</th><th>Risk</th><th>Complexity</th>"
             "<th>Quality Gate</th><th>Evidence Links</th>"
             "</tr></thead>"
@@ -176,7 +178,7 @@ def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
         "<tbody>",
     ]
     if not runs:
-        rows.append("<tr><td colspan=\"10\">No run folders were scanned.</td></tr>")
+        rows.append("<tr><td colspan=\"12\">No run folders were scanned.</td></tr>")
     for run in runs:
         logs = run.get("logs", [])
         logs = logs if isinstance(logs, list) else []
@@ -195,6 +197,8 @@ def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
             html_escape(public_outcome_bucket(report, decision)),
             html_escape(run.get("task_type", "unknown")),
             html_escape(recipe),
+            html_escape(run.get("execution_host", "goose")),
+            html_escape(run.get("response_source", "unknown")),
             html_escape(profile),
             html_escape(selected_tier),
             html_escape(risk),
@@ -308,6 +312,8 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
             "<section>",
             "<h2>Breakdowns</h2>",
             html_breakdown_table("By Recipe", as_dict(outcome_breakdown.get("by_recipe"))),
+            html_breakdown_table("By Execution Host", as_dict(outcome_breakdown.get("by_execution_host"))),
+            html_breakdown_table("By Response Source", as_dict(outcome_breakdown.get("by_response_source"))),
             html_breakdown_table("By Validation Profile", as_dict(outcome_breakdown.get("by_validation_profile"))),
             html_breakdown_table("By Selected Tier", as_dict(outcome_breakdown.get("by_selected_tier"))),
             html_breakdown_table("By Quality Gate Outcome", as_dict(outcome_breakdown.get("by_quality_gate_outcome"))),
@@ -417,6 +423,32 @@ def final_prompt_name(selection: dict[str, object], logs: list[dict[str, object]
 
 def task_metadata_for(run_dir: Path) -> dict[str, object]:
     return read_json(run_dir / "task_metadata.json")
+
+
+def read_text_if_exists(file_path: Path) -> str:
+    if not file_path.exists():
+        return ""
+    return file_path.read_text(encoding="utf-8", errors="replace")
+
+
+def markdown_field_value(text: str, field_name: str) -> str | None:
+    pattern = rf"^-\s*{re.escape(field_name)}:\s*`?([^`\n]+?)`?\s*$"
+    match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    return value or None
+
+
+def execution_host_for(metadata: dict[str, object]) -> str:
+    execution_host = metadata.get("execution_host")
+    return str(execution_host) if execution_host else "goose"
+
+
+def response_source_for(run_dir: Path) -> str:
+    text = read_text_if_exists(run_dir / "model_output.md")
+    response_source = markdown_field_value(text, "Response Source")
+    return response_source or "unknown"
 
 
 def recipe_for(
@@ -790,6 +822,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         decision = read_json(run_dir / "revision_decision.json")
         selection = selection_for(run_dir)
         metadata = task_metadata_for(run_dir)
+        execution_host = execution_host_for(metadata)
+        response_source = response_source_for(run_dir)
         runs.append(
             {
                 "run_id": run_dir.name,
@@ -799,6 +833,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 "decision": decision,
                 "selection": selection,
                 "metadata": metadata,
+                "execution_host": execution_host,
+                "response_source": response_source,
                 "task_type": task_type,
                 "status": final_status(report, decision),
                 "eligible_for_golden_case": eligible_for_golden_case(run_dir),
@@ -823,17 +859,23 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     routing_feedback: dict[str, Counter[str]] = defaultdict(Counter)
     accepted_runs_total = 0
     accepted_by_recipe: Counter[str] = Counter()
+    accepted_by_execution_host: Counter[str] = Counter()
+    accepted_by_response_source: Counter[str] = Counter()
     accepted_by_profile: Counter[str] = Counter()
     accepted_by_tier: Counter[str] = Counter()
     accepted_by_task_type: Counter[str] = Counter()
     public_outcomes: Counter[str] = Counter()
     quality_outcomes: Counter[str] = Counter()
+    execution_host_counts: Counter[str] = Counter()
+    response_source_counts: Counter[str] = Counter()
     failure_reason_counts: Counter[str] = Counter()
     acceptance_by_recipe: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_profile: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_tier: dict[str, Counter[str]] = defaultdict(Counter)
     acceptance_by_quality_outcome: dict[str, Counter[str]] = defaultdict(Counter)
     outcome_by_recipe: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_execution_host: dict[str, Counter[str]] = defaultdict(Counter)
+    outcome_by_response_source: dict[str, Counter[str]] = defaultdict(Counter)
     outcome_by_profile: dict[str, Counter[str]] = defaultdict(Counter)
     outcome_by_tier: dict[str, Counter[str]] = defaultdict(Counter)
     outcome_by_quality_outcome: dict[str, Counter[str]] = defaultdict(Counter)
@@ -847,6 +889,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         selection = run["selection"]
         metadata = run["metadata"]
         task_type = str(run["task_type"])
+        execution_host = str(run.get("execution_host") or "goose")
+        response_source = str(run.get("response_source") or "unknown")
         selected_tier = latest_tier(logs if isinstance(logs, list) else [], selection if isinstance(selection, dict) else {})
         run_status = str(run["status"])
         profile = str(report.get("profile", "unknown")) if isinstance(report, dict) else "unknown"
@@ -880,11 +924,15 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         routing_feedback[routing_key][run_status] += 1
         quality_outcomes[gate_outcome] += 1
         public_outcomes[public_bucket] += 1
+        execution_host_counts[execution_host] += 1
+        response_source_counts[response_source] += 1
         acceptance_by_recipe[recipe][bucket] += 1
         acceptance_by_profile[profile][bucket] += 1
         acceptance_by_tier[selected_tier][bucket] += 1
         acceptance_by_quality_outcome[gate_outcome][bucket] += 1
         outcome_by_recipe[recipe][public_bucket] += 1
+        outcome_by_execution_host[execution_host][public_bucket] += 1
+        outcome_by_response_source[response_source][public_bucket] += 1
         outcome_by_profile[profile][public_bucket] += 1
         outcome_by_tier[selected_tier][public_bucket] += 1
         outcome_by_quality_outcome[gate_outcome][public_bucket] += 1
@@ -893,6 +941,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         if accepted:
             accepted_runs_total += 1
             accepted_by_recipe[recipe] += 1
+            accepted_by_execution_host[execution_host] += 1
+            accepted_by_response_source[response_source] += 1
             accepted_by_profile[profile] += 1
             accepted_by_tier[selected_tier] += 1
             accepted_by_task_type[task_type] += 1
@@ -1146,9 +1196,13 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "accepted_runs_total": accepted_runs_total,
         "acceptance_rate": round(accepted_runs_total / max(1, len(runs)), 2) if runs else 0.0,
         "accepted_runs_by_recipe": dict(accepted_by_recipe),
+        "accepted_runs_by_execution_host": dict(accepted_by_execution_host),
+        "accepted_runs_by_response_source": dict(accepted_by_response_source),
         "accepted_runs_by_validation_profile": dict(accepted_by_profile),
         "accepted_runs_by_selected_tier": dict(accepted_by_tier),
         "accepted_runs_by_task_type": dict(accepted_by_task_type),
+        "execution_host_counts": dict(execution_host_counts),
+        "response_source_counts": dict(response_source_counts),
         "review_required_runs_total": public_outcomes.get("review_required", 0),
         "failed_runs_total": public_outcomes.get("failed", 0),
         "other_runs_total": public_outcomes.get("other", 0),
@@ -1163,6 +1217,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         },
         "outcome_breakdown": {
             "by_recipe": outcome_breakdown(outcome_by_recipe),
+            "by_execution_host": outcome_breakdown(outcome_by_execution_host),
+            "by_response_source": outcome_breakdown(outcome_by_response_source),
             "by_validation_profile": outcome_breakdown(outcome_by_profile),
             "by_selected_tier": outcome_breakdown(outcome_by_tier),
             "by_quality_gate_outcome": outcome_breakdown(outcome_by_quality_outcome),
@@ -1288,8 +1344,12 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             "accepted_runs_total": accepted_runs_total,
             "acceptance_rate": round(accepted_runs_total / max(1, len(runs)), 2) if runs else 0.0,
             "accepted_runs_by_recipe": dict(accepted_by_recipe),
+            "accepted_runs_by_execution_host": dict(accepted_by_execution_host),
+            "accepted_runs_by_response_source": dict(accepted_by_response_source),
             "accepted_runs_by_validation_profile": dict(accepted_by_profile),
             "accepted_runs_by_selected_tier": dict(accepted_by_tier),
+            "execution_host_counts": dict(execution_host_counts),
+            "response_source_counts": dict(response_source_counts),
             "review_required_runs_total": public_outcomes.get("review_required", 0),
             "failed_runs_total": public_outcomes.get("failed", 0),
             "outcome_counts": dict(public_outcomes),
@@ -1394,6 +1454,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "## Acceptance Analytics",
         "",
         f"- Accepted runs by recipe: {metrics['accepted_runs_by_recipe']}",
+        f"- Accepted runs by execution host: {metrics['accepted_runs_by_execution_host']}",
+        f"- Accepted runs by response source: {metrics['accepted_runs_by_response_source']}",
+        f"- Execution host counts: {metrics['execution_host_counts']}",
+        f"- Response source counts: {metrics['response_source_counts']}",
         f"- Accepted runs by validation profile: {metrics['accepted_runs_by_validation_profile']}",
         f"- Accepted runs by selected tier: {metrics['accepted_runs_by_selected_tier']}",
         "",
@@ -1407,6 +1471,32 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         data = as_dict(data)
         lines.append(
             f"| {recipe} | {data.get('accepted', 0)} | {data.get('review_required', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} | {data.get('review_rate', 0.0)} | {data.get('failure_rate', 0.0)} |"
+        )
+    lines.extend([
+        "",
+        "### Public Outcomes By Execution Host",
+        "",
+        "| Execution Host | Accepted | Review Required | Failed | Other | Total | Acceptance Rate | Review Rate | Failure Rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    host_breakdown = as_dict(as_dict(metrics.get("outcome_breakdown")).get("by_execution_host"))
+    for execution_host, data in host_breakdown.items():
+        data = as_dict(data)
+        lines.append(
+            f"| {execution_host} | {data.get('accepted', 0)} | {data.get('review_required', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} | {data.get('review_rate', 0.0)} | {data.get('failure_rate', 0.0)} |"
+        )
+    lines.extend([
+        "",
+        "### Public Outcomes By Response Source",
+        "",
+        "| Response Source | Accepted | Review Required | Failed | Other | Total | Acceptance Rate | Review Rate | Failure Rate |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ])
+    source_breakdown = as_dict(as_dict(metrics.get("outcome_breakdown")).get("by_response_source"))
+    for response_source, data in source_breakdown.items():
+        data = as_dict(data)
+        lines.append(
+            f"| {response_source} | {data.get('accepted', 0)} | {data.get('review_required', 0)} | {data.get('failed', 0)} | {data.get('other', 0)} | {data.get('total', 0)} | {data.get('acceptance_rate', 0.0)} | {data.get('review_rate', 0.0)} | {data.get('failure_rate', 0.0)} |"
         )
     lines.extend([
         "",

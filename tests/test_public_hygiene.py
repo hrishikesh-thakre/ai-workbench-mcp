@@ -83,7 +83,12 @@ class PublicHygieneTests(unittest.TestCase):
 
         self.assertEqual(
             sample_names,
-            ["accepted-docs-only-smoke", "accepted-tiny-python-fix", "needs-review-test-fix"],
+            [
+                "accepted-codex-tiny-python-fix",
+                "accepted-docs-only-smoke",
+                "accepted-tiny-python-fix",
+                "needs-review-test-fix",
+            ],
         )
 
     def test_operating_docs_are_aligned_to_v02_release_candidate_state(self) -> None:

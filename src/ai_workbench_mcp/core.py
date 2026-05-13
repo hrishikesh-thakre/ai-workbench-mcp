@@ -23,6 +23,7 @@ from .tools import validate_run as validate_run_tool
 
 WORKBENCH_ROOT = Path(__file__).resolve().parents[2]
 ALLOWED_RISKS = {"low", "medium", "high"}
+ALLOWED_EXECUTION_HOSTS = {"goose", "codex", "ci", "other"}
 ALLOWED_RUN_STATUSES = {"started", "in_progress", "completed", "blocked"}
 ALLOWED_RECORD_MODEL_OUTPUT_STATUSES = {"response_captured"}
 
@@ -196,6 +197,10 @@ def run_analysis_response(metrics: JsonObject, artifacts: JsonObject | None = No
             "acceptance_rate": metrics.get("acceptance_rate"),
             "outcome_counts": metrics.get("outcome_counts"),
             "accepted_runs_by_recipe": metrics.get("accepted_runs_by_recipe"),
+            "accepted_runs_by_execution_host": metrics.get("accepted_runs_by_execution_host"),
+            "accepted_runs_by_response_source": metrics.get("accepted_runs_by_response_source"),
+            "execution_host_counts": metrics.get("execution_host_counts"),
+            "response_source_counts": metrics.get("response_source_counts"),
             "quality_gate_outcomes": metrics.get("quality_gate_outcomes"),
         },
     )
@@ -213,6 +218,7 @@ def open_run_response(payload: JsonObject, artifacts: JsonObject | None = None) 
             "task": payload.get("task"),
             "prompt": payload.get("prompt"),
             "risk": payload.get("risk"),
+            "execution_host": payload.get("execution_host"),
             "recipe": payload.get("recipe"),
             "run_dir": payload.get("run_dir"),
             "docs_read": payload.get("docs_read"),
@@ -236,6 +242,7 @@ def record_execution_response(payload: JsonObject, artifacts: JsonObject | None 
             "run_dir": payload.get("run_dir"),
             "model_output_status": status,
             "run_status": payload.get("run_status"),
+            "execution_host": payload.get("execution_host"),
             "response_source": payload.get("response_source"),
             "provider": payload.get("provider"),
             "model": payload.get("model"),
@@ -292,6 +299,7 @@ def _final_prompt_text(
     risk: str,
     task_type: str,
     context_profile: str,
+    execution_host: str,
 ) -> str:
     return "\n".join(
         [
@@ -301,7 +309,8 @@ def _final_prompt_text(
             "",
             f"- Run ID: `{run_id}`",
             f"- Project: `{project}`",
-            "- Mode: `goose`",
+            f"- Execution Host: `{execution_host}`",
+            f"- Mode: `{execution_host}`",
             f"- Task Type: `{task_type}`",
             f"- Risk: `{risk}`",
             f"- Prompt: `{Path(prompt).stem}`",
@@ -340,9 +349,11 @@ def open_run(
     changed_files: list[str] | None = None,
     docs: list[str] | None = None,
     include_diff: bool = False,
+    execution_host: str = "goose",
 ) -> JsonObject:
     try:
         _require_choice("risk", risk, ALLOWED_RISKS)
+        _require_choice("execution_host", execution_host, ALLOWED_EXECUTION_HOSTS)
         context_scout = context_scout_tool
         project_config = context_scout.load_project_config(project)
         prompt_path = context_scout.resolve_prompt_path(prompt, project_config.prompts_dir)
@@ -376,6 +387,7 @@ def open_run(
             "risk": risk,
             "task_type": task_type,
             "context_profile": profile_name,
+            "execution_host": execution_host,
             "recipe": recipe,
             "changed_files": changed_files or [],
             "docs": docs or [],
@@ -394,6 +406,7 @@ def open_run(
                 risk=risk,
                 task_type=task_type,
                 context_profile=profile_name,
+                execution_host=execution_host,
             ),
             encoding="utf-8",
         )
@@ -434,6 +447,7 @@ def open_run(
             "prompt": Path(prompt).stem,
             "risk": risk,
             "context_profile": profile_name,
+            "execution_host": execution_host,
             "recipe": recipe,
         }
     except Exception as exc:
@@ -485,6 +499,7 @@ def record_execution(
         prompt_name = selection.get("prompt") or "unknown"
         task_metadata = read_json_artifact(run_dir_path / "task_metadata.json")
         task_text = task_metadata.get("task") or selection.get("task_text") or ""
+        execution_host = str(task_metadata.get("execution_host") or "goose")
         touched = files_touched or []
 
         duplicate_ignored = model_output_path.exists() and _has_jsonl_decision(
@@ -498,6 +513,7 @@ def record_execution(
                 "run_dir": str(run_dir_path),
                 "status": model_output_status,
                 "run_status": run_status,
+                "execution_host": execution_host,
                 "response_source": response_source,
                 "provider": selected_provider,
                 "model": selected_model,
@@ -514,6 +530,7 @@ def record_execution(
                     response_file=None,
                     response_text=response_text,
                     response_source=response_source,
+                    execution_host=execution_host,
                     model_output_status=model_output_status,
                 )
             )
@@ -544,6 +561,7 @@ def record_execution(
                 "project": project,
                 "run_dir": str(run_dir_path),
                 "run_status": run_status,
+                "execution_host": execution_host,
                 "files_touched": touched,
                 "duplicate_ignored": False,
             }

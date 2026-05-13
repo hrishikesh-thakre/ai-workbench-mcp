@@ -37,17 +37,46 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(response["artifacts"]["events"], str(run_dir / "events.jsonl"))
         self.assertEqual(prompt_summary.run_id, "run1")
         self.assertEqual(prompt_summary.project, "ai_workbench_mcp")
+        self.assertEqual(prompt_summary.execution_host, "goose")
         self.assertEqual(prompt_summary.mode, "goose")
         self.assertEqual(prompt_summary.risk, "low")
         self.assertIn(task, prompt_summary.task)
         self.assertEqual(metadata["task"], task)
+        self.assertEqual(metadata["execution_host"], "goose")
         self.assertEqual(metadata["recipe"], "workbench-engineering-acceptance.yaml")
+        self.assertEqual(response["summary"]["execution_host"], "goose")
         self.assertEqual(response["summary"]["recipe"], "workbench-engineering-acceptance.yaml")
         self.assertEqual(len(log_lines), 1)
         self.assertEqual(json.loads(log_lines[0])["decision"], "run_opened")
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0]["operation"], "workbench_open_run")
+        self.assertEqual(events[0]["summary"]["execution_host"], "goose")
         self.assertEqual(events[0]["summary"]["task"], task)
+
+    def test_open_run_writes_codex_execution_host_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "run1"
+
+            response = open_run(
+                project="ai_workbench_mcp",
+                task="Open a Codex-local run.",
+                run_dir=run_dir,
+                risk="low",
+                execution_host="codex",
+            )
+            prompt_summary = parse_final_prompt(run_dir / "final_prompt.md")
+            final_prompt = (run_dir / "final_prompt.md").read_text(encoding="utf-8")
+            metadata = json.loads((run_dir / "task_metadata.json").read_text(encoding="utf-8"))
+            events = read_jsonl(run_dir / "events.jsonl")
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["summary"]["execution_host"], "codex")
+        self.assertEqual(metadata["execution_host"], "codex")
+        self.assertEqual(prompt_summary.execution_host, "codex")
+        self.assertEqual(prompt_summary.mode, "codex")
+        self.assertIn("- Execution Host: `codex`", final_prompt)
+        self.assertIn("- Mode: `codex`", final_prompt)
+        self.assertEqual(events[0]["summary"]["execution_host"], "codex")
 
     def test_open_run_repeated_call_does_not_duplicate_initial_log_entry(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -140,8 +169,11 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual(response["status"], "response_captured")
         self.assertEqual(response["artifacts"]["model_output"], str(run_dir / "model_output.md"))
         self.assertEqual(response["artifacts"]["events"], str(run_dir / "events.jsonl"))
+        self.assertEqual(response["summary"]["execution_host"], "goose")
+        self.assertEqual(response["summary"]["response_source"], "goose")
+        self.assertIn("- Execution Host: `goose`", model_output)
         self.assertIn("- Status: `response_captured`", model_output)
-        self.assertIn("- Response source: goose", model_output)
+        self.assertIn("- Response Source: `goose`", model_output)
         self.assertIn("## Captured Response", model_output)
         self.assertEqual(len(log_entries), 2)
         self.assertEqual(log_entries[-1]["decision"], "model_response_captured")
@@ -152,6 +184,45 @@ class EvidenceLifecycleTests(unittest.TestCase):
             "workbench_select_model",
             "workbench_record_execution",
         ])
+        self.assertEqual(events[-1]["summary"]["execution_host"], "goose")
+        self.assertEqual(events[-1]["summary"]["response_source"], "goose")
+
+    def test_record_execution_preserves_codex_host_and_response_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "run1"
+            open_run(
+                project="ai_workbench_mcp",
+                task="Record a Codex-local response.",
+                run_dir=run_dir,
+                risk="medium",
+                execution_host="codex",
+            )
+            select_model(
+                project="ai_workbench_mcp",
+                task_type="implement",
+                risk="medium",
+                out=run_dir / "model_selection.json",
+                prompt="implement_request_change_request",
+                complexity_score=13,
+            )
+
+            response = record_execution(
+                project="ai_workbench_mcp",
+                run_dir=run_dir,
+                response_text="Summary:\nCodex response captured.\n\nFiles touched:\n- src/example.py\n\nValidation run:\n- pytest -> not run\n\nRisks / follow-ups:\n- None.",
+                files_touched=["src/example.py"],
+                response_source="codex",
+            )
+            model_output = (run_dir / "model_output.md").read_text(encoding="utf-8")
+            events = read_jsonl(run_dir / "events.jsonl")
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["summary"]["execution_host"], "codex")
+        self.assertEqual(response["summary"]["response_source"], "codex")
+        self.assertIn("- Execution Host: `codex`", model_output)
+        self.assertIn("- Response Source: `codex`", model_output)
+        self.assertEqual(events[-1]["summary"]["execution_host"], "codex")
+        self.assertEqual(events[-1]["summary"]["response_source"], "codex")
 
     def test_record_execution_repeated_call_does_not_overwrite_or_duplicate_log(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

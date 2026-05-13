@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 TINY_EXAMPLE = ROOT / "examples" / "tiny-python-fix"
 SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-tiny-python-fix"
+CODEX_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-codex-tiny-python-fix"
 DOCS_ONLY_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-docs-only-smoke"
 NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test-fix"
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
@@ -23,6 +24,14 @@ PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
+CODEX_WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "codex-acceptance-demo.md"
+CODEX_SETUP = ROOT / "docs" / "codex" / "setup.md"
+CODEX_WORKFLOW = ROOT / "docs" / "codex" / "acceptance-workflow.md"
+CODEX_HANDOFF = ROOT / "docs" / "codex" / "live-test-handoff.md"
+CODEX_AGENTS = ROOT / "docs" / "codex" / "agents-snippet.md"
+CODEX_CLOUD = ROOT / "docs" / "codex" / "cloud-limitations.md"
+CODEX_TOOL_SMOKE = ROOT / "examples" / "codex-tool-smoke" / "README.md"
+CODEX_ACCEPTANCE_SMOKE = ROOT / "examples" / "codex-acceptance-smoke" / "README.md"
 README = ROOT / "README.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
 PROJECT_MAP = ROOT / "docs" / "ai" / "PROJECT_MAP.md"
@@ -62,7 +71,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("FAILED", result.stderr)
 
     def test_sample_run_contains_required_sanitized_artifacts(self) -> None:
-        for sample_run in (SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN, NEEDS_REVIEW_SAMPLE_RUN):
+        for sample_run in (SAMPLE_RUN, CODEX_SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN, NEEDS_REVIEW_SAMPLE_RUN):
             with self.subTest(sample_run=sample_run.name):
                 for artifact in REQUIRED_SAMPLE_ARTIFACTS:
                     self.assertTrue((sample_run / artifact).exists(), artifact)
@@ -78,7 +87,7 @@ class PublicExamplesTests(unittest.TestCase):
                 self.assertNotIn("token=", combined.lower())
 
     def test_accepted_sample_runs_are_accepted(self) -> None:
-        for sample_run in (SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN):
+        for sample_run in (SAMPLE_RUN, CODEX_SAMPLE_RUN, DOCS_ONLY_SAMPLE_RUN):
             with self.subTest(sample_run=sample_run.name):
                 report = json.loads((sample_run / "validation_report.json").read_text(encoding="utf-8"))
                 decision = json.loads((sample_run / "revision_decision.json").read_text(encoding="utf-8"))
@@ -112,6 +121,26 @@ class PublicExamplesTests(unittest.TestCase):
                 for check in report["artifact_checks"]
             )
         )
+
+    def test_codex_sample_run_uses_codex_host_metadata_and_accepted_gate(self) -> None:
+        metadata = json.loads((CODEX_SAMPLE_RUN / "task_metadata.json").read_text(encoding="utf-8"))
+        final_prompt = (CODEX_SAMPLE_RUN / "final_prompt.md").read_text(encoding="utf-8")
+        model_output = (CODEX_SAMPLE_RUN / "model_output.md").read_text(encoding="utf-8")
+        selection = json.loads((CODEX_SAMPLE_RUN / "model_selection.json").read_text(encoding="utf-8"))
+        report = json.loads((CODEX_SAMPLE_RUN / "validation_report.json").read_text(encoding="utf-8"))
+        decision = json.loads((CODEX_SAMPLE_RUN / "revision_decision.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["execution_host"], "codex")
+        self.assertEqual(metadata["recipe"], "workbench-engineering-acceptance.yaml")
+        self.assertIn("- Execution Host: `codex`", final_prompt)
+        self.assertIn("- Mode: `codex`", final_prompt)
+        self.assertIn("- Execution Host: `codex`", model_output)
+        self.assertIn("- Response Source: `codex`", model_output)
+        self.assertEqual(selection["validation_profile"], "tiny_python_fix")
+        self.assertEqual(report["profile"], "tiny_python_fix")
+        self.assertEqual(report["overall_status"], "passed")
+        self.assertTrue(report["sign_off_ready"])
+        self.assertEqual(decision["final_status"], "accepted")
 
     def test_needs_review_sample_run_uses_test_fix_profile_and_revision_required_gate(self) -> None:
         metadata = json.loads((NEEDS_REVIEW_SAMPLE_RUN / "task_metadata.json").read_text(encoding="utf-8"))
@@ -160,8 +189,20 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("recipes/workbench-engineering-acceptance.yaml", text)
         self.assertIn("recipes/workbench-mcp-tool-smoke.yaml", text)
         self.assertIn("examples/goose-tool-smoke", text)
+        self.assertIn("docs/codex/setup.md", text)
+        self.assertIn("docs/codex/acceptance-workflow.md", text)
+        self.assertIn("docs/codex/agents-snippet.md", text)
+        self.assertIn("docs/codex/cloud-limitations.md", text)
+        self.assertIn("docs/codex/live-test-handoff.md", text)
+        self.assertIn("checks the resulting Codex evidence folders", text)
+        self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", text)
+        self.assertIn("examples/codex-tool-smoke", text)
+        self.assertIn("examples/codex-acceptance-smoke", text)
+        self.assertIn('execution_host="codex"', text)
+        self.assertIn('response_source="codex"', text)
         self.assertIn("examples/focused-workflows", text)
         self.assertIn("examples/sample-runs/accepted-tiny-python-fix", text)
+        self.assertIn("examples/sample-runs/accepted-codex-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
@@ -212,11 +253,13 @@ class PublicExamplesTests(unittest.TestCase):
         topics_text = TOPICS_GUIDE.read_text(encoding="utf-8")
         create_issues_text = CREATE_ISSUES_GUIDE.read_text(encoding="utf-8")
         walkthrough_text = WALKTHROUGH_GUIDE.read_text(encoding="utf-8")
+        codex_walkthrough_text = CODEX_WALKTHROUGH_GUIDE.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
         project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
+        self.assertIn("accepted-codex-tiny-python-fix", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
@@ -248,6 +291,9 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", readme_text)
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", start_here_text)
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", project_map_text)
+        self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", readme_text)
+        self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", start_here_text)
+        self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", project_map_text)
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)
@@ -298,6 +344,64 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("revision_decision.json", walkthrough_text)
         self.assertIn("run_dashboard.html", walkthrough_text)
         self.assertIn("tools/golden_eval.py", walkthrough_text)
+        self.assertIn("Codex Acceptance Demo Walkthrough", codex_walkthrough_text)
+        self.assertIn("Do not run `ai-workbench-mcp` directly", codex_walkthrough_text)
+        self.assertIn("ask Codex to launch another Codex session", codex_walkthrough_text)
+        self.assertIn("runs/codex-local-demo/tool-smoke", codex_walkthrough_text)
+        self.assertIn("runs/codex-local-demo/tiny-python-fix", codex_walkthrough_text)
+        self.assertIn("--runs-dir runs/codex-local-demo", codex_walkthrough_text)
+        self.assertIn("execution_host_counts", codex_walkthrough_text)
+        self.assertIn("docs/codex/setup.md", readme_text)
+        self.assertIn("docs/codex/setup.md", start_here_text)
+        self.assertIn("docs/codex/live-test-handoff.md", readme_text)
+        self.assertIn("docs/codex/live-test-handoff.md", start_here_text)
+        self.assertIn("docs/codex/", project_map_text)
+        self.assertIn("examples/sample-runs/accepted-codex-tiny-python-fix", CODEX_WORKFLOW.read_text(encoding="utf-8"))
+
+    def test_codex_docs_and_examples_document_local_ide_lifecycle(self) -> None:
+        docs_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (CODEX_SETUP, CODEX_WORKFLOW, CODEX_HANDOFF, CODEX_AGENTS, CODEX_CLOUD, CODEX_WALKTHROUGH_GUIDE)
+        )
+        examples_text = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (CODEX_TOOL_SMOKE, CODEX_ACCEPTANCE_SMOKE)
+        )
+
+        self.assertIn("ai-workbench-mcp", docs_text)
+        self.assertIn("one shared MCP server", docs_text)
+        self.assertIn('execution_host="codex"', docs_text)
+        self.assertIn('response_source="codex"', docs_text)
+        self.assertIn("Codex cloud", docs_text)
+        self.assertIn("exported, committed, uploaded, or summarized", docs_text)
+        self.assertIn("foreground stdio-server loops", docs_text)
+        self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", docs_text)
+        self.assertIn("READY: Start Codex now", docs_text)
+        self.assertIn("exact result-check command", docs_text)
+        self.assertIn("Analyze only the isolated live-test parent", docs_text)
+        self.assertIn("tools/codex_live_test_handoff.py", docs_text)
+        self.assertIn("tools/check_codex_live_result.py", docs_text)
+        self.assertIn("workbench_open_run", examples_text)
+        self.assertIn("workbench_select_model", examples_text)
+        self.assertIn("workbench_record_execution", examples_text)
+        self.assertIn("workbench_validate_run", examples_text)
+        self.assertIn("workbench_quality_gate", examples_text)
+        self.assertIn("workbench_analyze_runs", examples_text)
+        self.assertIn('response_source="codex"', examples_text)
+        self.assertIn(
+            'task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes."',
+            docs_text,
+        )
+        self.assertIn(
+            'task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes."',
+            examples_text,
+        )
+        self.assertIn('response_text="Summary:', docs_text)
+        self.assertIn('response_text="Summary:', examples_text)
+        self.assertIn('out_dir="runs/codex-local-demo/tiny-python-fix"', docs_text)
+        self.assertIn('out_dir="runs/codex-smoke/tiny-python-fix"', examples_text)
+        self.assertIn('run_dir="runs/codex-local-demo/tiny-python-fix"', docs_text)
+        self.assertIn('run_dir="runs/codex-smoke/tiny-python-fix"', examples_text)
 
     def test_v02_release_notes_document_focused_profiles_and_verification(self) -> None:
         text = V02_RELEASE.read_text(encoding="utf-8")

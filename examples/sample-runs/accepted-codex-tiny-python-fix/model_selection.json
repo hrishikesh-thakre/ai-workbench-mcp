@@ -1,0 +1,22 @@
+{
+  "run_id": "accepted-codex-tiny-python-fix",
+  "project": "ai_workbench_mcp",
+  "task_type": "implement",
+  "risk": "low",
+  "validation_strength": "medium",
+  "validation_profile": "tiny_python_fix",
+  "prompt": "implement_request_change_request",
+  "selected_tier": "local_coding",
+  "selected_model": {
+    "provider": "goose",
+    "model": "local-coding-tier",
+    "fallback_models": [],
+    "parameters": {},
+    "use_for": [
+      "low-risk coding changes"
+    ]
+  },
+  "reason": "Low-risk bounded coding work can start on the local coding tier. For Codex, this tier is advisory host-independent guidance.",
+  "matched_rule": "example_low_risk_local",
+  "status": "selected"
+}

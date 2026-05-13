@@ -111,6 +111,37 @@ class ServerToolHandlerTests(unittest.TestCase):
             changed_files=["src/example.py"],
             docs=None,
             include_diff=False,
+            execution_host="goose",
+        )
+
+    def test_workbench_open_run_forwards_codex_execution_host(self) -> None:
+        expected = envelope("workbench_open_run", status="opened")
+
+        with (
+            patch("ai_workbench_mcp.server.core.open_run", return_value=expected) as open_run,
+            patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+            patch("ai_workbench_mcp.core.subprocess.run", side_effect=AssertionError("subprocess not expected")),
+        ):
+            response = self.tools["workbench_open_run"](
+                project="ai_workbench_mcp",
+                task="Open from Codex",
+                run_dir="runs/run1",
+                execution_host="codex",
+            )
+
+        self.assertEqual(response, expected)
+        open_run.assert_called_once_with(
+            project="ai_workbench_mcp",
+            task="Open from Codex",
+            run_dir="runs/run1",
+            prompt="implement_request_change_request",
+            risk="medium",
+            context_profile=None,
+            recipe=None,
+            changed_files=None,
+            docs=None,
+            include_diff=False,
+            execution_host="codex",
         )
 
     def test_workbench_select_model_returns_core_envelope(self) -> None:

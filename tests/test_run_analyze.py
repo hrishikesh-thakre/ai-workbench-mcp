@@ -14,6 +14,36 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
+def write_model_output(run_dir: Path, response_source: str = "goose") -> None:
+    (run_dir / "model_output.md").write_text(
+        "\n".join(
+            [
+                "# Model Output",
+                "",
+                "## Execution Metadata",
+                "",
+                f"- Response Source: `{response_source}`",
+                "- Status: `response_captured`",
+                "",
+                "## Normalized Response",
+                "",
+                "Summary:",
+                "Captured sample response.",
+                "",
+                "Files touched:",
+                "- src/example.py",
+                "",
+                "Validation run:",
+                "- pytest -> passed",
+                "",
+                "Risks / follow-ups:",
+                "- None.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_sample_run(runs_dir: Path) -> Path:
     run_dir = runs_dir / "run1"
     run_dir.mkdir(parents=True)
@@ -66,6 +96,7 @@ def write_sample_run(runs_dir: Path) -> Path:
             "loop_type": "none",
         },
     )
+    write_model_output(run_dir)
     return run_dir
 
 
@@ -136,6 +167,7 @@ def write_revision_required_run(runs_dir: Path) -> Path:
             "required": True,
         },
     )
+    write_model_output(run_dir)
     return run_dir
 
 
@@ -201,6 +233,64 @@ def write_failed_run(runs_dir: Path) -> Path:
             "required": False,
         },
     )
+    write_model_output(run_dir)
+    return run_dir
+
+
+def write_codex_sample_run(runs_dir: Path) -> Path:
+    run_dir = runs_dir / "run4"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_log.jsonl").write_text(
+        json.dumps(
+            {
+                "timestamp": "2026-05-12T13:00:00",
+                "model_tier": "local_coding",
+                "decision": "model_response_captured",
+                "prompt": "implement_request_change_request",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    write_json(
+        run_dir / "task_metadata.json",
+        {
+            "run_id": "run4",
+            "project": "ai_workbench_mcp",
+            "task_type": "implementation",
+            "prompt": "implement_request_change_request",
+            "recipe": "workbench-engineering-acceptance.yaml",
+            "execution_host": "codex",
+        },
+    )
+    write_json(
+        run_dir / "model_selection.json",
+        {
+            "selected_tier": "local_coding",
+            "task_type": "implementation",
+            "risk": "medium",
+            "complexity_band": "moderate",
+            "prompt": "implement_request_change_request",
+        },
+    )
+    write_json(
+        run_dir / "validation_report.json",
+        {
+            "overall_status": "passed",
+            "sign_off_ready": True,
+            "confidence": 0.95,
+            "profile": "run_signoff",
+            "missing_context_notes": {"needs_review": [], "info": []},
+        },
+    )
+    write_json(
+        run_dir / "revision_decision.json",
+        {
+            "final_status": "accepted",
+            "loop_type": "none",
+        },
+    )
+    write_model_output(run_dir, response_source="codex")
     return run_dir
 
 
@@ -234,6 +324,10 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["accepted_runs_total"], 1)
         self.assertEqual(metrics["acceptance_rate"], 1.0)
         self.assertEqual(metrics["accepted_runs_by_recipe"], {"workbench-engineering-acceptance.yaml": 1})
+        self.assertEqual(metrics["accepted_runs_by_execution_host"], {"goose": 1})
+        self.assertEqual(metrics["accepted_runs_by_response_source"], {"goose": 1})
+        self.assertEqual(metrics["execution_host_counts"], {"goose": 1})
+        self.assertEqual(metrics["response_source_counts"], {"goose": 1})
         self.assertEqual(metrics["accepted_runs_by_validation_profile"], {"run_signoff": 1})
         self.assertEqual(metrics["accepted_runs_by_selected_tier"], {"local_coding": 1})
         self.assertEqual(metrics["outcome_counts"], {"accepted": 1})
@@ -242,14 +336,48 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["quality_gate_outcomes"], {"accepted": 1})
         self.assertEqual(metrics["response_captured_count"], 1)
         self.assertIn("## Acceptance Analytics", summary)
+        self.assertIn("### Public Outcomes By Execution Host", summary)
+        self.assertIn("| goose | 1 | 0 | 0 | 0 | 1 | 1.0 | 0.0 | 0.0 |", summary)
+        self.assertIn("### Public Outcomes By Response Source", summary)
         self.assertIn("| workbench-engineering-acceptance.yaml | 1 | 0 | 0 | 0 | 1 | 1.0 | 0.0 | 0.0 |", summary)
         self.assertIn("| run1 | passed | implementation | false |", summary)
         self.assertIn("Workbench Evidence Dashboard", dashboard)
         self.assertIn("Accepted", dashboard)
         self.assertIn("Review Required", dashboard)
         self.assertIn("Failed", dashboard)
+        self.assertIn("By Execution Host", dashboard)
+        self.assertIn("By Response Source", dashboard)
         self.assertIn("workbench-engineering-acceptance.yaml", dashboard)
         self.assertIn("task_metadata.json", dashboard)
+
+    def test_run_analysis_payload_groups_goose_and_codex_hosts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            write_sample_run(runs_dir)
+            write_codex_sample_run(runs_dir)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            metrics = run_analysis_payload(args)
+
+        self.assertEqual(metrics["runs_total"], 2)
+        self.assertEqual(metrics["execution_host_counts"], {"goose": 1, "codex": 1})
+        self.assertEqual(metrics["response_source_counts"], {"goose": 1, "codex": 1})
+        self.assertEqual(metrics["accepted_runs_by_execution_host"], {"goose": 1, "codex": 1})
+        self.assertEqual(metrics["accepted_runs_by_response_source"], {"goose": 1, "codex": 1})
+        self.assertEqual(metrics["outcome_breakdown"]["by_execution_host"]["goose"]["accepted"], 1)
+        self.assertEqual(metrics["outcome_breakdown"]["by_execution_host"]["codex"]["accepted"], 1)
+        self.assertEqual(metrics["outcome_breakdown"]["by_response_source"]["codex"]["accepted"], 1)
+        candidate_key = "workbench-engineering-acceptance.yaml|run_signoff|local_coding|medium|moderate"
+        self.assertEqual(metrics["routing_feedback_candidates"][candidate_key]["total"], 2)
+        self.assertNotIn("codex", candidate_key)
 
     def test_run_analysis_payload_summarizes_acceptance_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

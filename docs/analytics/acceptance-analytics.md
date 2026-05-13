@@ -8,6 +8,8 @@ Run analytics against the committed samples:
 python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sample-run-analytics
 ```
 
+The committed sample set includes legacy Goose evidence, explicit Codex local/IDE evidence, and a revision-required run so host/source breakdowns and outcome buckets are visible without provider setup.
+
 This writes:
 
 - `run_metrics.json`: machine-readable metrics for routing, reporting, and future policy work.
@@ -31,11 +33,27 @@ Use these fields in `run_metrics.json` first:
 - `runs_total`: number of run folders scanned.
 - `outcome_counts`: accepted, review-required, failed, and other counts.
 - `accepted_runs_total`: accepted count preserved for existing consumers.
+- `accepted_runs_by_execution_host`: accepted count by host, such as `goose` or `codex`.
+- `accepted_runs_by_response_source`: accepted count by captured response source.
+- `execution_host_counts`: scanned run count by execution host. Missing historical host metadata is counted as `goose`.
+- `response_source_counts`: scanned run count by response source. Missing model output source metadata is counted as `unknown`.
 - `review_required_runs_total`: public review-required count.
 - `failed_runs_total`: public failed count.
 - `acceptance_breakdown`: backward-compatible accepted/needs-review/failed breakdown.
-- `outcome_breakdown`: public accepted/review-required/failed breakdown by recipe, validation profile, selected tier, and quality-gate outcome.
+- `outcome_breakdown`: public accepted/review-required/failed breakdown by execution host, response source, recipe, validation profile, selected tier, and quality-gate outcome.
 - `failure_reasons`: most common deterministic validation and quality-gate reasons.
+
+## Host And Source Metrics
+
+`execution_host` is read from `task_metadata.json`. Older runs that do not have this field are treated as `goose` so existing samples and private ledgers remain valid.
+
+`response_source` is read from `model_output.md` metadata when available. If the metadata is missing, analytics reports `unknown`.
+
+These fields let Workbench compare host outcomes without changing routing feedback keys. `routing_feedback_candidates` still uses only:
+
+```text
+recipe | validation_profile | selected_tier | risk | complexity_band
+```
 
 ## Routing Feedback Candidates
 
@@ -83,6 +101,8 @@ Open `run_summary.md` when you want a quick human review:
 - `Workflow KPIs` shows high-level run counts.
 - `Acceptance Outcomes` shows the public outcome totals and failure reasons.
 - `Public Outcomes By Recipe` shows which recipes are producing accepted or review-required runs.
+- `Public Outcomes By Execution Host` shows Goose, Codex, CI, or other host outcomes.
+- `Public Outcomes By Response Source` shows captured-output provenance outcomes.
 - `Routing Feedback Candidates` shows the future policy input shape.
 - `Cost Tracking` states whether provider cost evidence was available.
 

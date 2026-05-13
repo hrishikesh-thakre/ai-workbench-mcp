@@ -23,7 +23,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Validation of extracted tests | Passed | Full pytest suite passed during Phase 5 analytics hardening |
 | Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\phase5_analytics_scaffold` passed |
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
-| Public examples | Done | Tiny Python fix, Goose tool smoke, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
+| Public examples | Done | Tiny Python fix, Goose/Codex tool smokes, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
 | Execution capture idempotency | Done | Repeated `workbench_record_execution` calls return success without overwriting `model_output.md` or duplicating `run_log.jsonl` entries |
 | v0.2 recipe and policy discovery | Release candidate | Folder-level recipe discovery and validation-profile reference tests cover docs-only, Python package maintenance, test-fix, and low-risk coding profiles |
 | v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
@@ -35,6 +35,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
 | PyPI and launch plumbing | Public-readiness prep | Package build checks, wheel smoke, publishing docs, topic guide, issue drafts, and demo walkthrough are prepared without external publishing |
+| Codex local/IDE host metadata | Proof sample committed | One shared MCP server now records `execution_host` and `response_source`; sanitized Codex tiny Python fix evidence, bounded live walkthrough, and preflight/countdown handoff helper are committed |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -138,7 +139,8 @@ Tasks:
 - Generate a static single-file evidence dashboard from run analytics for local scanning and demos.
 - Add a local golden-case eval harness for accepted sanitized baselines.
 - Prepare PyPI packaging checks, public launch issue drafts, repository topics, and the demo walkthrough skeleton.
+- Add explicit execution-host and response-source metadata, with Codex local/IDE as the first second-host proof.
 
 ## Current Next Step
 
-Continue Phase 5 by running the dogfooding protocol in `docs/dogfooding/phase5-dogfooding.md`, then use real `routing_feedback_candidates` and golden-case eval reports to propose bounded model-selection policy experiments. Semantic PR acceptance should wait for more dogfood evidence. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Continue Phase 5 by running the dogfooding protocol in `docs/dogfooding/phase5-dogfooding.md`, then use `docs/codex/live-test-handoff.md` and the bounded Codex local/IDE walkthrough in `docs/walkthroughs/codex-acceptance-demo.md` to collect live Codex evidence. Use real `routing_feedback_candidates`, host/source analytics, and golden-case eval reports to propose bounded model-selection policy experiments. Semantic PR acceptance and Codex cloud evidence export should wait for more dogfood evidence. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

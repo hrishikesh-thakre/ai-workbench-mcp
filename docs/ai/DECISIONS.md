@@ -121,3 +121,30 @@ Implications:
 
 - Discovery tests should verify that recipes reference valid validation profiles.
 - Profile growth should be revisited before v0.3 if command lists, artifact policy, or risk policy become hard to maintain in one YAML file.
+
+## 8. Goose-First, Codex-First-Class
+
+Status: Accepted
+
+Decision:
+
+- Goose remains the default v0.2 execution host.
+- Codex local/IDE is the first second-host integration target.
+- The canonical host field is `execution_host`.
+- Initial allowed values are `goose`, `codex`, `ci`, and `other`.
+- `response_source` records where captured execution output came from.
+- Workbench keeps one shared MCP server: `ai-workbench-mcp`.
+
+Why:
+
+- Codex has strong developer distribution and can use MCP in local/IDE workflows.
+- Codex is a direct test of whether Workbench is a host-portable acceptance layer rather than Goose-specific tooling.
+- The same evidence folder, validation, quality gate, event ledger, and analytics should work across hosts.
+
+Implications:
+
+- Do not create `ai-workbench-codex-mcp` or any Codex-specific server fork.
+- Keep `workbench_select_model` advisory for Codex because Codex may control its actual model/runtime.
+- Add host/source analytics so accepted rates can be compared across Goose, Codex, CI, and future hosts.
+- Target Codex local/IDE before Codex cloud.
+- Treat Codex cloud evidence persistence, export, PR linking, and network access as a separate design pass.

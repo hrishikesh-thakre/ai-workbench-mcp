@@ -12,6 +12,7 @@ This repo is the clean public-shaped extraction of the AI Workbench acceptance a
 
 ```text
 Goose Desktop / CLI / recipe
+Codex local/IDE
   |
   v
 AI Workbench MCP server
@@ -47,6 +48,8 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/tools/config_loader.py` | Small YAML subset loader used by core tools |
 | `src/ai_workbench_mcp/tools/response_format.py` | Response parsing and required-section helpers |
 | `tools/` | Backward-compatible CLI wrappers for existing `python tools/*.py` commands |
+| `tools/codex_live_test_handoff.py` | Safe preflight/countdown helper that writes a one-shot Codex live-test prompt without launching Codex |
+| `tools/check_codex_live_result.py` | Read-only checker for Codex live-test evidence folders after a local/IDE run |
 | `configs/` | Starter routing, validation, context, and quality-loop configuration |
 | `prompts/approved/` | Minimal public prompt templates |
 | `recipes/` | Goose recipe files for Workbench acceptance workflows |
@@ -55,11 +58,13 @@ runs/<run_id>/
 | `docs/ai/` | Operating docs for the Goose-first pivot |
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 | `docs/analytics/evidence-dashboard.md` | Static local dashboard guide for `run_dashboard.html` |
+| `docs/codex/` | Codex local/IDE setup, acceptance workflow, live-test handoff, AGENTS.md snippet, and cloud limitations |
 | `docs/evals/golden-case-harness.md` | Golden-case eval harness guide |
 | `docs/publishing/pypi.md` | PyPI publishing prep and current wheel boundary |
 | `docs/github/repository-topics.md` | GitHub topic setup guide |
 | `docs/github/create-launch-issues.md` | Launch issue creation commands |
 | `docs/walkthroughs/goose-acceptance-demo.md` | Public Goose acceptance demo walkthrough skeleton |
+| `docs/walkthroughs/codex-acceptance-demo.md` | Codex local/IDE acceptance demo walkthrough with loop and crash guardrails |
 | `evals/golden_cases/` | Sanitized accepted-baseline eval case specs |
 | `.github/workflows/ci.yml` | Public repo self-validation CI gate prototype |
 
@@ -74,6 +79,8 @@ runs/<run_id>/
 | `workbench_quality_gate` | `ai_workbench_mcp.tools.quality_loop` |
 | `workbench_analyze_runs` | `ai_workbench_mcp.tools.run_analyze` |
 
+`workbench_open_run` records canonical `execution_host` metadata. Initial allowed values are `goose`, `codex`, `ci`, and `other`; the default remains `goose`. `workbench_record_execution` records `response_source`, defaulting to `goose`.
+
 ## 5. Non-Goals
 
 This repo should not become:
@@ -83,6 +90,7 @@ This repo should not become:
 - a generic provider marketplace
 - a Cline/VSCodium fork
 - a broad MCP marketplace
+- a Codex-specific MCP server
 - a private run-history archive
 
 ## 6. Public Hygiene

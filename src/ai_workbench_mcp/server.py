@@ -31,6 +31,7 @@ def register_tools(mcp: Any) -> Any:
         changed_files: list[str] | None = None,
         docs: list[str] | None = None,
         include_diff: bool = False,
+        execution_host: str = "goose",
     ) -> JsonObject:
         """Create a Workbench run folder and initial evidence artifacts."""
 
@@ -46,6 +47,7 @@ def register_tools(mcp: Any) -> Any:
                 changed_files=changed_files,
                 docs=docs,
                 include_diff=include_diff,
+                execution_host=execution_host,
             )
         except Exception as exc:
             return _tool_error("workbench_open_run", exc)

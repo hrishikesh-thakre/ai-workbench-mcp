@@ -6,6 +6,7 @@ examples, not private local `runs/` history.
 Current samples:
 
 - `accepted-tiny-python-fix/`: v0.1 engineering acceptance lifecycle for a tiny Python fix.
+- `accepted-codex-tiny-python-fix/`: sanitized Codex local/IDE lifecycle for the same tiny Python fix, with explicit `execution_host="codex"` and `response_source="codex"`.
 - `accepted-docs-only-smoke/`: v0.2 focused docs-only acceptance lifecycle using `documentation_accuracy_audit` and `docs_only`.
 - `needs-review-test-fix/`: synthetic test-fix lifecycle where validation fails and the quality gate requires revision.
 
@@ -16,6 +17,8 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 ```
 
 See `docs/analytics/acceptance-analytics.md` for how to read `run_metrics.json`, `run_summary.md`, routing feedback candidates, and optional cost fields. See `docs/analytics/evidence-dashboard.md` for how to use the generated `run_dashboard.html`.
+
+The Codex sample is intentionally committed as sample evidence, not as private run history. It proves that the same Workbench acceptance artifacts can identify a non-Goose execution host while keeping Goose as the default for older samples.
 
 Accepted samples can also be scored by the local golden-case harness documented in `docs/evals/golden-case-harness.md`.
 

@@ -14,6 +14,7 @@ The repo is built around this pivot:
 
 ```text
 Goose-first distribution.
+Codex local/IDE first-class as the first second host.
 Workbench-owned acceptance and audit layer.
 Runtime-agnostic core.
 ```
@@ -71,6 +72,8 @@ Goose recipe
 
 The current alpha exposes the Workbench core through a Goose-compatible MCP server.
 
+Codex local/IDE support uses the same MCP server and marks runs with `execution_host="codex"` plus `response_source="codex"`. Codex cloud remains a later design problem because evidence persistence and export behavior are different in cloud tasks.
+
 ## 5. Approved Prompt Catalog
 
 Approved prompts live in `prompts/approved/`. The public catalog is:
@@ -119,12 +122,15 @@ Evidence boundary:
 - Read `docs/analytics/event-ledger.md` before using local operation events for analytics or CI prototypes.
 - Read `docs/analytics/acceptance-analytics.md` before using run analytics for routing decisions.
 - Read `docs/analytics/evidence-dashboard.md` before using generated `run_dashboard.html` files in demos or reviews.
+- Read `docs/codex/setup.md`, `docs/codex/acceptance-workflow.md`, `docs/codex/agents-snippet.md`, and `docs/codex/cloud-limitations.md` before presenting Codex support.
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
 - Use `docs/walkthroughs/goose-acceptance-demo.md` as the public demo script skeleton.
+- Use `docs/codex/live-test-handoff.md` when you want a countdown, generated one-shot prompt, and result checker for bounded Codex local/IDE testing.
+- Use `docs/walkthroughs/codex-acceptance-demo.md` for bounded Codex local/IDE testing; do not nest Codex sessions or run the stdio MCP server as a foreground command.
 
 ## 7. Public Release Rule
 
@@ -142,12 +148,17 @@ The public repo should look like a Goose-compatible acceptance extension, not an
 
 The next product pass is not more recipes. It is collecting real Goose runs and using `workbench_analyze_runs` to decide whether routing policy should change.
 
+The parallel host-portability pass is Codex local/IDE. Use it to prove that the same six-tool lifecycle and evidence folders work outside Goose without adding a Codex-specific server.
+
 Use:
 
 - `docs/dogfooding/phase5-dogfooding.md` for the dogfooding protocol.
 - `docs/analytics/acceptance-analytics.md` for reading metrics and summaries.
 - `docs/analytics/evidence-dashboard.md` for the static local evidence dashboard.
+- `docs/codex/acceptance-workflow.md` for the Codex local/IDE six-tool lifecycle.
+- `docs/codex/live-test-handoff.md` for the safe preflight/countdown handoff helper and post-run result checker.
 - `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
 - `docs/publishing/pypi.md` for package publishing prep.
 - `docs/walkthroughs/goose-acceptance-demo.md` for the demo walkthrough skeleton.
+- `docs/walkthroughs/codex-acceptance-demo.md` for the Codex local/IDE proof walkthrough.

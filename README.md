@@ -8,7 +8,7 @@ AI agents can produce code. AI Workbench MCP helps decide whether that work is a
 
 It records the task, captures agent output, runs deterministic validation, applies a quality gate, and creates an auditable run trail.
 
-Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows.
+Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
 ## Before
 
@@ -164,6 +164,17 @@ runs/goose-tiny-python-fix/
 
 Do not commit `runs/`. It is the local evidence ledger.
 
+## Codex Local/IDE
+
+Codex uses the same `ai-workbench-mcp` server. The first Codex slice is local/IDE MCP support, not Codex cloud.
+
+- [Codex setup](docs/codex/setup.md): configure Codex to call the existing MCP stdio server.
+- [Codex acceptance workflow](docs/codex/acceptance-workflow.md): use the six-tool lifecycle with `execution_host="codex"` and `response_source="codex"`.
+- [Codex AGENTS.md snippet](docs/codex/agents-snippet.md): reusable repository instruction block for Codex runs.
+- [Codex cloud limitations](docs/codex/cloud-limitations.md): evidence persistence and export questions deferred to a later design pass.
+- [Codex live-test handoff](docs/codex/live-test-handoff.md): batch/Python helper that runs safe preflight checks, shows a timer, prints a one-shot prompt, and checks the resulting Codex evidence folders.
+- [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): bounded local/IDE proof path with loop and crash guardrails.
+
 ## Sample Analytics Demo
 
 To inspect the trust loop without provider setup, run analytics over the committed synthetic sample runs:
@@ -201,12 +212,14 @@ See [the model registry guide](docs/configuration/model-registry.md) for merge r
 ```text
 workbench_open_run
   -> creates the run folder, task metadata, final prompt, context packet, and initial run log
+     records execution_host, defaulting to goose
 
 workbench_select_model
   -> recommends a model/runtime tier and writes model_selection.json
 
 workbench_record_execution
-  -> captures raw Goose/model response text into model_output.md and appends run_log.jsonl
+  -> captures raw Goose/Codex/model response text into model_output.md and appends run_log.jsonl
+     records response_source, defaulting to goose
 
 workbench_validate_run
   -> runs deterministic validation and writes validation_report.json
@@ -215,7 +228,7 @@ workbench_quality_gate
   -> accepts, rejects, or requests review and writes revision_decision.json
 
 workbench_analyze_runs
-  -> summarizes accepted-run metrics by recipe, validation profile, model tier, failure reason, and quality-gate outcome under runs/_reports
+  -> summarizes accepted-run metrics by execution host, response source, recipe, validation profile, model tier, failure reason, and quality-gate outcome under runs/_reports
      and writes run_dashboard.html for local evidence scanning
 ```
 
@@ -260,12 +273,15 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Tiny Python fix](examples/tiny-python-fix/): a deliberately broken one-function project for recipe smoke tests.
 - [Goose tool smoke](examples/goose-tool-smoke/): two-tool live smoke for slow local models.
 - [Goose recipe smoke](examples/goose-recipe-smoke/): exact command for a low-risk Goose acceptance run.
+- [Codex tool smoke](examples/codex-tool-smoke/): two-tool local/IDE MCP smoke using `execution_host="codex"`.
+- [Codex acceptance smoke](examples/codex-acceptance-smoke/): full six-tool local/IDE lifecycle using `response_source="codex"`.
 - [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, package maintenance, test-fix, and low-risk coding workflows.
 - [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
 - [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/): sanitized committed evidence showing an accepted run folder.
+- [Sample Codex accepted run](examples/sample-runs/accepted-codex-tiny-python-fix/): sanitized Codex local/IDE evidence showing `execution_host="codex"` and `response_source="codex"`.
 - [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
 - [Sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized synthetic evidence showing failed validation and a revision-required quality gate.
 - [Acceptance analytics guide](docs/analytics/acceptance-analytics.md): how to read `run_metrics.json`, `run_summary.md`, outcome buckets, routing feedback candidates, and optional cost fields.
@@ -280,6 +296,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Repository topics](docs/github/repository-topics.md): recommended GitHub topics and setup commands.
 - [Launch issue drafts](docs/github/create-launch-issues.md): ready-to-post public issue commands.
 - [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): skeleton for a 3-5 minute public demo.
+- [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): local/IDE proof path that avoids nested Codex or foreground stdio-server loops.
 
 ## Development
 
@@ -305,7 +322,7 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
-- `v0.3`: accepted-artifact routing feedback.
+- `v0.3`: Codex local/IDE first-class proof and accepted-artifact routing feedback.
 - `v0.4`: accepted-artifact analytics.
 - `v0.5`: CI mode for PR acceptance.
 - `v1.0`: stable MCP contracts and recipe API.

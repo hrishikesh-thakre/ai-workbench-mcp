@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-12T00:02:00",
+  "run_id": "accepted-codex-tiny-python-fix",
+  "project": "ai_workbench_mcp",
+  "task": "Fix examples/tiny-python-fix/calculator.py so the unittest validation command passes.",
+  "prompt": "implement_request_change_request",
+  "risk": "low",
+  "task_type": "implementation",
+  "context_profile": "default_docs_first",
+  "execution_host": "codex",
+  "recipe": "workbench-engineering-acceptance.yaml",
+  "changed_files": [
+    "examples/tiny-python-fix/calculator.py"
+  ],
+  "docs": [],
+  "include_diff": false
+}
