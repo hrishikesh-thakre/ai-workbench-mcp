@@ -40,6 +40,7 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/tools/validate_run.py` | Deterministic validation engine |
 | `src/ai_workbench_mcp/tools/quality_loop.py` | Acceptance decision, retry/review/escalation logic |
 | `src/ai_workbench_mcp/tools/run_analyze.py` | Aggregated run and routing analytics plus static evidence dashboard generation |
+| `src/ai_workbench_mcp/tools/golden_eval.py` | Local golden-case scoring for sanitized accepted evidence baselines |
 | `src/ai_workbench_mcp/tools/model_handoff.py` | Captures external output into Workbench evidence format |
 | `src/ai_workbench_mcp/tools/context_scout.py` | Deterministic context/evidence packet builder |
 | `src/ai_workbench_mcp/events.py` | Best-effort local operation event envelopes and JSONL sink |
@@ -54,6 +55,8 @@ runs/<run_id>/
 | `docs/ai/` | Operating docs for the Goose-first pivot |
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 | `docs/analytics/evidence-dashboard.md` | Static local dashboard guide for `run_dashboard.html` |
+| `docs/evals/golden-case-harness.md` | Golden-case eval harness guide |
+| `evals/golden_cases/` | Sanitized accepted-baseline eval case specs |
 | `.github/workflows/ci.yml` | Public repo self-validation CI gate prototype |
 
 ## 4. MCP Tool Boundary

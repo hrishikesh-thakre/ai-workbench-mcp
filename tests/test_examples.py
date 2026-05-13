@@ -16,6 +16,7 @@ EVIDENCE_DASHBOARD_GUIDE = ROOT / "docs" / "analytics" / "evidence-dashboard.md"
 EVENT_LEDGER_GUIDE = ROOT / "docs" / "analytics" / "event-ledger.md"
 MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
+GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 README = ROOT / "README.md"
@@ -200,6 +201,7 @@ class PublicExamplesTests(unittest.TestCase):
         event_guide_text = EVENT_LEDGER_GUIDE.read_text(encoding="utf-8")
         model_registry_text = MODEL_REGISTRY_GUIDE.read_text(encoding="utf-8")
         dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
+        golden_case_text = GOLDEN_CASE_GUIDE.read_text(encoding="utf-8")
         pr_gate_text = PR_GATE_GUIDE.read_text(encoding="utf-8")
         launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
@@ -217,6 +219,10 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/event-ledger.md", readme_text)
         self.assertIn("docs/analytics/event-ledger.md", start_here_text)
         self.assertIn("docs/analytics/event-ledger.md", project_map_text)
+        self.assertIn("docs/evals/golden-case-harness.md", sample_text)
+        self.assertIn("docs/evals/golden-case-harness.md", readme_text)
+        self.assertIn("docs/evals/golden-case-harness.md", start_here_text)
+        self.assertIn("docs/evals/golden-case-harness.md", project_map_text)
         self.assertIn("docs/configuration/model-registry.md", readme_text)
         self.assertIn("docs/configuration/model-registry.md", start_here_text)
         self.assertIn("docs/github/pr-gate.md", readme_text)
@@ -238,6 +244,9 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("run_dashboard.html", dashboard_guide_text)
         self.assertIn("does not embed raw model output", dashboard_guide_text)
         self.assertIn("relative path", dashboard_guide_text)
+        self.assertIn("tools/golden_eval.py", golden_case_text)
+        self.assertIn("Valid scoring failures", golden_case_text)
+        self.assertIn("does not call providers", golden_case_text)
         self.assertIn("events.jsonl", event_guide_text)
         self.assertIn("best-effort and non-fatal", event_guide_text)
         self.assertIn("should stay local", event_guide_text)

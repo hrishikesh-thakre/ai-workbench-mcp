@@ -17,6 +17,8 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 
 See `docs/analytics/acceptance-analytics.md` for how to read `run_metrics.json`, `run_summary.md`, routing feedback candidates, and optional cost fields. See `docs/analytics/evidence-dashboard.md` for how to use the generated `run_dashboard.html`.
 
+Accepted samples can also be scored by the local golden-case harness documented in `docs/evals/golden-case-harness.md`.
+
 For real local runs, follow `docs/dogfooding/phase5-dogfooding.md`. Keep dogfood evidence in ignored `runs/` folders and promote only sanitized examples into this directory.
 
 Rules for sample runs:

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "case_id": "accepted-docs-only-smoke",
+  "source_run_id": "accepted-docs-only-smoke",
+  "case_type": "docs_only_smoke",
+  "difficulty": "easy",
+  "risk": "low",
+  "expected": {
+    "recipe": "workbench-docs-only-acceptance.yaml",
+    "validation_profile": "docs_only",
+    "prompt": "documentation_accuracy_audit",
+    "final_status": "accepted",
+    "overall_status": "passed",
+    "sign_off_ready": true
+  },
+  "required_artifacts": [
+    "task_metadata.json",
+    "final_prompt.md",
+    "model_selection.json",
+    "model_output.md",
+    "validation_report.json",
+    "revision_decision.json",
+    "run_log.jsonl"
+  ],
+  "required_output_terms": [
+    "docs-only",
+    "Quality gate accepted",
+    "confidence"
+  ],
+  "forbidden_output_terms": [
+    "api_key",
+    "provider secret",
+    "sk-"
+  ]
+}

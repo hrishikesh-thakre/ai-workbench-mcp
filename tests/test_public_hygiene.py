@@ -18,6 +18,7 @@ PUBLIC_ROOTS = [
     ROOT / ".github",
     ROOT / "configs",
     ROOT / "docs",
+    ROOT / "evals",
     ROOT / "examples",
     ROOT / "prompts",
     ROOT / "recipes",

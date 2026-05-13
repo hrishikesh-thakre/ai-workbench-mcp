@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "case_id": "accepted-tiny-python-fix",
+  "source_run_id": "accepted-tiny-python-fix",
+  "case_type": "tiny_python_fix",
+  "difficulty": "easy",
+  "risk": "low",
+  "expected": {
+    "recipe": "workbench-engineering-acceptance.yaml",
+    "validation_profile": "run_signoff",
+    "prompt": "implement_request_change_request",
+    "final_status": "accepted",
+    "overall_status": "passed",
+    "sign_off_ready": true
+  },
+  "required_artifacts": [
+    "task_metadata.json",
+    "final_prompt.md",
+    "model_selection.json",
+    "model_output.md",
+    "validation_report.json",
+    "revision_decision.json",
+    "run_log.jsonl"
+  ],
+  "required_output_terms": [
+    "Changed `add()`",
+    "Validation run",
+    "passed"
+  ],
+  "forbidden_output_terms": [
+    "api_key",
+    "provider secret",
+    "sk-"
+  ]
+}

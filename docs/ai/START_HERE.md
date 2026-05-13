@@ -119,6 +119,7 @@ Evidence boundary:
 - Read `docs/analytics/event-ledger.md` before using local operation events for analytics or CI prototypes.
 - Read `docs/analytics/acceptance-analytics.md` before using run analytics for routing decisions.
 - Read `docs/analytics/evidence-dashboard.md` before using generated `run_dashboard.html` files in demos or reviews.
+- Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
 
@@ -143,4 +144,5 @@ Use:
 - `docs/dogfooding/phase5-dogfooding.md` for the dogfooding protocol.
 - `docs/analytics/acceptance-analytics.md` for reading metrics and summaries.
 - `docs/analytics/evidence-dashboard.md` for the static local evidence dashboard.
+- `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
