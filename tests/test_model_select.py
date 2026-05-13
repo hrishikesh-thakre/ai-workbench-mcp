@@ -5,16 +5,24 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from ai_workbench_mcp.tools.model_select import (
+    SelectorPolicy,
+    SelectorRule,
     build_model_selection,
     complexity_band,
     effective_args,
     infer_routing,
     load_model_registry,
+    load_model_registry_with_source,
     load_routing_feedback_policy,
     load_selector_policy,
     select_model,
     select_model_payload,
+    validate_selector_references,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
+MODEL_REGISTRY = ROOT / "configs" / "model_registry.yaml"
+MISSING_LOCAL_REGISTRY = ROOT / "configs" / "__missing_model_registry.local.yaml"
 
 
 def selector_args(
@@ -81,6 +89,10 @@ def candidate_payload(
 
 def write_feedback(path: Path, candidates: dict[str, dict[str, object]]) -> None:
     path.write_text(json.dumps({"routing_feedback_candidates": candidates}), encoding="utf-8")
+
+
+def select_model_payload_without_local(args: SimpleNamespace) -> dict[str, object]:
+    return select_model_payload(args, registry_local_override_path=MISSING_LOCAL_REGISTRY)
 
 
 class ModelSelectorRoutingTests(unittest.TestCase):
@@ -151,7 +163,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertEqual(matched_rule, "local_test_generation")
 
     def test_model_selection_records_complexity_metadata(self) -> None:
-        registry = load_model_registry()
+        registry = load_model_registry(local_override_path=MISSING_LOCAL_REGISTRY)
         args = selector_args(risk="low", complexity_score=13, test_complexity_level=7)
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "run1" / "model_selection.json"
@@ -181,6 +193,9 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertEqual(payload["selected_model"]["provider"], "goose")
         self.assertEqual(payload["selected_model"]["model"], "unsloth/gemma-4-E4B-it-GGUF:Q4_K_M")
         self.assertIn("unsloth/gemma-4-E2B-it-GGUF:Q4_K_M", payload["selected_model"]["fallback_models"])
+        self.assertEqual(payload["model_registry"]["base_registry_path"], "configs/model_registry.yaml")
+        self.assertFalse(payload["model_registry"]["local_override_loaded"])
+        self.assertNotIn("local_override_path", payload["model_registry"])
         self.assertEqual(payload["routing_feedback"]["status"], "not_provided")
         self.assertEqual(payload["routing_feedback"]["policy"], {
             "min_runs": 5,
@@ -226,7 +241,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
             written = json.loads(output_path.read_text(encoding="utf-8"))
 
@@ -259,7 +274,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["selected_tier"], "local_coding")
         self.assertEqual(payload["routing_feedback"]["status"], "source_missing")
@@ -281,7 +296,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["selected_tier"], "local_coding")
         self.assertEqual(payload["routing_feedback"]["status"], "source_invalid")
@@ -305,7 +320,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "source_invalid")
 
@@ -326,7 +341,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "no_match")
         self.assertEqual(payload["routing_feedback"]["recommendation"], "collect_more_evidence")
@@ -348,7 +363,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "insufficient_evidence")
         self.assertEqual(payload["routing_feedback"]["recommendation"], "collect_more_evidence")
@@ -371,7 +386,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["selected_tier"], "local_coding")
         self.assertEqual(payload["routing_feedback"]["status"], "insufficient_evidence")
@@ -394,7 +409,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "advisory")
         self.assertEqual(payload["routing_feedback"]["recommendation"], "prefer_current_tier")
@@ -421,7 +436,7 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "advisory")
         self.assertEqual(payload["routing_feedback"]["recommendation"], "consider_escalation")
@@ -452,11 +467,195 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             args.project = "ai_workbench_mcp"
             args.out = str(output_path)
 
-            payload = select_model_payload(args)
+            payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["selected_tier"], "frontier")
         self.assertEqual(payload["routing_feedback"]["status"], "advisory")
         self.assertEqual(payload["routing_feedback"]["recommendation"], "require_human_review")
+
+    def test_default_registry_loads_without_local_override(self) -> None:
+        registry_load = load_model_registry_with_source(
+            base_path=MODEL_REGISTRY,
+            local_override_path=MISSING_LOCAL_REGISTRY,
+            registry_root=ROOT,
+        )
+
+        self.assertFalse(registry_load.source["local_override_loaded"])
+        self.assertEqual(registry_load.source["base_registry_path"], "configs/model_registry.yaml")
+        self.assertNotIn("local_override_path", registry_load.source)
+        self.assertEqual(registry_load.registry["local_coding"].provider, "goose")
+        self.assertEqual(registry_load.registry["mid_cloud"].model, "deepseek/deepseek-v4-flash")
+
+    def test_local_registry_override_replaces_one_model(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            base_path = tmp_path / "model_registry.yaml"
+            local_path = tmp_path / "model_registry.local.yaml"
+            base_path.write_text(MODEL_REGISTRY.read_text(encoding="utf-8"), encoding="utf-8")
+            local_path.write_text(
+                "\n".join(
+                    [
+                        "models:",
+                        "  local_coding:",
+                        "    model: public-local-coder",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            registry_load = load_model_registry_with_source(
+                base_path=base_path,
+                local_override_path=local_path,
+                registry_root=tmp_path,
+            )
+
+        self.assertTrue(registry_load.source["local_override_loaded"])
+        self.assertEqual(registry_load.source["base_registry_path"], "model_registry.yaml")
+        self.assertEqual(registry_load.source["local_override_path"], "model_registry.local.yaml")
+        self.assertEqual(registry_load.registry["local_coding"].provider, "goose")
+        self.assertEqual(registry_load.registry["local_coding"].model, "public-local-coder")
+
+    def test_local_registry_override_merges_nested_parameters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            base_path = tmp_path / "model_registry.yaml"
+            local_path = tmp_path / "model_registry.local.yaml"
+            base_path.write_text(MODEL_REGISTRY.read_text(encoding="utf-8"), encoding="utf-8")
+            local_path.write_text(
+                "\n".join(
+                    [
+                        "models:",
+                        "  frontier:",
+                        "    parameters:",
+                        "      max_output_tokens: 16000",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            registry = load_model_registry(
+                base_path=base_path,
+                local_override_path=local_path,
+                registry_root=tmp_path,
+            )
+
+        self.assertEqual(registry["frontier"].parameters["reasoning_effort"], "xhigh")
+        self.assertEqual(registry["frontier"].parameters["max_output_tokens"], 16000)
+
+    def test_local_registry_override_replaces_fallback_models_list(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            base_path = tmp_path / "model_registry.yaml"
+            local_path = tmp_path / "model_registry.local.yaml"
+            base_path.write_text(MODEL_REGISTRY.read_text(encoding="utf-8"), encoding="utf-8")
+            local_path.write_text(
+                "\n".join(
+                    [
+                        "models:",
+                        "  local_coding:",
+                        "    fallback_models:",
+                        "      - public-fallback-coder",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            registry = load_model_registry(
+                base_path=base_path,
+                local_override_path=local_path,
+                registry_root=tmp_path,
+            )
+
+        self.assertEqual(registry["local_coding"].fallback_models, ["public-fallback-coder"])
+
+    def test_invalid_registry_override_schema_fails_clearly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            base_path = tmp_path / "model_registry.yaml"
+            local_path = tmp_path / "model_registry.local.yaml"
+            base_path.write_text(MODEL_REGISTRY.read_text(encoding="utf-8"), encoding="utf-8")
+            local_path.write_text(
+                "\n".join(
+                    [
+                        "models:",
+                        "  local_coding:",
+                        "    provider:",
+                        "      invalid: true",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "local_coding.*provider"):
+                load_model_registry(
+                    base_path=base_path,
+                    local_override_path=local_path,
+                    registry_root=tmp_path,
+                )
+
+    def test_selector_reference_validation_covers_defaults_rules_and_fallbacks(self) -> None:
+        registry = load_model_registry(local_override_path=MISSING_LOCAL_REGISTRY)
+        validate_selector_references(load_selector_policy(), registry)
+
+        broken_policy = SelectorPolicy(
+            default_model="missing_default",
+            manual_override=True,
+            rules=[
+                SelectorRule(
+                    name="broken_rule",
+                    conditions={"risk": "low"},
+                    select="missing_rule_select",
+                    reason="exercise selector reference validation",
+                )
+            ],
+            fallbacks={"missing_fallback_key": ["missing_fallback_value"]},
+        )
+
+        with self.assertRaises(ValueError) as raised:
+            validate_selector_references(broken_policy, registry)
+        message = str(raised.exception)
+        self.assertIn("default_model=missing_default", message)
+        self.assertIn("rules=missing_rule_select", message)
+        self.assertIn("fallback_keys=missing_fallback_key", message)
+        self.assertIn("fallback_values=missing_fallback_value", message)
+
+    def test_selector_uses_overridden_model_in_model_selection_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            base_path = tmp_path / "model_registry.yaml"
+            local_path = tmp_path / "model_registry.local.yaml"
+            output_path = tmp_path / "run1" / "model_selection.json"
+            base_path.write_text(MODEL_REGISTRY.read_text(encoding="utf-8"), encoding="utf-8")
+            local_path.write_text(
+                "\n".join(
+                    [
+                        "models:",
+                        "  local_coding:",
+                        "    model: public-local-coder",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            args = selector_args(risk="medium", complexity_score=13)
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload(
+                args,
+                registry_base_path=base_path,
+                registry_local_override_path=local_path,
+                registry_root=tmp_path,
+            )
+            written = json.loads(output_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload, written)
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["selected_model"]["model"], "public-local-coder")
+        self.assertEqual(payload["model_registry"]["base_registry_path"], "model_registry.yaml")
+        self.assertTrue(payload["model_registry"]["local_override_loaded"])
+        self.assertEqual(payload["model_registry"]["local_override_path"], "model_registry.local.yaml")
+        self.assertNotIn(":", payload["model_registry"]["base_registry_path"])
+        self.assertNotIn(":", payload["model_registry"]["local_override_path"])
 
 
 if __name__ == "__main__":

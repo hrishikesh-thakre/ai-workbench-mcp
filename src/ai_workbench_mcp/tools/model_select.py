@@ -24,6 +24,12 @@ class ModelTier:
 
 
 @dataclass
+class ModelRegistryLoad:
+    registry: dict[str, ModelTier]
+    source: dict[str, object]
+
+
+@dataclass
 class SelectorRule:
     name: str
     conditions: dict[str, str]
@@ -61,6 +67,9 @@ TASK_TYPE_LABELS = {
     "investigate": "investigation",
     "test": "test",
 }
+
+MODEL_REGISTRY_PATH = WORKBENCH_ROOT / "configs" / "model_registry.yaml"
+LOCAL_MODEL_REGISTRY_PATH = WORKBENCH_ROOT / "configs" / "model_registry.local.yaml"
 
 
 def complexity_band(score: int | None) -> str | None:
@@ -131,22 +140,129 @@ def validate_routing_args(parser: argparse.ArgumentParser, args: argparse.Namesp
         parser.error("--test-complexity-level must be between 1 and 8.")
 
 
-def load_model_registry() -> dict[str, ModelTier]:
-    raw_data = load_simple_yaml(WORKBENCH_ROOT / "configs" / "model_registry.yaml")
-    models = raw_data.get("models", {})
+def safe_relative_path(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return path.name
+
+
+def recursive_merge(base: object, override: object) -> object:
+    if isinstance(base, dict) and isinstance(override, dict):
+        merged = dict(base)
+        for key, value in override.items():
+            merged[key] = recursive_merge(merged[key], value) if key in merged else value
+        return merged
+    return override
+
+
+def load_model_registry_data(
+    *,
+    base_path: Path | None = None,
+    local_override_path: Path | None = None,
+    registry_root: Path | None = None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    resolved_base = (base_path or MODEL_REGISTRY_PATH).resolve()
+    resolved_local = (local_override_path or LOCAL_MODEL_REGISTRY_PATH).resolve()
+    root = (registry_root or WORKBENCH_ROOT).resolve()
+
+    base_data = load_simple_yaml(resolved_base)
+    local_override_loaded = resolved_local.exists()
+    if local_override_loaded:
+        override_data = load_simple_yaml(resolved_local)
+        merged_data = recursive_merge(base_data, override_data)
+    else:
+        merged_data = base_data
+
+    if not isinstance(merged_data, dict):
+        raise ValueError("model registry must parse to a top-level mapping.")
+
+    source: dict[str, object] = {
+        "base_registry_path": safe_relative_path(resolved_base, root),
+        "local_override_loaded": local_override_loaded,
+    }
+    if local_override_loaded:
+        source["local_override_path"] = safe_relative_path(resolved_local, root)
+    return merged_data, source
+
+
+def require_string_field(payload: dict[str, object], field_name: str, tier_name: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"model registry tier '{tier_name}' must define a non-empty {field_name}.")
+    return value
+
+
+def require_use_for(payload: dict[str, object], tier_name: str) -> list[str]:
+    value = payload.get("use_for")
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"model registry tier '{tier_name}' must define a non-empty use_for list.")
+    use_for = [str(item) for item in value if item is not None]
+    if not use_for:
+        raise ValueError(f"model registry tier '{tier_name}' must define a non-empty use_for list.")
+    return use_for
+
+
+def model_registry_from_data(raw_data: dict[str, object]) -> dict[str, ModelTier]:
+    models = raw_data.get("models")
+    if not isinstance(models, dict) or not models:
+        raise ValueError("model registry must define a non-empty top-level models mapping.")
+
     tiers: dict[str, ModelTier] = {}
     for name, payload in models.items():
         if not isinstance(payload, dict):
-            continue
+            raise ValueError(f"model registry tier '{name}' must be a mapping.")
+        tier_name = str(name)
+        fallback_models_value = payload.get("fallback_models", [])
+        if fallback_models_value is None:
+            fallback_models = []
+        elif isinstance(fallback_models_value, list):
+            fallback_models = fallback_models_value
+        else:
+            raise ValueError(f"model registry tier '{tier_name}' fallback_models must be a list when present.")
+        parameters_value = payload.get("parameters", {})
+        if parameters_value is None:
+            parameters = {}
+        elif isinstance(parameters_value, dict):
+            parameters = parameters_value
+        else:
+            raise ValueError(f"model registry tier '{tier_name}' parameters must be a mapping when present.")
         tiers[str(name)] = ModelTier(
-            name=str(name),
-            provider=str(payload.get("provider", "")),
-            model=str(payload.get("model", "")),
-            use_for=[str(item) for item in payload.get("use_for", []) if item is not None],
-            fallback_models=[str(item) for item in payload.get("fallback_models", []) if item is not None],
-            parameters=payload.get("parameters", {}) if isinstance(payload.get("parameters", {}), dict) else {},
+            name=tier_name,
+            provider=require_string_field(payload, "provider", tier_name),
+            model=require_string_field(payload, "model", tier_name),
+            use_for=require_use_for(payload, tier_name),
+            fallback_models=[str(item) for item in fallback_models if item is not None],
+            parameters=parameters,
         )
     return tiers
+
+
+def load_model_registry_with_source(
+    *,
+    base_path: Path | None = None,
+    local_override_path: Path | None = None,
+    registry_root: Path | None = None,
+) -> ModelRegistryLoad:
+    raw_data, source = load_model_registry_data(
+        base_path=base_path,
+        local_override_path=local_override_path,
+        registry_root=registry_root,
+    )
+    return ModelRegistryLoad(registry=model_registry_from_data(raw_data), source=source)
+
+
+def load_model_registry(
+    *,
+    base_path: Path | None = None,
+    local_override_path: Path | None = None,
+    registry_root: Path | None = None,
+) -> dict[str, ModelTier]:
+    return load_model_registry_with_source(
+        base_path=base_path,
+        local_override_path=local_override_path,
+        registry_root=registry_root,
+    ).registry
 
 
 def load_selector_policy() -> SelectorPolicy:
@@ -181,6 +297,35 @@ def load_selector_policy() -> SelectorPolicy:
             if isinstance(value, list)
         },
     )
+
+
+def validate_selector_references(policy: SelectorPolicy, registry: dict[str, ModelTier]) -> None:
+    missing: dict[str, set[str]] = {
+        "default_model": set(),
+        "rules": set(),
+        "fallback_keys": set(),
+        "fallback_values": set(),
+    }
+
+    if policy.default_model not in registry:
+        missing["default_model"].add(policy.default_model)
+    for rule in policy.rules:
+        if rule.select not in registry:
+            missing["rules"].add(rule.select)
+    for source_tier, fallback_tiers in policy.fallbacks.items():
+        if source_tier not in registry:
+            missing["fallback_keys"].add(source_tier)
+        for fallback_tier in fallback_tiers:
+            if fallback_tier not in registry:
+                missing["fallback_values"].add(fallback_tier)
+
+    details = [
+        f"{scope}={','.join(sorted(values))}"
+        for scope, values in missing.items()
+        if values
+    ]
+    if details:
+        raise ValueError(f"model selector references undefined model tier(s): {'; '.join(details)}")
 
 
 def load_routing_feedback_policy() -> RoutingFeedbackPolicy:
@@ -773,6 +918,7 @@ def build_model_selection(
     registry: dict[str, ModelTier],
     manual_override: bool,
     routing_feedback: dict[str, object] | None = None,
+    registry_source: dict[str, object] | None = None,
 ) -> dict[str, object]:
     run_id = output_path.parent.name
     normalized_task_type = TASK_TYPE_LABELS.get(args.task_type, args.task_type)
@@ -812,6 +958,11 @@ def build_model_selection(
             "parameters": tier.parameters,
             "use_for": tier.use_for,
         },
+        "model_registry": registry_source
+        or {
+            "base_registry_path": "configs/model_registry.yaml",
+            "local_override_loaded": False,
+        },
         "reason": selection_reason,
         "matched_rule": matched_rule,
         "manual_override_allowed": manual_override,
@@ -843,13 +994,25 @@ def build_model_selection(
     }
 
 
-def select_model_payload(args: argparse.Namespace) -> dict[str, object]:
+def select_model_payload(
+    args: argparse.Namespace,
+    *,
+    registry_base_path: Path | None = None,
+    registry_local_override_path: Path | None = None,
+    registry_root: Path | None = None,
+) -> dict[str, object]:
     project = load_project_config(args.project)
     output_path = resolve_cli_path(args.out, project.root)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    registry = load_model_registry()
+    registry_load = load_model_registry_with_source(
+        base_path=registry_base_path,
+        local_override_path=registry_local_override_path,
+        registry_root=registry_root,
+    )
+    registry = registry_load.registry
     policy = load_selector_policy()
+    validate_selector_references(policy, registry)
     feedback_policy = load_routing_feedback_policy()
     inferred_routing = infer_routing(args, project.root)
     routed_args = effective_args(args, inferred_routing)
@@ -877,6 +1040,7 @@ def select_model_payload(args: argparse.Namespace) -> dict[str, object]:
         registry=registry,
         manual_override=policy.manual_override,
         routing_feedback=routing_feedback,
+        registry_source=registry_load.source,
     )
     output_path.write_text(json.dumps(model_selection, indent=2) + "\n", encoding="utf-8")
     return model_selection

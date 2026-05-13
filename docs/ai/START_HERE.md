@@ -115,6 +115,7 @@ Evidence boundary:
 - Keep local run evidence in ignored `runs/`.
 - Commit only sanitized examples under `examples/sample-runs/`.
 - Remove local absolute paths, provider secrets, private target-repo names, and raw model-loader logs from any committed sample.
+- Read `docs/configuration/model-registry.md` before customizing local model tiers.
 - Read `docs/analytics/acceptance-analytics.md` before using run analytics for routing decisions.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 

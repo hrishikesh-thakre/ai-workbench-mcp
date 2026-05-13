@@ -29,6 +29,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.2 public examples and release note | Release candidate | Focused workflow command examples, sanitized docs-only sample evidence, prompt catalog docs, and v0.2 alpha release summary are committed |
 | v0.2 focused Goose smoke | Passed | Live docs-only focused recipe smoke passed with local Gemma 4; `docs_only` validation passed and quality gate accepted |
 | Acceptance analytics | Hardening | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; `workbench_select_model` can now record advisory routing feedback without changing tiers |
+| User-extensible model registry | Public-readiness hardening | Local ignored registry overrides let adopters bring their own model IDs while preserving committed defaults and selector validation |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -126,6 +127,7 @@ Tasks:
 - Run the Phase 5 dogfooding protocol across 20-50 real Goose tasks.
 - Keep the analytics-to-routing loop advisory until enough real dogfood evidence exists.
 - Feed historical evidence back into routing recommendations.
+- Allow adopters to use local ignored model-registry overrides without editing committed defaults.
 
 ## Current Next Step
 

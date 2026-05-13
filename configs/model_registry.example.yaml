@@ -1,0 +1,56 @@
+# Copy this file to configs/model_registry.local.yaml to override public defaults.
+# The local override is ignored by git and recursively merges into model_registry.yaml.
+# Dicts merge recursively; lists and scalars replace the base values.
+#
+# Structural tiers:
+# - deterministic_tool represents direct commands and validation.
+# - human_review represents manual approval gates.
+# Keep those structural tiers in the base registry unless you have a specific local reason.
+
+models:
+  local_coding:
+    provider: goose
+    model: your-local-coding-model
+    fallback_models:
+      - your-smaller-local-coding-model
+    parameters:
+      temperature: 0
+    use_for:
+      - exploratory coding drafts
+      - utility functions
+      - simple algorithms
+      - low-risk test generation
+
+  cheap_cloud:
+    provider: litellm
+    model: provider/cheap-cloud-model
+    fallback_models:
+      - provider/backup-cheap-cloud-model
+    use_for:
+      - simple implementation
+      - test generation
+      - documentation cleanup
+
+  mid_cloud:
+    provider: litellm
+    model: provider/mid-cloud-model
+    fallback_models:
+      - provider/backup-mid-cloud-model
+    use_for:
+      - class and module design
+      - nontrivial business logic
+      - strict instruction following
+      - characterization test generation
+
+  frontier:
+    provider: litellm
+    model: provider/frontier-reasoning-model
+    fallback_models:
+      - provider/backup-frontier-reasoning-model
+    parameters:
+      reasoning_effort: high
+    use_for:
+      - architecture review
+      - security privacy review
+      - high risk reasoning
+      - final review

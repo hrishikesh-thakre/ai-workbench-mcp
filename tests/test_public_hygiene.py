@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+GITIGNORE = ROOT / ".gitignore"
+MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
 OPERATING_DOCS = [
     ROOT / "docs" / "ai" / "START_HERE.md",
     ROOT / "docs" / "ai" / "DECISIONS.md",
@@ -98,6 +100,17 @@ class PublicHygieneTests(unittest.TestCase):
 
         self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
         self.assertIn("Python package version: `0.2.0a0`", release_note)
+
+    def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
+        gitignore_text = GITIGNORE.read_text(encoding="utf-8")
+        example_text = MODEL_REGISTRY_EXAMPLE.read_text(encoding="utf-8")
+
+        self.assertIn("configs/model_registry.local.yaml", gitignore_text)
+        self.assertTrue(MODEL_REGISTRY_EXAMPLE.is_file())
+        for tier in ("local_coding", "cheap_cloud", "mid_cloud", "frontier"):
+            self.assertIn(f"  {tier}:", example_text)
+        self.assertIn("deterministic_tool", example_text)
+        self.assertIn("human_review", example_text)
 
 
 if __name__ == "__main__":

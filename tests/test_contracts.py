@@ -242,8 +242,12 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["project"], "ai_workbench_mcp")
         self.assertEqual(response["summary"]["profile"], "scaffold")
         self.assertTrue(response["summary"]["sign_off_ready"])
-        self.assertEqual(response["summary"]["commands_passed"], 6)
+        self.assertEqual(response["summary"]["commands_passed"], 7)
         self.assertEqual(response["summary"]["commands_failed"], 0)
+        self.assertIn(
+            "model_registry_override_support",
+            [command["name"] for command in written["commands_run"]],
+        )
         self.assertEqual(response["summary"]["checks_passed"], 3)
         self.assertEqual(response["summary"]["checks_needs_review"], 0)
         self.assertEqual(response["summary"]["checks_failed"], 0)

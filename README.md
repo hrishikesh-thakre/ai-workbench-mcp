@@ -155,6 +155,12 @@ The sample set includes accepted, docs-only accepted, and revision-required test
 
 Focused recipes pass `runs/_reports/run_metrics.json` as the default feedback source. Missing, invalid, or low-volume feedback is non-fatal and is recorded in `model_selection.json` under `routing_feedback`.
 
+## Bring Your Own Models
+
+The committed model registry lives at `configs/model_registry.yaml`. To customize model IDs or providers locally, copy `configs/model_registry.example.yaml` to `configs/model_registry.local.yaml` and edit the local file. The local override is ignored by git, recursively merges into the base registry, and is recorded in `model_selection.json` with repo-relative source metadata.
+
+See [the model registry guide](docs/configuration/model-registry.md) for merge rules, required tier fields, selector-reference validation, and the advisory-only scope.
+
 ## Six MCP Tools
 
 ```text
@@ -228,6 +234,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized synthetic evidence showing failed validation and a revision-required quality gate.
 - [Acceptance analytics guide](docs/analytics/acceptance-analytics.md): how to read `run_metrics.json`, `run_summary.md`, outcome buckets, routing feedback candidates, and optional cost fields.
 - [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): how to collect real Goose acceptance runs before changing routing policy.
+- [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 
 ## Development

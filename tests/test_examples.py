@@ -12,6 +12,7 @@ NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
 SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
 ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
+MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 README = ROOT / "README.md"
@@ -145,6 +146,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
+        self.assertIn("docs/configuration/model-registry.md", text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
         self.assertIn("docs/github/launch-issues.md", text)
         self.assertIn("recipes/workbench-docs-only-acceptance.yaml", text)
@@ -178,6 +180,7 @@ class PublicExamplesTests(unittest.TestCase):
     def test_sample_runs_readme_and_analytics_guide_document_phase5_reports(self) -> None:
         sample_text = SAMPLE_RUNS_README.read_text(encoding="utf-8")
         guide_text = ANALYTICS_GUIDE.read_text(encoding="utf-8")
+        model_registry_text = MODEL_REGISTRY_GUIDE.read_text(encoding="utf-8")
         dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
         launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
@@ -187,6 +190,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/acceptance-analytics.md", sample_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", readme_text)
         self.assertIn("docs/analytics/acceptance-analytics.md", start_here_text)
+        self.assertIn("docs/configuration/model-registry.md", readme_text)
+        self.assertIn("docs/configuration/model-registry.md", start_here_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", sample_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", readme_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", start_here_text)
@@ -200,6 +205,10 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("source_invalid", guide_text)
         self.assertIn("does not mutate `selected_tier`", guide_text)
         self.assertIn("Cost tracking is optional provider metadata", guide_text)
+        self.assertIn("configs/model_registry.local.yaml", model_registry_text)
+        self.assertIn("dictionaries merge recursively", model_registry_text)
+        self.assertIn("selector reference", model_registry_text.lower())
+        self.assertIn("does not record provider credentials", model_registry_text)
         self.assertIn("20-50 real Goose acceptance runs", dogfooding_text)
         self.assertIn("runs/dogfood-YYYYMMDD-<short-task-slug>", dogfooding_text)
         self.assertIn("routing_feedback_candidates", dogfooding_text)

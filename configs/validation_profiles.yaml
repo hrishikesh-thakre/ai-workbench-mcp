@@ -32,6 +32,11 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
+      - name: model_registry_override_support
+        command: python -c "from pathlib import Path; from ai_workbench_mcp.tools.model_select import load_model_registry_with_source; assert Path('configs/model_registry.yaml').is_file(); assert Path('configs/model_registry.example.yaml').is_file(); assert Path('docs/configuration/model-registry.md').is_file(); assert 'configs/model_registry.local.yaml' in Path('.gitignore').read_text(encoding='utf-8'); registry=load_model_registry_with_source(); assert registry.source['base_registry_path'] == 'configs/model_registry.yaml'; assert isinstance(registry.source['local_override_loaded'], bool)"
+        cwd: .
+        required: true
+        weight: 1.0
 
   run_signoff:
     description: Acceptance sign-off for a run folder with captured output.
@@ -131,7 +136,7 @@ profiles:
     description: Package maintenance profile for bounded Python packaging, import, tool, and test updates.
     commands:
       - name: pyproject_package_metadata
-        command: python -c "from pathlib import Path; import tomllib; data=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); project=data.get('project', {}); assert project.get('name') == 'ai-workbench-mcp'; assert project.get('requires-python') == '>=3.11'; assert Path('src/ai_workbench_mcp/tools').is_dir(); assert Path('src/ai_workbench_mcp/py.typed').is_file()"
+        command: python -c "from pathlib import Path; import tomllib; data=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); project=data.get('project', {}); assert project.get('name') == 'ai-workbench-mcp'; assert project.get('requires-python') == '>=3.11'; assert Path('src/ai_workbench_mcp/tools').is_dir(); assert Path('src/ai_workbench_mcp/py.typed').is_file(); assert Path('configs/model_registry.example.yaml').is_file(); assert 'configs/model_registry.local.yaml' in Path('.gitignore').read_text(encoding='utf-8')"
         cwd: .
         required: true
         weight: 1.0
