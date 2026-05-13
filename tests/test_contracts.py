@@ -4,13 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-import sys
 from unittest.mock import patch
-
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
 
 from ai_workbench_mcp.contracts import error_envelope, response_envelope
 from ai_workbench_mcp.core import (

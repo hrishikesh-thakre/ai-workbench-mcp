@@ -1,16 +1,10 @@
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-from run_analyze import run_analysis_payload
+from ai_workbench_mcp.tools.run_analyze import run_analysis_payload
 
 
 def write_json(path: Path, payload: dict[str, object]) -> None:

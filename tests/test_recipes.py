@@ -1,14 +1,10 @@
 import re
-import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
 
-from config_loader import load_simple_yaml
+from ai_workbench_mcp.tools.config_loader import load_simple_yaml
 
 RECIPES_DIR = ROOT / "recipes"
 RECIPE_PATH = ROOT / "recipes" / "workbench-engineering-acceptance.yaml"

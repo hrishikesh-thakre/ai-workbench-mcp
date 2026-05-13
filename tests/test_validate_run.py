@@ -1,16 +1,12 @@
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
 
-from validate_run import validate_captured_response_format, validate_run_payload
+from ai_workbench_mcp.tools.validate_run import validate_captured_response_format, validate_run_payload
 
 
 class ValidateCapturedResponseFormatTests(unittest.TestCase):

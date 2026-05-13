@@ -3,14 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-from model_select import (
+from ai_workbench_mcp.tools.model_select import (
     build_model_selection,
     complexity_band,
     effective_args,

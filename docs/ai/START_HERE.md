@@ -43,13 +43,8 @@ This is a v0.2 alpha-shaped repo, not a completed stable release.
 
 Copied core:
 
-- `tools/model_select.py`
-- `tools/validate_run.py`
-- `tools/quality_loop.py`
-- `tools/run_analyze.py`
-- `tools/model_handoff.py`
-- `tools/context_scout.py`
-- shared helpers under `tools/`
+- packaged tool logic under `src/ai_workbench_mcp/tools/`
+- backward-compatible CLI wrappers under `tools/`
 - starter configs under `configs/`
 - focused tests under `tests/`
 

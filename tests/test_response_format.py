@@ -1,13 +1,10 @@
 import unittest
-from pathlib import Path
-import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-from response_format import extract_preferred_response_text, missing_required_sections, normalize_response_text
+from ai_workbench_mcp.tools.response_format import (
+    extract_preferred_response_text,
+    missing_required_sections,
+    normalize_response_text,
+)
 
 
 class NormalizeResponseTextTests(unittest.TestCase):

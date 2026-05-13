@@ -11,10 +11,16 @@ from types import SimpleNamespace
 from typing import Any
 
 from .contracts import JsonObject, error_envelope, response_envelope
+from .tools import context_scout as context_scout_tool
+from .tools import model_handoff as model_handoff_tool
+from .tools import model_select as model_select_tool
+from .tools import quality_loop as quality_loop_tool
+from .tools import run_analyze as run_analyze_tool
+from .tools import run_log as run_log_tool
+from .tools import validate_run as validate_run_tool
 
 
 WORKBENCH_ROOT = Path(__file__).resolve().parents[2]
-TOOLS_DIR = WORKBENCH_ROOT / "tools"
 ALLOWED_RISKS = {"low", "medium", "high"}
 ALLOWED_RUN_STATUSES = {"started", "in_progress", "completed", "blocked"}
 ALLOWED_RECORD_MODEL_OUTPUT_STATUSES = {"response_captured"}
@@ -88,69 +94,6 @@ def _jsonl_entries(path: Path) -> list[JsonObject]:
 
 def _has_jsonl_decision(path: Path, decision: str) -> bool:
     return any(entry.get("decision") == decision for entry in _jsonl_entries(path))
-
-
-def _load_model_select_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import model_select as model_select_module
-
-    return model_select_module
-
-
-def _load_validate_run_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import validate_run as validate_run_module
-
-    return validate_run_module
-
-
-def _load_quality_loop_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import quality_loop as quality_loop_module
-
-    return quality_loop_module
-
-
-def _load_run_analyze_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import run_analyze as run_analyze_module
-
-    return run_analyze_module
-
-
-def _load_context_scout_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import context_scout as context_scout_module
-
-    return context_scout_module
-
-
-def _load_model_handoff_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import model_handoff as model_handoff_module
-
-    return model_handoff_module
-
-
-def _load_run_log_module() -> Any:
-    tools_dir = str(TOOLS_DIR)
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
-    import run_log as run_log_module
-
-    return run_log_module
 
 
 def model_selection_response(selection: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
@@ -393,7 +336,7 @@ def open_run(
 ) -> JsonObject:
     try:
         _require_choice("risk", risk, ALLOWED_RISKS)
-        context_scout = _load_context_scout_module()
+        context_scout = context_scout_tool
         project_config = context_scout.load_project_config(project)
         prompt_path = context_scout.resolve_prompt_path(prompt, project_config.prompts_dir)
         if not prompt_path.exists():
@@ -450,7 +393,7 @@ def open_run(
 
         run_log_path = output_dir / "run_log.jsonl"
         if not _has_jsonl_decision(run_log_path, "run_opened"):
-            _load_run_log_module().run_log_payload(
+            run_log_tool.run_log_payload(
                 SimpleNamespace(
                     run_id=run_id,
                     task=task,
@@ -520,7 +463,7 @@ def record_execution(
     try:
         _require_choice("model_output_status", model_output_status, ALLOWED_RECORD_MODEL_OUTPUT_STATUSES)
         _require_choice("run_status", run_status, ALLOWED_RUN_STATUSES)
-        context_scout = _load_context_scout_module()
+        context_scout = context_scout_tool
         project_config = context_scout.load_project_config(project)
         run_dir_path = context_scout.resolve_cli_path(str(run_dir), project_config.root)
         model_selection_path = run_dir_path / "model_selection.json"
@@ -554,7 +497,7 @@ def record_execution(
                 "duplicate_ignored": True,
             }
         else:
-            handoff_payload = _load_model_handoff_module().model_handoff_payload(
+            handoff_payload = model_handoff_tool.model_handoff_payload(
                 SimpleNamespace(
                     project=project,
                     selection=str(model_selection_path),
@@ -566,7 +509,7 @@ def record_execution(
                     model_output_status=model_output_status,
                 )
             )
-            _load_run_log_module().run_log_payload(
+            run_log_tool.run_log_payload(
                 SimpleNamespace(
                     run_id=str(handoff_payload["run_id"]),
                     task=str(task_text),
@@ -655,7 +598,7 @@ def select_model(
         out=str(output_path),
     )
     try:
-        payload = _load_model_select_module().select_model_payload(args)
+        payload = model_select_tool.select_model_payload(args)
     except Exception as exc:
         return error_envelope(
             operation="workbench_select_model",
@@ -682,7 +625,7 @@ def validate_run(
     )
     report_path = _workbench_path(out_dir) / report_name
     try:
-        report = _load_validate_run_module().validate_run_payload(args)
+        report = validate_run_tool.validate_run_payload(args)
     except Exception as exc:
         return error_envelope(
             operation="workbench_validate_run",
@@ -723,7 +666,7 @@ def quality_gate(
     )
     decision_path = _workbench_path(run_dir) / "revision_decision.json"
     try:
-        decision = _load_quality_loop_module().quality_gate_payload(args)
+        decision = quality_loop_tool.quality_gate_payload(args)
     except Exception as exc:
         return error_envelope(
             operation="workbench_quality_gate",
@@ -753,7 +696,7 @@ def analyze_runs(
         evals_dir=str(_workbench_path(evals_dir)),
     )
     try:
-        metrics = _load_run_analyze_module().run_analysis_payload(args)
+        metrics = run_analyze_tool.run_analysis_payload(args)
     except Exception as exc:
         return error_envelope(
             operation="workbench_analyze_runs",

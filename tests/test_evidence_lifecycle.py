@@ -1,18 +1,10 @@
 import json
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SRC_DIR = ROOT / "src"
-TOOLS_DIR = ROOT / "tools"
-for candidate in (SRC_DIR, TOOLS_DIR):
-    if str(candidate) not in sys.path:
-        sys.path.insert(0, str(candidate))
-
 from ai_workbench_mcp.core import open_run, record_execution, select_model
-from model_handoff import parse_final_prompt
+from ai_workbench_mcp.tools.model_handoff import parse_final_prompt
 
 
 class EvidenceLifecycleTests(unittest.TestCase):

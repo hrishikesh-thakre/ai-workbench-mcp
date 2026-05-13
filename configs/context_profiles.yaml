@@ -9,6 +9,7 @@ profiles:
     include:
       - docs/**/*.md
       - prompts/approved/**/*.md
+      - src/ai_workbench_mcp/**/*.py
       - tools/*.py
       - configs/**/*.yaml
     exclude:

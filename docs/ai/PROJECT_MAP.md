@@ -36,18 +36,19 @@ runs/<run_id>/
 
 | Path | Purpose |
 |---|---|
-| `tools/model_select.py` | Existing routing policy and model tier recommendation logic |
-| `tools/validate_run.py` | Deterministic validation engine |
-| `tools/quality_loop.py` | Acceptance decision, retry/review/escalation logic |
-| `tools/run_analyze.py` | Aggregated run and routing analytics |
-| `tools/model_handoff.py` | Captures external output into Workbench evidence format |
-| `tools/context_scout.py` | Deterministic context/evidence packet builder |
-| `tools/config_loader.py` | Small YAML subset loader used by core tools |
-| `tools/response_format.py` | Response parsing and required-section helpers |
+| `src/ai_workbench_mcp/tools/model_select.py` | Routing policy and model tier recommendation logic |
+| `src/ai_workbench_mcp/tools/validate_run.py` | Deterministic validation engine |
+| `src/ai_workbench_mcp/tools/quality_loop.py` | Acceptance decision, retry/review/escalation logic |
+| `src/ai_workbench_mcp/tools/run_analyze.py` | Aggregated run and routing analytics |
+| `src/ai_workbench_mcp/tools/model_handoff.py` | Captures external output into Workbench evidence format |
+| `src/ai_workbench_mcp/tools/context_scout.py` | Deterministic context/evidence packet builder |
+| `src/ai_workbench_mcp/tools/config_loader.py` | Small YAML subset loader used by core tools |
+| `src/ai_workbench_mcp/tools/response_format.py` | Response parsing and required-section helpers |
+| `tools/` | Backward-compatible CLI wrappers for existing `python tools/*.py` commands |
 | `configs/` | Starter routing, validation, context, and quality-loop configuration |
 | `prompts/approved/` | Minimal public prompt templates |
 | `recipes/` | Goose recipe files for Workbench acceptance workflows |
-| `src/ai_workbench_mcp/` | MCP server package and runtime-agnostic core wrappers |
+| `src/ai_workbench_mcp/` | Installable MCP server package, runtime-agnostic core wrappers, and packaged tool logic |
 | `tests/` | Focused tests for core contracts, tool payloads, recipes, and MCP runtime smoke |
 | `docs/ai/` | Operating docs for the Goose-first pivot |
 
@@ -55,12 +56,12 @@ runs/<run_id>/
 
 | MCP Tool | Backing Logic |
 |---|---|
-| `workbench_open_run` | `tools/context_scout.py` plus task metadata, final prompt, and initial run log |
-| `workbench_select_model` | `tools/model_select.py` |
-| `workbench_record_execution` | `tools/model_handoff.py` plus runtime metadata capture |
-| `workbench_validate_run` | `tools/validate_run.py` |
-| `workbench_quality_gate` | `tools/quality_loop.py` |
-| `workbench_analyze_runs` | `tools/run_analyze.py` |
+| `workbench_open_run` | `ai_workbench_mcp.tools.context_scout` plus task metadata, final prompt, and initial run log |
+| `workbench_select_model` | `ai_workbench_mcp.tools.model_select` |
+| `workbench_record_execution` | `ai_workbench_mcp.tools.model_handoff` plus runtime metadata capture |
+| `workbench_validate_run` | `ai_workbench_mcp.tools.validate_run` |
+| `workbench_quality_gate` | `ai_workbench_mcp.tools.quality_loop` |
+| `workbench_analyze_runs` | `ai_workbench_mcp.tools.run_analyze` |
 
 ## 5. Non-Goals
 

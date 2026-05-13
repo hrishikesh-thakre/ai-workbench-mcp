@@ -6,12 +6,13 @@ import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS_DIR = ROOT / "tools"
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-from quality_loop import classify_review_output, determine_auto_trigger, main, quality_gate_payload, read_json
+from ai_workbench_mcp.tools.quality_loop import (
+    classify_review_output,
+    determine_auto_trigger,
+    main,
+    quality_gate_payload,
+    read_json,
+)
 
 
 def quality_args(
@@ -244,7 +245,10 @@ class EvaluateReviewModeTests(unittest.TestCase):
                 "evaluate_review",
             ]
 
-            with patch("quality_loop.load_project_config", return_value=SimpleNamespace(root=run_dir)):
+            with patch(
+                "ai_workbench_mcp.tools.quality_loop.load_project_config",
+                return_value=SimpleNamespace(root=run_dir),
+            ):
                 with patch.object(sys, "argv", argv):
                     exit_code = main()
 
@@ -283,7 +287,10 @@ class EvaluateReviewModeTests(unittest.TestCase):
                 "evaluate_review",
             ]
 
-            with patch("quality_loop.load_project_config", return_value=SimpleNamespace(root=run_dir)):
+            with patch(
+                "ai_workbench_mcp.tools.quality_loop.load_project_config",
+                return_value=SimpleNamespace(root=run_dir),
+            ):
                 with patch.object(sys, "argv", argv):
                     exit_code = main()
 
@@ -326,7 +333,10 @@ class EvaluateReviewModeTests(unittest.TestCase):
                 "evaluate_review",
             ]
 
-            with patch("quality_loop.load_project_config", return_value=SimpleNamespace(root=run_dir)):
+            with patch(
+                "ai_workbench_mcp.tools.quality_loop.load_project_config",
+                return_value=SimpleNamespace(root=run_dir),
+            ):
                 with patch.object(sys, "argv", argv):
                     exit_code = main()
 
@@ -350,7 +360,10 @@ class PromoteRevisionModeTests(unittest.TestCase):
                 write_second_pass_report(run_dir, "passed")
                 return {"overall_status": "passed"}
 
-            with patch("quality_loop.validate_run_payload", side_effect=validation_stub) as validate_payload:
+            with patch(
+                "ai_workbench_mcp.tools.quality_loop.validate_run_payload",
+                side_effect=validation_stub,
+            ) as validate_payload:
                 decision = quality_gate_payload(quality_args(run_dir, mode="promote_revision"))
             written = read_json(run_dir / "revision_decision.json")
             promoted_report = read_json(run_dir / "validation_report.json")
@@ -379,7 +392,10 @@ class PromoteRevisionModeTests(unittest.TestCase):
                         write_second_pass_report(run_dir, status)
                         return {"overall_status": status}
 
-                    with patch("quality_loop.validate_run_payload", side_effect=validation_stub):
+                    with patch(
+                        "ai_workbench_mcp.tools.quality_loop.validate_run_payload",
+                        side_effect=validation_stub,
+                    ):
                         decision = quality_gate_payload(quality_args(run_dir, mode="promote_revision"))
                     written = read_json(run_dir / "revision_decision.json")
                     canonical_report = read_json(run_dir / "validation_report.json")
@@ -406,7 +422,10 @@ class PromoteRevisionModeTests(unittest.TestCase):
                 "promote_revision",
             ]
 
-            with patch("quality_loop.load_project_config", return_value=SimpleNamespace(root=run_dir)):
+            with patch(
+                "ai_workbench_mcp.tools.quality_loop.load_project_config",
+                return_value=SimpleNamespace(root=run_dir),
+            ):
                 with patch.object(sys, "argv", argv):
                     exit_code = main()
             decision = read_json(run_dir / "revision_decision.json")

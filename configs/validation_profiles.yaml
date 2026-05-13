@@ -131,12 +131,12 @@ profiles:
     description: Package maintenance profile for bounded Python packaging, import, tool, and test updates.
     commands:
       - name: pyproject_package_metadata
-        command: python -c "from pathlib import Path; import tomllib; data=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); project=data.get('project', {}); assert project.get('name') == 'ai-workbench-mcp'; assert project.get('requires-python') == '>=3.11'; assert Path('src/ai_workbench_mcp').is_dir()"
+        command: python -c "from pathlib import Path; import tomllib; data=tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8')); project=data.get('project', {}); assert project.get('name') == 'ai-workbench-mcp'; assert project.get('requires-python') == '>=3.11'; assert Path('src/ai_workbench_mcp/tools').is_dir(); assert Path('src/ai_workbench_mcp/py.typed').is_file()"
         cwd: .
         required: true
         weight: 1.0
       - name: package_import_smoke
-        command: python -c "import sys; sys.path.insert(0, 'src'); import ai_workbench_mcp; from ai_workbench_mcp import server; assert hasattr(server, 'register_tools')"
+        command: python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run; assert hasattr(server, 'register_tools'); assert hasattr(model_select, 'select_model_payload'); assert hasattr(validate_run, 'validate_run_payload')"
         cwd: .
         required: true
         weight: 1.0
