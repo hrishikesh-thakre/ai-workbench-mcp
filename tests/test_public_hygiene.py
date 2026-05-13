@@ -7,6 +7,10 @@ ROOT = Path(__file__).resolve().parents[1]
 GITIGNORE = ROOT / ".gitignore"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
+PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
+TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
+CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
+ISSUE_DRAFTS_DIR = ROOT / "docs" / "github" / "issue-drafts"
 OPERATING_DOCS = [
     ROOT / "docs" / "ai" / "START_HERE.md",
     ROOT / "docs" / "ai" / "DECISIONS.md",
@@ -101,7 +105,13 @@ class PublicHygieneTests(unittest.TestCase):
         pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
 
+        self.assertEqual(pyproject["build-system"]["build-backend"], "setuptools.build_meta")
+        self.assertIn("setuptools>=68", pyproject["build-system"]["requires"])
         self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
+        self.assertEqual(pyproject["project"]["license"], "Apache-2.0")
+        self.assertEqual(pyproject["project"]["optional-dependencies"]["publish"], ["build", "twine"])
+        self.assertEqual(pyproject["tool"]["setuptools"]["packages"]["find"]["where"], ["src"])
+        self.assertEqual(pyproject["tool"]["setuptools"]["package-data"]["ai_workbench_mcp"], ["py.typed"])
         self.assertIn("Python package version: `0.2.0a0`", release_note)
         self.assertEqual(
             pyproject["project"]["urls"],
@@ -133,15 +143,65 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("timeout-minutes: 15", workflow)
         self.assertIn("ubuntu-latest", workflow)
         self.assertIn('python-version: "3.11"', workflow)
-        self.assertIn('python -m pip install -e ".[dev]"', workflow)
+        self.assertIn('python -m pip install -e ".[dev,publish]"', workflow)
         self.assertIn("python -m pytest -q -p no:cacheprovider", workflow)
         self.assertIn(
             "python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
             workflow,
         )
+        self.assertIn("python -m build", workflow)
+        self.assertIn("python -m twine check dist/*", workflow)
+        self.assertIn("python -m pip install --force-reinstall", workflow)
+        self.assertIn("from ai_workbench_mcp import server", workflow)
         self.assertIn("git diff --check", workflow)
         self.assertIn("pull_request:", workflow)
         self.assertIn("push:", workflow)
+
+    def test_publishing_and_launch_docs_are_prepared_without_external_actions(self) -> None:
+        gitignore_text = GITIGNORE.read_text(encoding="utf-8")
+        pypi_text = PYPI_GUIDE.read_text(encoding="utf-8")
+        topics_text = TOPICS_GUIDE.read_text(encoding="utf-8")
+        create_issues_text = CREATE_ISSUES_GUIDE.read_text(encoding="utf-8")
+
+        self.assertIn("dist/", gitignore_text)
+        self.assertIn("has not been published to PyPI yet", pypi_text)
+        self.assertIn("code/server only", pypi_text)
+        self.assertIn("checked-out repository", pypi_text)
+        self.assertIn("python -m build", pypi_text)
+        self.assertIn("python -m twine check dist/*", pypi_text)
+        self.assertIn("python -m pip install --force-reinstall", pypi_text)
+        self.assertIn("TestPyPI", pypi_text)
+        self.assertIn("Only run this after", pypi_text)
+
+        for topic in (
+            "goose",
+            "mcp",
+            "model-context-protocol",
+            "ai-agents",
+            "agentic-ai",
+            "coding-agents",
+            "developer-tools",
+            "validation",
+            "evals",
+            "quality-gates",
+            "audit-trail",
+        ):
+            self.assertIn(topic, topics_text)
+        self.assertIn("hrishikesh-thakre/ai-workbench-mcp", topics_text)
+        self.assertIn("gh repo edit", topics_text)
+
+        expected_drafts = [
+            "analytics-routing-feedback-policy-experiments.md",
+            "ci-pr-acceptance-gate.md",
+            "cost-evidence-provider-metadata.md",
+            "docs-five-minute-goose-demo.md",
+            "dogfooding-collect-goose-runs.md",
+            "policy-packs-validation-metadata.md",
+        ]
+        self.assertEqual(sorted(path.name for path in ISSUE_DRAFTS_DIR.glob("*.md")), expected_drafts)
+        for draft_name in expected_drafts:
+            self.assertIn(f"docs/github/issue-drafts/{draft_name}", create_issues_text)
+        self.assertIn("Do not run them", create_issues_text)
 
 
 if __name__ == "__main__":

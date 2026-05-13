@@ -122,6 +122,9 @@ Evidence boundary:
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
+- Read `docs/publishing/pypi.md` before attempting package publication.
+- Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
+- Use `docs/walkthroughs/goose-acceptance-demo.md` as the public demo script skeleton.
 
 ## 7. Public Release Rule
 
@@ -146,3 +149,5 @@ Use:
 - `docs/analytics/evidence-dashboard.md` for the static local evidence dashboard.
 - `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
+- `docs/publishing/pypi.md` for package publishing prep.
+- `docs/walkthroughs/goose-acceptance-demo.md` for the demo walkthrough skeleton.

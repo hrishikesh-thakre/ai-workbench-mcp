@@ -29,13 +29,24 @@ jobs:
       - name: Install package
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,publish]"
 
       - name: Run tests
         run: python -m pytest -q -p no:cacheprovider
 
       - name: Run scaffold validation
         run: python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
+
+      - name: Build package artifacts
+        run: python -m build
+
+      - name: Check package artifacts
+        run: python -m twine check dist/*
+
+      - name: Smoke installed wheel
+        run: |
+          python -m pip install --force-reinstall "$(ls dist/*.whl | head -n 1)"
+          python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
 
       - name: Check diff whitespace
         run: git diff --check

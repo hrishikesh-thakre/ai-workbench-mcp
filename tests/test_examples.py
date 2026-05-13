@@ -19,6 +19,10 @@ DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
 GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
+PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
+TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
+CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
+WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
 README = ROOT / "README.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
 PROJECT_MAP = ROOT / "docs" / "ai" / "PROJECT_MAP.md"
@@ -204,6 +208,10 @@ class PublicExamplesTests(unittest.TestCase):
         golden_case_text = GOLDEN_CASE_GUIDE.read_text(encoding="utf-8")
         pr_gate_text = PR_GATE_GUIDE.read_text(encoding="utf-8")
         launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
+        pypi_text = PYPI_GUIDE.read_text(encoding="utf-8")
+        topics_text = TOPICS_GUIDE.read_text(encoding="utf-8")
+        create_issues_text = CREATE_ISSUES_GUIDE.read_text(encoding="utf-8")
+        walkthrough_text = WALKTHROUGH_GUIDE.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
         project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
@@ -232,6 +240,14 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", start_here_text)
         self.assertIn("docs/github/launch-issues.md", readme_text)
         self.assertIn("docs/github/launch-issues.md", start_here_text)
+        self.assertIn("docs/publishing/pypi.md", readme_text)
+        self.assertIn("docs/publishing/pypi.md", start_here_text)
+        self.assertIn("docs/publishing/pypi.md", project_map_text)
+        self.assertIn("docs/github/repository-topics.md", readme_text)
+        self.assertIn("docs/github/create-launch-issues.md", readme_text)
+        self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", readme_text)
+        self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", start_here_text)
+        self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", project_map_text)
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)
@@ -270,6 +286,18 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("cost evidence: capture provider token and cost metadata", launch_text)
         self.assertIn("ci: prototype PR acceptance gate", launch_text)
         self.assertNotIn("before the v0.1 alpha announcement", launch_text)
+        self.assertIn("has not been published to PyPI yet", pypi_text)
+        self.assertIn("code/server only", pypi_text)
+        self.assertIn("python -m twine check dist/*", pypi_text)
+        self.assertIn("model-context-protocol", topics_text)
+        self.assertIn("gh repo edit", topics_text)
+        self.assertIn("gh issue create", create_issues_text)
+        self.assertIn("Goose Acceptance Demo Walkthrough", walkthrough_text)
+        self.assertIn("goose configure", walkthrough_text)
+        self.assertIn("validation_report.json", walkthrough_text)
+        self.assertIn("revision_decision.json", walkthrough_text)
+        self.assertIn("run_dashboard.html", walkthrough_text)
+        self.assertIn("tools/golden_eval.py", walkthrough_text)
 
     def test_v02_release_notes_document_focused_profiles_and_verification(self) -> None:
         text = V02_RELEASE.read_text(encoding="utf-8")

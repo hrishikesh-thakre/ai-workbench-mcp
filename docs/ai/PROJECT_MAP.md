@@ -56,6 +56,10 @@ runs/<run_id>/
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 | `docs/analytics/evidence-dashboard.md` | Static local dashboard guide for `run_dashboard.html` |
 | `docs/evals/golden-case-harness.md` | Golden-case eval harness guide |
+| `docs/publishing/pypi.md` | PyPI publishing prep and current wheel boundary |
+| `docs/github/repository-topics.md` | GitHub topic setup guide |
+| `docs/github/create-launch-issues.md` | Launch issue creation commands |
+| `docs/walkthroughs/goose-acceptance-demo.md` | Public Goose acceptance demo walkthrough skeleton |
 | `evals/golden_cases/` | Sanitized accepted-baseline eval case specs |
 | `.github/workflows/ci.yml` | Public repo self-validation CI gate prototype |
 

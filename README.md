@@ -65,6 +65,8 @@ Install from the repository root:
 python -m pip install -e .
 ```
 
+The PyPI package is not published yet. The current wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
+
 Register the MCP server in Goose:
 
 ```bash
@@ -274,6 +276,10 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
 - [CI gate prototype](docs/github/pr-gate.md): what the repo self-validation workflow proves and why semantic PR acceptance comes later.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
+- [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
+- [Repository topics](docs/github/repository-topics.md): recommended GitHub topics and setup commands.
+- [Launch issue drafts](docs/github/create-launch-issues.md): ready-to-post public issue commands.
+- [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): skeleton for a 3-5 minute public demo.
 
 ## Development
 
