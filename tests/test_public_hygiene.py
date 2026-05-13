@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 GITIGNORE = ROOT / ".gitignore"
+CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
 OPERATING_DOCS = [
     ROOT / "docs" / "ai" / "START_HERE.md",
@@ -14,6 +15,7 @@ OPERATING_DOCS = [
 ]
 PUBLIC_ROOTS = [
     ROOT / "README.md",
+    ROOT / ".github",
     ROOT / "configs",
     ROOT / "docs",
     ROOT / "examples",
@@ -100,6 +102,15 @@ class PublicHygieneTests(unittest.TestCase):
 
         self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
         self.assertIn("Python package version: `0.2.0a0`", release_note)
+        self.assertEqual(
+            pyproject["project"]["urls"],
+            {
+                "Homepage": "https://github.com/hrishikesh-thakre/ai-workbench-mcp",
+                "Repository": "https://github.com/hrishikesh-thakre/ai-workbench-mcp",
+                "Issues": "https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues",
+                "Documentation": "https://github.com/hrishikesh-thakre/ai-workbench-mcp#readme",
+            },
+        )
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
@@ -111,6 +122,25 @@ class PublicHygieneTests(unittest.TestCase):
             self.assertIn(f"  {tier}:", example_text)
         self.assertIn("deterministic_tool", example_text)
         self.assertIn("human_review", example_text)
+
+    def test_ci_workflow_is_repo_self_validation_gate(self) -> None:
+        self.assertTrue(CI_WORKFLOW.is_file())
+        workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("permissions:", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertIn("timeout-minutes: 15", workflow)
+        self.assertIn("ubuntu-latest", workflow)
+        self.assertIn('python-version: "3.11"', workflow)
+        self.assertIn('python -m pip install -e ".[dev]"', workflow)
+        self.assertIn("python -m pytest -q -p no:cacheprovider", workflow)
+        self.assertIn(
+            "python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
+            workflow,
+        )
+        self.assertIn("git diff --check", workflow)
+        self.assertIn("pull_request:", workflow)
+        self.assertIn("push:", workflow)
 
 
 if __name__ == "__main__":

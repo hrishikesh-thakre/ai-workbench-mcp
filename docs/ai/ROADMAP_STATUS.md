@@ -31,6 +31,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Acceptance analytics | Hardening | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; `workbench_select_model` can now record advisory routing feedback without changing tiers |
 | User-extensible model registry | Public-readiness hardening | Local ignored registry overrides let adopters bring their own model IDs while preserving committed defaults and selector validation |
 | Minimal event envelopes | Public-readiness hardening | Core MCP operations write best-effort local `events.jsonl` ledgers from final response envelopes |
+| Public CI gate prototype | Public-readiness hardening | GitHub Actions repo self-validation runs install, tests, scaffold validation, and diff hygiene; semantic PR acceptance remains future work |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
@@ -130,7 +131,8 @@ Tasks:
 - Feed historical evidence back into routing recommendations.
 - Allow adopters to use local ignored model-registry overrides without editing committed defaults.
 - Emit local best-effort operation events for future analytics and CI integration.
+- Add a public CI gate prototype for repo self-validation before broader PR acceptance automation.
 
 ## Current Next Step
 
-Continue Phase 5 by running the dogfooding protocol in `docs/dogfooding/phase5-dogfooding.md`, then use real `routing_feedback_candidates` to propose bounded model-selection policy experiments. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Continue Phase 5 by running the dogfooding protocol in `docs/dogfooding/phase5-dogfooding.md`, then use real `routing_feedback_candidates` to propose bounded model-selection policy experiments. Public-readiness follow-ons remain the single-file evidence dashboard and golden-case eval harness; semantic PR acceptance should wait for more dogfood evidence. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

@@ -53,6 +53,7 @@ runs/<run_id>/
 | `tests/` | Focused tests for core contracts, tool payloads, recipes, and MCP runtime smoke |
 | `docs/ai/` | Operating docs for the Goose-first pivot |
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
+| `.github/workflows/ci.yml` | Public repo self-validation CI gate prototype |
 
 ## 4. MCP Tool Boundary
 

@@ -9,6 +9,12 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 
+[project.urls]
+Homepage = "https://github.com/hrishikesh-thakre/ai-workbench-mcp"
+Repository = "https://github.com/hrishikesh-thakre/ai-workbench-mcp"
+Issues = "https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues"
+Documentation = "https://github.com/hrishikesh-thakre/ai-workbench-mcp#readme"
+
 [project.scripts]
 ai-workbench-mcp = "ai_workbench_mcp.server:main"
 

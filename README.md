@@ -2,22 +2,45 @@
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-`ai-workbench-mcp` is a Goose-compatible MCP extension that turns AI coding work into evidence-backed accepted runs.
+Acceptance gates for AI coding-agent runs.
 
-Goose executes the work. AI Workbench records what happened, validates it, runs a quality gate, and decides whether the result should be trusted.
+AI agents can produce code. AI Workbench MCP helps decide whether that work is accepted.
+
+It records the task, captures agent output, runs deterministic validation, applies a quality gate, and creates an auditable run trail.
+
+Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows.
+
+## Before
+
+The agent says: "Done."
+
+## After
+
+AI Workbench shows:
+
+- what task was requested
+- what agent/model/runtime was used
+- what output was produced
+- what validation ran
+- whether the quality gate accepted, rejected, or requested review
+- where the evidence lives
+
+```text
+runs/example/
+  task_metadata.json
+  final_prompt.md
+  model_selection.json
+  model_output.md
+  validation_report.json
+  revision_decision.json
+  run_log.jsonl
+```
 
 ## Problem
 
-AI coding agents can produce useful work, but "done" is not the same as accepted. A useful acceptance workflow needs reproducible evidence:
+AI coding agents can produce useful work, but "done" is not the same as accepted. A useful acceptance workflow needs reproducible evidence.
 
-- what task was requested
-- which model/runtime was selected
-- what the agent produced
-- which deterministic checks ran
-- whether the quality gate accepted, rejected, or requested review
-- where the audit trail lives
-
-AI Workbench MCP provides that acceptance and audit layer.
+AI Workbench MCP provides that acceptance and audit layer, turning agent output into evidence-backed accepted runs.
 
 ## Why Goose + Acceptance Gates
 
@@ -238,6 +261,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Event ledger guide](docs/analytics/event-ledger.md): how local `events.jsonl` operation telemetry is written and why it stays out of committed runs by default.
 - [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): how to collect real Goose acceptance runs before changing routing policy.
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
+- [CI gate prototype](docs/github/pr-gate.md): what the repo self-validation workflow proves and why semantic PR acceptance comes later.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 
 ## Development

@@ -15,6 +15,7 @@ ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
 EVENT_LEDGER_GUIDE = ROOT / "docs" / "analytics" / "event-ledger.md"
 MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
+PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 README = ROOT / "README.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
@@ -130,6 +131,16 @@ class PublicExamplesTests(unittest.TestCase):
     def test_readme_product_page_references_quickstart_tools_recipe_and_sample_run(self) -> None:
         text = README.read_text(encoding="utf-8")
 
+        self.assertIn("Acceptance gates for AI coding-agent runs.", text)
+        self.assertIn("Works with Goose today. Designed as a host-agnostic acceptance layer", text)
+        self.assertIn("## Before", text)
+        self.assertIn('The agent says: "Done."', text)
+        self.assertIn("## After", text)
+        self.assertIn("AI Workbench shows:", text)
+        self.assertLess(text.index("runs/example/"), text.index("## 5-Minute Quickstart"))
+        self.assertIn("task_metadata.json", text)
+        self.assertIn("validation_report.json", text)
+        self.assertIn("revision_decision.json", text)
         self.assertIn("evidence-backed accepted runs", text)
         self.assertIn("## 5-Minute Quickstart", text)
         self.assertIn("## Six MCP Tools", text)
@@ -151,6 +162,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/event-ledger.md", text)
         self.assertIn("docs/configuration/model-registry.md", text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
+        self.assertIn("docs/github/pr-gate.md", text)
         self.assertIn("docs/github/launch-issues.md", text)
         self.assertIn("recipes/workbench-docs-only-acceptance.yaml", text)
         self.assertIn("recipes/workbench-python-package-maintenance.yaml", text)
@@ -186,6 +198,7 @@ class PublicExamplesTests(unittest.TestCase):
         event_guide_text = EVENT_LEDGER_GUIDE.read_text(encoding="utf-8")
         model_registry_text = MODEL_REGISTRY_GUIDE.read_text(encoding="utf-8")
         dogfooding_text = DOGFOODING_GUIDE.read_text(encoding="utf-8")
+        pr_gate_text = PR_GATE_GUIDE.read_text(encoding="utf-8")
         launch_text = LAUNCH_ISSUES.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
@@ -200,6 +213,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/analytics/event-ledger.md", project_map_text)
         self.assertIn("docs/configuration/model-registry.md", readme_text)
         self.assertIn("docs/configuration/model-registry.md", start_here_text)
+        self.assertIn("docs/github/pr-gate.md", readme_text)
+        self.assertIn("docs/github/pr-gate.md", start_here_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", sample_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", readme_text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", start_here_text)
@@ -221,6 +236,11 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("dictionaries merge recursively", model_registry_text)
         self.assertIn("selector reference", model_registry_text.lower())
         self.assertIn("does not record provider credentials", model_registry_text)
+        self.assertIn("CI gate prototype", pr_gate_text)
+        self.assertIn("repo self-validation gate", pr_gate_text)
+        self.assertIn("Semantic PR acceptance comes later", pr_gate_text)
+        self.assertIn("does not run live Goose", pr_gate_text)
+        self.assertIn("git diff --check", pr_gate_text)
         self.assertIn("20-50 real Goose acceptance runs", dogfooding_text)
         self.assertIn("runs/dogfood-YYYYMMDD-<short-task-slug>", dogfooding_text)
         self.assertIn("routing_feedback_candidates", dogfooding_text)
