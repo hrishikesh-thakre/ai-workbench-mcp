@@ -176,6 +176,9 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("python -m build", pypi_text)
         self.assertIn("python -m twine check dist/*", pypi_text)
         self.assertIn("python -m pip install --force-reinstall", pypi_text)
+        self.assertIn("Fresh virtual environment smoke", pypi_text)
+        self.assertIn("assert shutil.which('ai-workbench-mcp')", pypi_text)
+        self.assertIn("Do not run `ai-workbench-mcp` directly as a smoke command.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
         self.assertIn("Only run this after", pypi_text)
 

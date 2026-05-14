@@ -37,6 +37,18 @@ python -m pip install --force-reinstall (Get-ChildItem dist\*.whl | Select-Objec
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
 ```
 
+Fresh virtual environment smoke:
+
+```powershell
+python -m venv $env:TEMP\ai-workbench-mcp-wheel-smoke
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install --upgrade pip
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import shutil; assert shutil.which('ai-workbench-mcp')"
+```
+
+Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP server entrypoint, not a normal help-printing CLI.
+
 ## TestPyPI Dry Run
 
 Only run this after confirming credentials and release intent:
@@ -49,7 +61,8 @@ Then verify installation in a fresh environment:
 
 ```powershell
 python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple ai-workbench-mcp
-ai-workbench-mcp
+python -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
+python -c "import shutil; assert shutil.which('ai-workbench-mcp')"
 ```
 
 ## PyPI Upload
