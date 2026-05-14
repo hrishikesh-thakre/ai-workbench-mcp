@@ -64,7 +64,7 @@ runs/<run_id>/
 | `docs/publishing/pypi.md` | PyPI publishing prep and current wheel boundary |
 | `docs/github/repository-topics.md` | GitHub topic setup guide |
 | `docs/github/create-launch-issues.md` | Launch issue creation commands |
-| `docs/walkthroughs/goose-acceptance-demo.md` | Public Goose acceptance demo walkthrough skeleton |
+| `docs/walkthroughs/goose-acceptance-demo.md` | Recording-ready public Goose acceptance demo walkthrough |
 | `docs/walkthroughs/codex-acceptance-demo.md` | Codex local/IDE acceptance demo walkthrough with loop and crash guardrails |
 | `evals/golden_cases/` | Sanitized accepted-baseline eval case specs |
 | `.github/workflows/ci.yml` | Public repo self-validation CI gate prototype |

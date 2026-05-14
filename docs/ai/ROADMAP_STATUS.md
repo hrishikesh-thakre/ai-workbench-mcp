@@ -140,7 +140,7 @@ Tasks:
 - Add a public CI gate prototype for repo self-validation before broader PR acceptance automation.
 - Generate a static single-file evidence dashboard from run analytics for local scanning and demos.
 - Add a local golden-case eval harness for accepted sanitized baselines.
-- Prepare PyPI packaging checks, public launch issue drafts, repository topics, and the demo walkthrough skeleton.
+- Prepare PyPI packaging checks, public launch issue drafts, repository topics, and the recording-ready demo walkthrough.
 - Add explicit execution-host and response-source metadata, with Codex local/IDE as the first second-host proof.
 
 ## Current Next Step

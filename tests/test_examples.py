@@ -319,6 +319,20 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", readme_text)
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", start_here_text)
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", project_map_text)
+        self.assertIn("recording-ready 3-5 minute public demo runbook", readme_text)
+        self.assertIn("recording-ready public demo runbook", start_here_text)
+        self.assertIn("Recording-ready public Goose acceptance demo walkthrough", project_map_text)
+        self.assertIn("recording-ready demo walkthrough", roadmap_text)
+        for stale_phrase in (
+            "public demo script skeleton",
+            "demo walkthrough skeleton",
+            "skeleton for a 3-5 minute public demo",
+        ):
+            self.assertNotIn(stale_phrase, readme_text)
+            self.assertNotIn(stale_phrase, start_here_text)
+            self.assertNotIn(stale_phrase, project_map_text)
+            self.assertNotIn(stale_phrase, roadmap_text)
+            self.assertNotIn(stale_phrase, walkthrough_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", readme_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", start_here_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", project_map_text)
@@ -370,14 +384,29 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("gh repo edit", topics_text)
         self.assertIn("gh issue create", create_issues_text)
         self.assertIn("Goose Acceptance Demo Walkthrough", walkthrough_text)
+        self.assertIn("recording-ready runbook", walkthrough_text)
+        self.assertIn("sample-only path", walkthrough_text)
+        self.assertIn("optional live Goose path", walkthrough_text)
+        self.assertIn(
+            "Do not show private run folders, provider credentials, raw provider logs, local absolute paths, or unreviewed `runs/` evidence.",
+            walkthrough_text,
+        )
         self.assertIn("goose configure", walkthrough_text)
         self.assertIn("validation_report.json", walkthrough_text)
         self.assertIn("revision_decision.json", walkthrough_text)
         self.assertIn("accepted-tiny-python-fix", walkthrough_text)
+        self.assertIn("accepted-docs-only-smoke", walkthrough_text)
         self.assertIn("needs-review-test-fix", walkthrough_text)
-        self.assertIn("Prompt instructions and Goose prose are not acceptance evidence by themselves.", walkthrough_text)
+        self.assertIn("The prompt can describe done, but the prompt does not enforce done.", walkthrough_text)
+        self.assertIn('final_status="revision_required"', walkthrough_text)
+        self.assertIn("review-required", walkthrough_text)
         self.assertIn("run_dashboard.html", walkthrough_text)
+        self.assertIn("does not embed raw provider logs", walkthrough_text)
         self.assertIn("tools/golden_eval.py", walkthrough_text)
+        self.assertIn("AI Workbench MCP does not prove software correctness.", walkthrough_text)
+        self.assertIn("It does not replace CI, code review, security review, or human judgment.", walkthrough_text)
+        self.assertIn("MCP does not decide acceptance; Workbench validation profiles and quality gates do.", walkthrough_text)
+        self.assertIn("Do not commit `runs/demo-tiny-python-fix/`", walkthrough_text)
         self.assertIn("Codex Acceptance Demo Walkthrough", codex_walkthrough_text)
         self.assertIn("Do not run `ai-workbench-mcp` directly", codex_walkthrough_text)
         self.assertIn("ask Codex to launch another Codex session", codex_walkthrough_text)

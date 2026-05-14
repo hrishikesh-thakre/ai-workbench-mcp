@@ -321,7 +321,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
 - [Repository topics](docs/github/repository-topics.md): recommended GitHub topics and setup commands.
 - [Launch issue drafts](docs/github/create-launch-issues.md): ready-to-post public issue commands.
-- [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): skeleton for a 3-5 minute public demo.
+- [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): recording-ready 3-5 minute public demo runbook.
 - [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): local/IDE proof path that avoids nested Codex or foreground stdio-server loops.
 
 ## Development

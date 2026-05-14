@@ -129,7 +129,7 @@ Evidence boundary:
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
 - Read `docs/concepts/how-acceptance-works.md` before explaining what MCP connects versus what Workbench accepts.
-- Use `docs/walkthroughs/goose-acceptance-demo.md` as the public demo script skeleton.
+- Use `docs/walkthroughs/goose-acceptance-demo.md` as the recording-ready public demo runbook.
 - Use `docs/codex/live-test-handoff.md` when you want a countdown, generated one-shot prompt, and result checker for bounded Codex local/IDE testing.
 - Use `docs/walkthroughs/codex-acceptance-demo.md` for bounded Codex local/IDE testing; do not nest Codex sessions or run the stdio MCP server as a foreground command.
 
@@ -162,5 +162,5 @@ Use:
 - `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
 - `docs/publishing/pypi.md` for package publishing prep.
-- `docs/walkthroughs/goose-acceptance-demo.md` for the demo walkthrough skeleton.
+- `docs/walkthroughs/goose-acceptance-demo.md` for the recording-ready demo walkthrough.
 - `docs/walkthroughs/codex-acceptance-demo.md` for the Codex local/IDE proof walkthrough.
