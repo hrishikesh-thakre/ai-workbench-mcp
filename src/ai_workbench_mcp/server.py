@@ -126,6 +126,7 @@ def register_tools(mcp: Any) -> Any:
         out_dir: str,
         profile: str | None = None,
         changed_files: list[str] | None = None,
+        task_test_command: str | None = None,
         report_name: str = "validation_report.json",
     ) -> JsonObject:
         """Run deterministic Workbench validation over a run directory."""
@@ -136,6 +137,7 @@ def register_tools(mcp: Any) -> Any:
                 out_dir=out_dir,
                 profile=profile,
                 changed_files=changed_files,
+                task_test_command=task_test_command,
                 report_name=report_name,
             )
         except Exception as exc:

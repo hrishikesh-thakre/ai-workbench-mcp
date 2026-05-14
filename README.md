@@ -133,6 +133,7 @@ goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-test-fix \
   --params task="Fix the requested failing test signal with the smallest justified change and report the exact validation command." \
+  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
   --params risk=medium
 ```
 

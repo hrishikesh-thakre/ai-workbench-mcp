@@ -183,6 +183,11 @@ profiles:
 
   test_fix:
     description: Test-fix acceptance profile for bounded changes whose primary acceptance signal is a deterministic passing test suite.
+    task_test_command:
+      required: true
+      allowed_prefixes:
+        - python -m pytest
+        - python -m unittest
     commands:
       - name: pytest_collection
         command: python -m pytest --collect-only -q -p no:cacheprovider

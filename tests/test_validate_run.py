@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -201,6 +202,97 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(checks["changed_file_policy"]["status"], "passed")
         self.assertIn("Changed-file source: run_log_files_touched", checks["changed_file_policy"]["details"])
         self.assertIn("Checked 0 changed files.", checks["changed_file_policy"]["details"])
+
+    def test_profile_defaults_to_model_selection_validation_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "selection-profile"
+            self.write_signoff_artifacts(run_dir)
+            (run_dir / "model_selection.json").write_text(
+                json.dumps({"status": "selected", "validation_profile": "docs_only"}) + "\n",
+                encoding="utf-8",
+            )
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile=None,
+                changed_files=["README.md"],
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            report = validate_run_payload(args)
+
+        self.assertEqual(report["profile"], "docs_only")
+        self.assertEqual(report["profile_source"], "model_selection")
+        self.assertEqual(report["overall_status"], "passed")
+
+    def test_test_fix_profile_requires_task_test_command(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test-fix-missing-command"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="test_fix",
+                changed_files=["examples/tiny-python-fix/calculator.py"],
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            report = validate_run_payload(args)
+
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertEqual(checks["task_test_command"]["status"], "failed")
+        self.assertIn("Task-specific test command is required", checks["task_test_command"]["summary"])
+
+    def test_test_fix_task_test_command_failure_blocks_signoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test-fix-focused-failure"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="test_fix",
+                changed_files=["examples/tiny-python-fix/calculator.py"],
+                task_test_command='python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"',
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            def fake_subprocess_run(command: str, **kwargs):
+                return_code = 1 if "unittest discover" in command else 0
+                return SimpleNamespace(returncode=return_code)
+
+            with patch("ai_workbench_mcp.tools.validate_run.subprocess.run", side_effect=fake_subprocess_run):
+                report = validate_run_payload(args)
+
+        command_names = [command["name"] for command in report["commands_run"]]
+        focused_command = next(command for command in report["commands_run"] if command["name"] == "task_test_command")
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        self.assertEqual(command_names[0], "task_test_command")
+        self.assertEqual(focused_command["status"], "failed")
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertEqual(checks["task_test_command"]["status"], "passed")
+
+    def test_task_test_command_rejects_shell_control_syntax(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "test-fix-invalid-command"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="test_fix",
+                changed_files=["examples/tiny-python-fix/calculator.py"],
+                task_test_command="python -m pytest tests/test_recipes.py -q && echo unsafe",
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            report = validate_run_payload(args)
+
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        command_names = [command["name"] for command in report["commands_run"]]
+        self.assertNotIn("task_test_command", command_names)
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertEqual(checks["task_test_command"]["status"], "failed")
+        self.assertIn("shell control syntax", checks["task_test_command"]["summary"])
 
 
 if __name__ == "__main__":

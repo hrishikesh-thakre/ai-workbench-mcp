@@ -219,6 +219,7 @@ class ServerToolHandlerTests(unittest.TestCase):
                 out_dir="runs/run1",
                 profile="scaffold",
                 changed_files=["tools/validate_run.py"],
+                task_test_command="python -m pytest tests/test_recipes.py -q -p no:cacheprovider",
             )
 
         self.assertEqual(response, expected)
@@ -227,6 +228,7 @@ class ServerToolHandlerTests(unittest.TestCase):
             out_dir="runs/run1",
             profile="scaffold",
             changed_files=["tools/validate_run.py"],
+            task_test_command="python -m pytest tests/test_recipes.py -q -p no:cacheprovider",
             report_name="validation_report.json",
         )
 

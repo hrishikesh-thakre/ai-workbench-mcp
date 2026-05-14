@@ -642,12 +642,14 @@ def validate_run(
     out_dir: str | Path,
     profile: str | None = None,
     changed_files: list[str] | None = None,
+    task_test_command: str | None = None,
     report_name: str = "validation_report.json",
 ) -> JsonObject:
     args = SimpleNamespace(
         project=project,
         profile=profile,
         changed_files=changed_files or [],
+        task_test_command=task_test_command,
         out_dir=str(out_dir),
         report_name=report_name,
     )

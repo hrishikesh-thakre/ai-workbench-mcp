@@ -272,14 +272,20 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
     def test_test_fix_recipe_matches_test_fix_policy_profile(self) -> None:
         text = TEST_FIX_RECIPE_PATH.read_text(encoding="utf-8")
         positions = [text.index(tool) for tool in FULL_ACCEPTANCE_TOOLS]
+        profile_data = validation_profiles()["test_fix"]
 
         self.assertIn('title: "Workbench Test-Fix Acceptance"', text)
         self.assertEqual(recipe_parameter_default(text, "validation_profile"), "test_fix")
         self.assertEqual(recipe_parameter_default(text, "prompt"), "bug_root_cause_investigation")
+        self.assertIn("task_test_command", profile_data)
+        self.assertTrue(profile_data["task_test_command"]["required"])
+        self.assertIn("python -m pytest", profile_data["task_test_command"]["allowed_prefixes"])
+        self.assertIn("python -m unittest", profile_data["task_test_command"]["allowed_prefixes"])
         self.assertIn("Test-fix", text)
         self.assertIn('task_type="test"', text)
         self.assertIn("Do not weaken, delete, skip, xfail, or broadly rewrite tests", text)
         self.assertIn("Include the exact test command and result", text)
+        self.assertIn("task_test_command", text)
         self.assertIn("Call workbench_record_execution exactly once", text)
         self.assertEqual(positions, sorted(positions))
 

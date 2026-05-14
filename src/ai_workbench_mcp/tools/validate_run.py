@@ -25,6 +25,7 @@ class ValidationProfile:
     review_checks: list[str]
     consistency_checks: list[str]
     changed_file_policy: dict[str, object]
+    task_test_command: dict[str, object]
 
 
 @dataclass
@@ -79,6 +80,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--out-dir", required=True, help="Run directory for validation artifacts.")
     parser.add_argument(
+        "--task-test-command",
+        help="Optional task-specific Python test command to run before profile-level commands.",
+    )
+    parser.add_argument(
         "--report-name",
         default="validation_report.json",
         help="Validation report file name to write inside the run directory.",
@@ -107,6 +112,9 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
         changed_file_policy=profile_data.get("changed_file_policy", {})
         if isinstance(profile_data.get("changed_file_policy", {}), dict)
         else {},
+        task_test_command=profile_data.get("task_test_command", {})
+        if isinstance(profile_data.get("task_test_command", {}), dict)
+        else {},
     )
 
 
@@ -114,6 +122,16 @@ def read_text_if_exists(file_path: Path) -> str:
     if not file_path.exists() or not file_path.is_file():
         return ""
     return file_path.read_text(encoding="utf-8", errors="replace")
+
+
+def read_json_if_exists(file_path: Path) -> dict[str, object]:
+    if not file_path.exists() or not file_path.is_file():
+        return {}
+    try:
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def count_non_empty_lines(file_path: Path) -> int:
@@ -426,6 +444,83 @@ def validate_changed_file_policy(
     )
 
 
+def model_selection_validation_profile(run_dir: Path) -> str | None:
+    selection = read_json_if_exists(run_dir / "model_selection.json")
+    profile = selection.get("validation_profile")
+    if isinstance(profile, str) and profile.strip():
+        return profile.strip()
+    return None
+
+
+def resolve_validation_profile_name(args_profile: str | None, run_dir: Path, project_default: str) -> tuple[str, str]:
+    if args_profile:
+        return args_profile, "cli_profile"
+
+    selection_profile = model_selection_validation_profile(run_dir)
+    if selection_profile:
+        return selection_profile, "model_selection"
+
+    return project_default, "project_default"
+
+
+def normalized_task_test_command(command: str | None) -> str:
+    return " ".join((command or "").strip().split())
+
+
+def task_test_command_policy_check(profile: ValidationProfile, command: str | None) -> ValidationCheck | None:
+    policy = profile.task_test_command
+    if not policy:
+        return None
+
+    normalized = normalized_task_test_command(command)
+    required = bool(policy.get("required", False))
+    allowed_prefixes = [str(item).lower() for item in policy.get("allowed_prefixes", [])]
+
+    if not normalized:
+        if required:
+            return build_check(
+                name="task_test_command",
+                status="failed",
+                summary="Task-specific test command is required for this validation profile.",
+                details=[
+                    "Pass --task-test-command or the MCP task_test_command argument with the exact focused test command.",
+                ],
+            )
+        return build_check(
+            name="task_test_command",
+            status="passed",
+            summary="No task-specific test command was required.",
+            details=[],
+        )
+
+    lowered = normalized.lower()
+    if allowed_prefixes and not any(lowered.startswith(prefix) for prefix in allowed_prefixes):
+        return build_check(
+            name="task_test_command",
+            status="failed",
+            summary="Task-specific test command is outside the allowed command family.",
+            details=[
+                f"Allowed prefixes: {', '.join(allowed_prefixes)}",
+                f"Received command: {normalized}",
+            ],
+        )
+
+    if re.search(r"[;&|<>`\r\n]", normalized):
+        return build_check(
+            name="task_test_command",
+            status="failed",
+            summary="Task-specific test command contains shell control syntax.",
+            details=["Use a single Python pytest or unittest command without shell chaining or redirection."],
+        )
+
+    return build_check(
+        name="task_test_command",
+        status="passed",
+        summary="Task-specific test command accepted for execution.",
+        details=[f"Command: {normalized}"],
+    )
+
+
 def parse_missing_context_sections(text: str) -> dict[str, list[str]]:
     if not text.strip() or "No missing context detected in this scout run." in text:
         return {"needs_review": [], "info": []}
@@ -670,15 +765,43 @@ def validate_internal_consistency(
     )
 
 
-def run_profile_commands(project_root: Path, profile: ValidationProfile) -> tuple[list[CommandResult], list[dict[str, str]]]:
+def run_profile_commands(
+    project_root: Path,
+    profile: ValidationProfile,
+    task_test_command: str | None = None,
+) -> tuple[list[CommandResult], list[dict[str, str]]]:
     commands_run: list[CommandResult] = []
     commands_not_run: list[dict[str, str]] = []
 
-    if not profile.commands:
+    commands = [*profile.commands]
+    normalized_task_command = normalized_task_test_command(task_test_command)
+    task_command_check = task_test_command_policy_check(profile, normalized_task_command)
+    if task_command_check is not None:
+        if task_command_check.status == "passed" and normalized_task_command:
+            commands.insert(
+                0,
+                {
+                    "name": "task_test_command",
+                    "command": normalized_task_command,
+                    "cwd": ".",
+                    "required": True,
+                    "weight": 3.0,
+                },
+            )
+        elif task_command_check.status == "failed":
+            commands_not_run.append(
+                {
+                    "name": "task_test_command",
+                    "reason": task_command_check.summary,
+                }
+            )
+            return commands_run, commands_not_run
+
+    if not commands:
         commands_not_run.append({"name": "none", "reason": "Profile does not define deterministic commands."})
         return commands_run, commands_not_run
 
-    for raw_command in profile.commands:
+    for raw_command in commands:
         name = str(raw_command.get("name", "")).strip()
         command = str(raw_command.get("command", "")).strip()
         if not name or not command:
@@ -811,13 +934,18 @@ def determine_exit_code(overall_status: str) -> int:
 
 def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
     project = load_project_config(args.project)
-    profile = load_validation_profile(args.profile or project.default_validation_profile)
     run_dir = resolve_cli_path(args.out_dir, project.root)
     run_dir.mkdir(parents=True, exist_ok=True)
+    profile_name, profile_source = resolve_validation_profile_name(args.profile, run_dir, project.default_validation_profile)
+    profile = load_validation_profile(profile_name)
+    task_test_command = getattr(args, "task_test_command", None)
 
-    commands_run, commands_not_run = run_profile_commands(project.root, profile)
+    commands_run, commands_not_run = run_profile_commands(project.root, profile, task_test_command=task_test_command)
 
     artifact_checks: list[ValidationCheck] = []
+    task_command_check = task_test_command_policy_check(profile, task_test_command)
+    if task_command_check is not None:
+        artifact_checks.append(task_command_check)
     artifact_checks.append(validate_artifact_presence(run_dir, profile.required_artifacts))
     artifact_checks.append(validate_non_empty_artifacts(run_dir, profile.non_empty_artifacts))
     changed_files, changed_file_source = collect_changed_files(args.changed_files, run_dir, project.root)
@@ -859,6 +987,7 @@ def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
         review_checks=review_checks,
         missing_context_notes=missing_context_notes,
     )
+    report["profile_source"] = profile_source
     report_path = run_dir / args.report_name
     report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report

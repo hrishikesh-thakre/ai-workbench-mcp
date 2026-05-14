@@ -45,6 +45,10 @@ parameters:
     requirement: optional
     description: "Optional 1-25 complexity score for model routing."
     default: "9"
+  - key: task_test_command
+    input_type: string
+    requirement: user_prompt
+    description: "Exact focused Python pytest or unittest command for the failing test signal."
 
 extensions:
   - type: stdio
@@ -77,10 +81,10 @@ instructions: |
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-test-fix-acceptance.yaml".
   2. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-test-fix-acceptance.yaml", validation_profile="{{ validation_profile }}", routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
   3. Perform the requested test-fix task: {{ task }}
-  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task.
+  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran.
   5. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
      If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
-  6. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", and out_dir="{{ run_dir }}".
+  6. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", task_test_command="{{ task_test_command }}", and out_dir="{{ run_dir }}". The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
   7. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
   8. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
   9. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
@@ -92,6 +96,7 @@ prompt: |
   Project: {{ project }}
   Risk: {{ risk }}
   Validation profile: {{ validation_profile }}
+  Focused test command: {{ task_test_command }}
 
   Start by opening the Workbench run, then select the model tier with Workbench. Repair the failing test signal with a bounded change, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
 

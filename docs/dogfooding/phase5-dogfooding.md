@@ -29,7 +29,8 @@ Use real tasks, but keep them bounded. Avoid tasks that require private services
 Keep dogfood evidence under ignored local `runs/` folders:
 
 ```text
-runs/dogfood-YYYYMMDD-<short-task-slug>/
+runs/dogfood-batchN/
+  dogfood-YYYYMMDD-<short-task-slug>/
 ```
 
 The committed repo should contain only sanitized examples under `examples/sample-runs/`.
@@ -48,6 +49,8 @@ Every dogfood run should contain the standard evidence artifacts:
 
 A run is accepted only when deterministic validation passed and the quality gate returned `accepted`. Goose prose by itself is not acceptance evidence.
 
+For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation.
+
 ## Outcome Buckets
 
 Use the public analytics buckets:
@@ -63,8 +66,10 @@ Preserve detailed failure reasons such as `command_failed:full_test_suite` even 
 After collecting a batch, run:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs --out-dir runs/dogfood-analytics
+python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics
 ```
+
+Do not analyze the whole `runs/` directory for dogfooding reports. Local smoke, scaffold, abandoned, and one-off outputs can pollute the aggregate.
 
 For the committed synthetic samples, run:
 
@@ -91,6 +96,10 @@ Use `routing_feedback_candidates` to identify candidate policy changes. Review e
 Do not wire candidates into `model_select.py` until enough real runs exist to justify the rule. Synthetic sample runs can verify report shape, but they should not drive routing policy.
 
 In the current advisory loop, `workbench_select_model` may read `routing_feedback_candidates` and persist a `routing_feedback` advisory. That advisory can recommend collecting more evidence, keeping the current tier, escalating, or requiring human review, but it does not change the selected tier.
+
+## Batch 1 Report
+
+The first isolated Goose dogfood batch is summarized in `docs/dogfooding/phase5-batch1-report.md`. It contains only aggregate sanitized facts; raw run folders remain ignored under `runs/`.
 
 ## Sanitized Samples
 
