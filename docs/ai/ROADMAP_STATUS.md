@@ -38,7 +38,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Codex local/IDE host metadata | Proof sample committed | One shared MCP server now records `execution_host` and `response_source`; sanitized Codex tiny Python fix evidence, bounded live walkthrough, and preflight/countdown handoff helper are committed |
 | Dogfood Batch 1 | Evidence collected | Eight isolated local Goose/Gemma-backed runs produced 4 accepted and 4 review-required outcomes; report is aggregate-only and raw evidence stays ignored |
 | Focused validation hardening | Done | Validation now falls back to model-selection profile metadata when no explicit profile is passed, and `test_fix` requires focused task-specific Python test evidence |
-| Public alpha launch material | In progress | Phase 5 dogfooding protocol and current launch issue seeds document the next public evidence loop |
+| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, and current launch issue seeds document the next public evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -145,4 +145,4 @@ Tasks:
 
 ## Current Next Step
 
-Continue Phase 5 by collecting the next isolated dogfood batch with focused validation enforced. Use `task_test_command` for every `test_fix` run, then compare Batch 2 routing feedback against `docs/dogfooding/phase5-batch1-report.md` before proposing routing-policy changes. Use `docs/codex/live-test-handoff.md` and the bounded Codex local/IDE walkthrough in `docs/walkthroughs/codex-acceptance-demo.md` to add host/source evidence. Semantic PR acceptance and Codex cloud evidence export should wait for more dogfood evidence. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Continue Phase 5 by collecting the next isolated dogfood batch with focused validation enforced. Use `docs/concepts/how-acceptance-works.md` when explaining that MCP connects while Workbench accepts through validation profiles and quality gates. Use `task_test_command` for every `test_fix` run, then compare Batch 2 routing feedback against `docs/dogfooding/phase5-batch1-report.md` before proposing routing-policy changes. Use `docs/codex/live-test-handoff.md` and the bounded Codex local/IDE walkthrough in `docs/walkthroughs/codex-acceptance-demo.md` to add host/source evidence. Semantic PR acceptance and Codex cloud evidence export should wait for more dogfood evidence. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.

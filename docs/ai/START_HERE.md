@@ -128,6 +128,7 @@ Evidence boundary:
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
+- Read `docs/concepts/how-acceptance-works.md` before explaining what MCP connects versus what Workbench accepts.
 - Use `docs/walkthroughs/goose-acceptance-demo.md` as the public demo script skeleton.
 - Use `docs/codex/live-test-handoff.md` when you want a countdown, generated one-shot prompt, and result checker for bounded Codex local/IDE testing.
 - Use `docs/walkthroughs/codex-acceptance-demo.md` for bounded Codex local/IDE testing; do not nest Codex sessions or run the stdio MCP server as a foreground command.
@@ -152,6 +153,7 @@ The parallel host-portability pass is Codex local/IDE. Use it to prove that the 
 
 Use:
 
+- `docs/concepts/how-acceptance-works.md` for the MCP protocol, Workbench tool server, validation profile, and quality-gate distinction.
 - `docs/dogfooding/phase5-dogfooding.md` for the dogfooding protocol.
 - `docs/analytics/acceptance-analytics.md` for reading metrics and summaries.
 - `docs/analytics/evidence-dashboard.md` for the static local evidence dashboard.

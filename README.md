@@ -57,6 +57,28 @@ AI Workbench MCP stays complementary:
 
 It does not provide a chat UI, editor fork, provider marketplace, or general agent runner.
 
+## What MCP Does And Does Not Do
+
+MCP is the connection protocol.
+
+AI Workbench MCP is the tool server. MCP lets Goose, Codex local/IDE, or another compatible host call Workbench tools, but the protocol itself does not verify correctness, inspect code quality, or decide whether a run is accepted.
+
+Workbench applies the acceptance policy by recording evidence, running deterministic validation, and applying the quality gate. See [how acceptance works](docs/concepts/how-acceptance-works.md) for the full distinction.
+
+## Prompt DoD vs Acceptance Gate
+
+A prompt definition-of-done tells the agent what to attempt and what evidence to report. Prompt instructions are not enforcement.
+
+An acceptance gate checks the resulting evidence after the agent acts. It uses explicit validation profiles, command-backed checks, required artifacts, changed-file policies, and quality-gate rules. The same agent saying "done" is never enough for acceptance.
+
+## What Decides Acceptance
+
+Acceptance is decided by the selected validation profile and quality gate.
+
+The validation profile runs deterministic checks such as tests, build or lint commands, artifact existence checks, and changed-file policy. The quality gate then accepts the run, requests review, requests revision, or leaves the run failed based on that evidence and the configured risk policy.
+
+The agent performs. Workbench accepts. MCP connects them.
+
 ## 5-Minute Quickstart
 
 Install from the repository root:
@@ -248,6 +270,8 @@ Goose recipe
 
 A run is accepted only when deterministic validation and the quality gate support acceptance.
 
+For the detailed acceptance model, read [how acceptance works](docs/concepts/how-acceptance-works.md).
+
 ## Approved Prompt Catalog
 
 Approved prompts live in `prompts/approved/`. The public library contains 12 reusable Workbench prompts:
@@ -277,6 +301,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Codex tool smoke](examples/codex-tool-smoke/): two-tool local/IDE MCP smoke using `execution_host="codex"`.
 - [Codex acceptance smoke](examples/codex-acceptance-smoke/): full six-tool local/IDE lifecycle using `response_source="codex"`.
 - [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, package maintenance, test-fix, and low-risk coding workflows.
+- [How acceptance works](docs/concepts/how-acceptance-works.md): the MCP protocol, Workbench server, validation profile, and quality-gate distinction.
 - [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
 - [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.

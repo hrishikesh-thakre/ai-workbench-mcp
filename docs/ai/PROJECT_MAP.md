@@ -56,6 +56,7 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/` | Installable MCP server package, runtime-agnostic core wrappers, and packaged tool logic |
 | `tests/` | Focused tests for core contracts, tool payloads, recipes, and MCP runtime smoke |
 | `docs/ai/` | Operating docs for the Goose-first pivot |
+| `docs/concepts/how-acceptance-works.md` | Concept guide explaining that MCP connects while Workbench validation profiles and quality gates decide acceptance |
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 | `docs/analytics/evidence-dashboard.md` | Static local dashboard guide for `run_dashboard.html` |
 | `docs/codex/` | Codex local/IDE setup, acceptance workflow, live-test handoff, AGENTS.md snippet, and cloud limitations |

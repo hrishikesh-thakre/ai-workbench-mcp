@@ -10,6 +10,7 @@ MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
 PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
+ACCEPTANCE_CONCEPT = ROOT / "docs" / "concepts" / "how-acceptance-works.md"
 ISSUE_DRAFTS_DIR = ROOT / "docs" / "github" / "issue-drafts"
 OPERATING_DOCS = [
     ROOT / "docs" / "ai" / "START_HERE.md",
@@ -207,6 +208,24 @@ class PublicHygieneTests(unittest.TestCase):
         for draft_name in expected_drafts:
             self.assertIn(f"docs/github/issue-drafts/{draft_name}", create_issues_text)
         self.assertIn("Do not run them", create_issues_text)
+
+    def test_acceptance_concept_guide_locks_mcp_workbench_boundary(self) -> None:
+        self.assertTrue(ACCEPTANCE_CONCEPT.is_file())
+        text = ACCEPTANCE_CONCEPT.read_text(encoding="utf-8")
+
+        for phrase in (
+            "MCP is the connection protocol.",
+            "AI Workbench MCP is the tool server.",
+            "Acceptance is decided by the selected validation profile and quality gate.",
+            "The agent performs. Workbench accepts. MCP connects them.",
+        ):
+            self.assertIn(phrase, text)
+
+        self.assertIn("MCP connects those pieces. It does not prove correctness", text)
+        self.assertIn("A prompt definition-of-done is an instruction to the agent.", text)
+        self.assertIn("The acceptance gate runs after the agent acts.", text)
+        self.assertIn("AI Workbench MCP does not prove software correctness.", text)
+        self.assertIn("It does not replace CI, code review, security review, or human judgment", text)
 
 
 if __name__ == "__main__":

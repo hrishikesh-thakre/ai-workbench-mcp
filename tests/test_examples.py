@@ -33,8 +33,10 @@ CODEX_CLOUD = ROOT / "docs" / "codex" / "cloud-limitations.md"
 CODEX_TOOL_SMOKE = ROOT / "examples" / "codex-tool-smoke" / "README.md"
 CODEX_ACCEPTANCE_SMOKE = ROOT / "examples" / "codex-acceptance-smoke" / "README.md"
 README = ROOT / "README.md"
+ACCEPTANCE_CONCEPT = ROOT / "docs" / "concepts" / "how-acceptance-works.md"
 START_HERE = ROOT / "docs" / "ai" / "START_HERE.md"
 PROJECT_MAP = ROOT / "docs" / "ai" / "PROJECT_MAP.md"
+ROADMAP_STATUS = ROOT / "docs" / "ai" / "ROADMAP_STATUS.md"
 V02_RELEASE = ROOT / "docs" / "releases" / "v0.2.0-alpha.md"
 
 REQUIRED_SAMPLE_ARTIFACTS = [
@@ -178,6 +180,14 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("revision_decision.json", text)
         self.assertIn("evidence-backed accepted runs", text)
         self.assertIn("## 5-Minute Quickstart", text)
+        self.assertIn("## What MCP Does And Does Not Do", text)
+        self.assertIn("## Prompt DoD vs Acceptance Gate", text)
+        self.assertIn("## What Decides Acceptance", text)
+        self.assertIn("MCP is the connection protocol.", text)
+        self.assertIn("AI Workbench MCP is the tool server.", text)
+        self.assertIn("Acceptance is decided by the selected validation profile and quality gate.", text)
+        self.assertIn("The agent performs. Workbench accepts. MCP connects them.", text)
+        self.assertIn("docs/concepts/how-acceptance-works.md", text)
         self.assertIn("## Six MCP Tools", text)
         self.assertIn("## Workflow", text)
         self.assertIn("workbench_open_run", text)
@@ -255,8 +265,10 @@ class PublicExamplesTests(unittest.TestCase):
         walkthrough_text = WALKTHROUGH_GUIDE.read_text(encoding="utf-8")
         codex_walkthrough_text = CODEX_WALKTHROUGH_GUIDE.read_text(encoding="utf-8")
         readme_text = README.read_text(encoding="utf-8")
+        concept_text = ACCEPTANCE_CONCEPT.read_text(encoding="utf-8")
         start_here_text = START_HERE.read_text(encoding="utf-8")
         project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
+        roadmap_text = ROADMAP_STATUS.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
         self.assertIn("accepted-codex-tiny-python-fix", sample_text)
@@ -286,6 +298,22 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/publishing/pypi.md", readme_text)
         self.assertIn("docs/publishing/pypi.md", start_here_text)
         self.assertIn("docs/publishing/pypi.md", project_map_text)
+        self.assertIn("docs/concepts/how-acceptance-works.md", readme_text)
+        self.assertIn("docs/concepts/how-acceptance-works.md", start_here_text)
+        self.assertIn("docs/concepts/how-acceptance-works.md", project_map_text)
+        self.assertIn("docs/concepts/how-acceptance-works.md", roadmap_text)
+        for required_phrase in (
+            "MCP is the connection protocol.",
+            "AI Workbench MCP is the tool server.",
+            "Acceptance is decided by the selected validation profile and quality gate.",
+            "The agent performs. Workbench accepts. MCP connects them.",
+        ):
+            self.assertIn(required_phrase, readme_text)
+            self.assertIn(required_phrase, concept_text)
+            self.assertIn(required_phrase, walkthrough_text)
+        self.assertIn("Prompt DoD vs Acceptance Gate", concept_text)
+        self.assertIn("does not prove software correctness", concept_text)
+        self.assertIn("does not replace CI, code review, security review, or human judgment", concept_text)
         self.assertIn("docs/github/repository-topics.md", readme_text)
         self.assertIn("docs/github/create-launch-issues.md", readme_text)
         self.assertIn("docs/walkthroughs/goose-acceptance-demo.md", readme_text)
@@ -345,6 +373,9 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("goose configure", walkthrough_text)
         self.assertIn("validation_report.json", walkthrough_text)
         self.assertIn("revision_decision.json", walkthrough_text)
+        self.assertIn("accepted-tiny-python-fix", walkthrough_text)
+        self.assertIn("needs-review-test-fix", walkthrough_text)
+        self.assertIn("Prompt instructions and Goose prose are not acceptance evidence by themselves.", walkthrough_text)
         self.assertIn("run_dashboard.html", walkthrough_text)
         self.assertIn("tools/golden_eval.py", walkthrough_text)
         self.assertIn("Codex Acceptance Demo Walkthrough", codex_walkthrough_text)

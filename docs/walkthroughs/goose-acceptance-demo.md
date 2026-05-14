@@ -2,6 +2,15 @@
 
 This is a skeleton for a 3-5 minute public demo. Use public sample code only.
 
+Core wording:
+
+```text
+MCP is the connection protocol.
+AI Workbench MCP is the tool server.
+Acceptance is decided by the selected validation profile and quality gate.
+The agent performs. Workbench accepts. MCP connects them.
+```
+
 ## 1. Install From Source
 
 The PyPI package has not been published yet, so use a checked-out repository:
@@ -58,7 +67,7 @@ runs/demo-tiny-python-fix/
   run_log.jsonl
 ```
 
-Explain that Goose executes, while Workbench records evidence and decides whether the result is accepted.
+Explain that Goose executes, MCP connects Goose to the Workbench tool server, and Workbench records evidence before deciding whether the result is accepted.
 
 ## 5. Show Validation And Quality Gate
 
@@ -67,9 +76,33 @@ Open:
 - `validation_report.json`
 - `revision_decision.json`
 
-Call out that acceptance requires deterministic validation and a quality-gate decision.
+Call out that acceptance requires deterministic validation and a quality-gate decision. Prompt instructions and Goose prose are not acceptance evidence by themselves.
 
-## 6. Run Analytics And Dashboard
+## 6. Show Accepted And Review-Required Evidence
+
+Use committed sample evidence for repeatable public screenshots:
+
+```text
+examples/sample-runs/accepted-tiny-python-fix/
+examples/sample-runs/accepted-docs-only-smoke/
+examples/sample-runs/needs-review-test-fix/
+```
+
+For an accepted sample, open:
+
+- `examples/sample-runs/accepted-tiny-python-fix/validation_report.json`
+- `examples/sample-runs/accepted-tiny-python-fix/revision_decision.json`
+
+Point out `overall_status="passed"`, `sign_off_ready=true`, and `final_status="accepted"`.
+
+For the review-required or failed path, open:
+
+- `examples/sample-runs/needs-review-test-fix/validation_report.json`
+- `examples/sample-runs/needs-review-test-fix/revision_decision.json`
+
+Point out the failed deterministic validation evidence and the revision-required quality-gate outcome.
+
+## 7. Run Analytics And Dashboard
 
 Use committed sample evidence for a repeatable public demo:
 
@@ -83,7 +116,7 @@ Show:
 - `run_summary.md`
 - `run_dashboard.html`
 
-## 7. Run Golden-Case Eval Smoke
+## 8. Run Golden-Case Eval Smoke
 
 ```bash
 python tools/golden_eval.py --cases-dir evals/golden_cases --source-runs-dir examples/sample-runs --out-dir runs/demo-golden-eval
@@ -91,10 +124,10 @@ python tools/golden_eval.py --cases-dir evals/golden_cases --source-runs-dir exa
 
 Show that accepted sample evidence can become a local regression baseline without provider calls or live Goose execution.
 
-## 8. Close With The Wedge
+## 9. Close With The Wedge
 
 Use this wording:
 
 ```text
-AI Workbench MCP turns AI-agent output into accepted, validated, auditable work, starting with Goose.
+AI Workbench MCP turns AI-agent output into accepted, validated, auditable work, starting with Goose. The agent performs. Workbench accepts. MCP connects them.
 ```
