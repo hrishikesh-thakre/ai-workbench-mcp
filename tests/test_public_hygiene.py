@@ -1,9 +1,13 @@
+import json
 import re
 import tomllib
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+README = ROOT / "README.md"
+PYPROJECT = ROOT / "pyproject.toml"
+SERVER_JSON = ROOT / "server.json"
 GITIGNORE = ROOT / ".gitignore"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
@@ -31,6 +35,9 @@ PUBLIC_ROOTS = [
     ROOT / "tools",
 ]
 TEXT_SUFFIXES = {".json", ".jsonl", ".md", ".py", ".toml", ".txt", ".yaml", ".yml"}
+EXPECTED_MCP_SERVER_NAME = "io.github.hrishikesh-thakre/ai-workbench-mcp"
+EXPECTED_PACKAGE_NAME = "ai-workbench-mcp"
+EXPECTED_REPOSITORY_URL = "https://github.com/hrishikesh-thakre/ai-workbench-mcp"
 
 
 def public_files() -> list[Path]:
@@ -108,7 +115,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)
 
     def test_package_version_matches_v02_alpha_release_docs(self) -> None:
-        pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+        pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
         release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
 
         self.assertEqual(pyproject["build-system"]["build-backend"], "setuptools.build_meta")
@@ -128,6 +135,48 @@ class PublicHygieneTests(unittest.TestCase):
                 "Documentation": "https://github.com/hrishikesh-thakre/ai-workbench-mcp#readme",
             },
         )
+
+    def test_mcp_registry_server_json_is_structurally_prepared(self) -> None:
+        self.assertTrue(SERVER_JSON.is_file())
+        metadata = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
+
+        for field in ("name", "title", "description", "version", "repository", "packages"):
+            self.assertIn(field, metadata)
+
+        self.assertEqual(metadata["name"], EXPECTED_MCP_SERVER_NAME)
+        self.assertEqual(metadata["title"], "AI Workbench MCP")
+        self.assertIn("Workbench-owned acceptance evidence", metadata["description"])
+        self.assertEqual(
+            metadata["repository"],
+            {
+                "url": EXPECTED_REPOSITORY_URL,
+                "source": "github",
+            },
+        )
+
+        packages = metadata["packages"]
+        self.assertIsInstance(packages, list)
+        self.assertEqual(len(packages), 1)
+
+        package = packages[0]
+        for field in ("registryType", "identifier", "version", "transport"):
+            self.assertIn(field, package)
+        self.assertEqual(package["registryType"], "pypi")
+        self.assertEqual(package["identifier"], EXPECTED_PACKAGE_NAME)
+        self.assertEqual(package["transport"], {"type": "stdio"})
+
+    def test_mcp_registry_versions_and_readme_marker_are_consistent(self) -> None:
+        metadata = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
+        pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+        readme_text = README.read_text(encoding="utf-8")
+        project_version = pyproject["project"]["version"]
+        expected_marker = f"<!-- mcp-name: {metadata['name']} -->"
+
+        self.assertEqual(metadata["version"], project_version)
+        self.assertEqual(metadata["packages"][0]["version"], project_version)
+        self.assertEqual(metadata["name"], EXPECTED_MCP_SERVER_NAME)
+        self.assertIn(expected_marker, readme_text)
+        self.assertEqual(readme_text.count("mcp-name:"), 1)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
@@ -179,6 +228,14 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("Fresh virtual environment smoke", pypi_text)
         self.assertIn("assert shutil.which('ai-workbench-mcp')", pypi_text)
         self.assertIn("Do not run `ai-workbench-mcp` directly as a smoke command.", pypi_text)
+        self.assertIn("external_launch_execution_prep.md", pypi_text)
+        self.assertIn("python -m pip install -e \".[dev,publish]\"", pypi_text)
+        self.assertIn("server.json.version", pypi_text)
+        self.assertIn("server.json.packages[0].version", pypi_text)
+        self.assertIn("mcp-publisher login", pypi_text)
+        self.assertIn("mcp-publisher publish", pypi_text)
+        self.assertIn("explicit approval", pypi_text)
+        self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata prep.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
         self.assertIn("Only run this after", pypi_text)
 

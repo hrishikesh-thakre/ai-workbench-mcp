@@ -12,7 +12,13 @@ Full Goose recipe workflows still require a checked-out repository because the d
 
 ## Local Build Check
 
-Install build tools:
+Confirm only intended files are tracked before release preparation. The handoff note `external_launch_execution_prep.md` is local planning context and must remain untracked unless a later pass explicitly chooses to publish it:
+
+```powershell
+git status --short
+```
+
+Install build and publish tooling before package checks:
 
 ```powershell
 python -m pip install -e ".[dev,publish]"
@@ -78,3 +84,9 @@ After publishing, update README install instructions from source install to:
 ```bash
 python -m pip install ai-workbench-mcp
 ```
+
+## MCP Registry Prep
+
+The MCP Registry metadata is prepared in `server.json`, but registry submission is separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
+
+Do not run `mcp-publisher login` or `mcp-publisher publish` until after the package exists on PyPI and registry submission has explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata prep.
