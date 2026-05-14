@@ -402,10 +402,13 @@ def validate_changed_file_policy(
     profile: ValidationProfile,
     changed_files: list[str],
     source: str,
+    project_root: Path | None = None,
+    run_dir: Path | None = None,
 ) -> ValidationCheck | None:
     if not profile.changed_file_policy:
         return None
 
+    require_actual_diff = bool(profile.changed_file_policy.get("require_actual_diff", False))
     allowed_patterns = [
         str(item)
         for item in profile.changed_file_policy.get("allowed_patterns", [])
@@ -425,12 +428,32 @@ def validate_changed_file_policy(
         if allowed_patterns and not matches_any_pattern(changed_file, allowed_patterns):
             violations.append(f"Changed file is outside allowed scope: {changed_file}")
 
+    actual_changed_files: list[str] | None = None
+    if require_actual_diff:
+        if source == "git_status":
+            actual_changed_files = changed_files
+        elif project_root is None or run_dir is None:
+            violations.append("Actual changed-file evidence is required but unavailable.")
+        elif changed_files:
+            actual_changed_files = parse_git_status_changed_files(project_root, run_dir)
+            actual_changed_file_set = set(actual_changed_files)
+            for changed_file in changed_files:
+                if changed_file not in actual_changed_file_set:
+                    violations.append(f"Claimed changed file has no worktree diff: {changed_file}")
+
+    details = [f"Changed-file source: {source}"]
+    if require_actual_diff:
+        details.append("Actual changed-file evidence required: true")
+        if actual_changed_files is not None:
+            details.append("Actual changed-file source: git_status")
+            details.append(f"Actual changed files found: {len(actual_changed_files)}")
+
     if violations:
         return build_check(
             name="changed_file_policy",
             status="failed",
             summary="Changed files violate the validation profile policy.",
-            details=[f"Changed-file source: {source}", *violations],
+            details=[*details, *violations],
         )
 
     return build_check(
@@ -438,7 +461,7 @@ def validate_changed_file_policy(
         status="passed",
         summary="Changed files match the validation profile policy.",
         details=[
-            f"Changed-file source: {source}",
+            *details,
             f"Checked {len(changed_files)} changed files.",
         ],
     )
@@ -889,6 +912,12 @@ def build_validation_report(
     if any(result.required and result.status == "failed" for result in commands_run):
         confidence = min(confidence, 0.40)
 
+    if any(check.status == "failed" for check in artifact_checks):
+        confidence = min(confidence, 0.40)
+
+    if any(check.status == "needs_review" for check in artifact_checks):
+        confidence = min(confidence, 0.75)
+
     if any(check.status == "needs_review" for check in review_checks):
         confidence = min(confidence, 0.75)
 
@@ -949,7 +978,13 @@ def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
     artifact_checks.append(validate_artifact_presence(run_dir, profile.required_artifacts))
     artifact_checks.append(validate_non_empty_artifacts(run_dir, profile.non_empty_artifacts))
     changed_files, changed_file_source = collect_changed_files(args.changed_files, run_dir, project.root)
-    changed_file_check = validate_changed_file_policy(profile, changed_files, changed_file_source)
+    changed_file_check = validate_changed_file_policy(
+        profile,
+        changed_files,
+        changed_file_source,
+        project_root=project.root,
+        run_dir=run_dir,
+    )
     if changed_file_check is not None:
         artifact_checks.append(changed_file_check)
 

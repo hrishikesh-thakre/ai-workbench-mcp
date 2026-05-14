@@ -45,7 +45,7 @@ A run is accepted only when the validation report passes, the report is sign-off
 
 A prompt definition-of-done is an instruction to the agent. It can ask for tests, files touched, risks, and a structured response. It is useful, but it is not enforcement.
 
-The acceptance gate runs after the agent acts. It checks explicit artifacts and command-backed validation results. Starter validation profiles can require tests, build or lint checks, non-empty evidence files, changed-file policy, focused task test commands, and review checks.
+The acceptance gate runs after the agent acts. It checks explicit artifacts and command-backed validation results. Starter validation profiles can require tests, build or lint checks, non-empty evidence files, changed-file policy, focused task test commands, and review checks. For docs-only work, claimed changed files must have matching worktree diff evidence; a model saying it edited a file is not enough.
 
 If the evidence is incomplete, risky, ambiguous, or failed, Workbench should produce `review_required`, `revision_required`, or `failed` instead of `accepted`.
 

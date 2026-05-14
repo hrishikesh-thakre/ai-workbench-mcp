@@ -223,6 +223,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         policy = profile_data.get("changed_file_policy")
 
         self.assertIsInstance(policy, dict)
+        self.assertTrue(policy.get("require_actual_diff"))
         self.assertIn("*.md", policy.get("allowed_patterns", []))
         self.assertIn("docs/**/*.md", policy.get("allowed_patterns", []))
         self.assertIn("examples/**/*.md", policy.get("allowed_patterns", []))
@@ -255,6 +256,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("Documentation-only", text)
         self.assertIn("Do not modify source code", text)
         self.assertIn("Call workbench_record_execution exactly once", text)
+        self.assertIn("matching worktree diff evidence", text)
         self.assertEqual(positions, sorted(positions))
 
     def test_python_package_recipe_matches_package_policy_profile(self) -> None:

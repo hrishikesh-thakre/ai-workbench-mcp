@@ -139,6 +139,7 @@ profiles:
     review_checks:
       - model_output_status
     changed_file_policy:
+      require_actual_diff: true
       allowed_patterns:
         - "*.md"
         - "docs/**/*.md"

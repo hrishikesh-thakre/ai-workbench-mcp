@@ -227,6 +227,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("MCP connects those pieces. It does not prove correctness", text)
         self.assertIn("A prompt definition-of-done is an instruction to the agent.", text)
         self.assertIn("The acceptance gate runs after the agent acts.", text)
+        self.assertIn("claimed changed files must have matching worktree diff evidence", text)
         self.assertIn("AI Workbench MCP does not prove software correctness.", text)
         self.assertIn("It does not replace CI, code review, security review, or human judgment", text)
 

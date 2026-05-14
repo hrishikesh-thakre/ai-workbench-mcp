@@ -148,40 +148,79 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir) / "docs-only-allowed"
             self.write_signoff_artifacts(run_dir)
+            changed_files = ["README.md", "docs/ai/ROADMAP_STATUS.md", "examples/focused-workflows/README.md"]
             args = SimpleNamespace(
                 project="ai_workbench_mcp",
                 profile="docs_only",
-                changed_files=["README.md", "docs/ai/ROADMAP_STATUS.md", "examples/focused-workflows/README.md"],
+                changed_files=changed_files,
                 out_dir=str(run_dir),
                 report_name="validation_report.json",
             )
 
-            report = validate_run_payload(args)
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=changed_files,
+            ):
+                report = validate_run_payload(args)
 
         checks = {check["name"]: check for check in report["artifact_checks"]}
         self.assertEqual(report["overall_status"], "passed")
         self.assertEqual(checks["changed_file_policy"]["status"], "passed")
         self.assertIn("Changed-file source: cli_changed_files", checks["changed_file_policy"]["details"])
+        self.assertIn("Actual changed-file evidence required: true", checks["changed_file_policy"]["details"])
 
     def test_docs_only_profile_rejects_source_changed_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir) / "docs-only-forbidden"
             self.write_signoff_artifacts(run_dir)
+            changed_files = ["README.md", "tools/validate_run.py"]
             args = SimpleNamespace(
                 project="ai_workbench_mcp",
                 profile="docs_only",
-                changed_files=["README.md", "tools/validate_run.py"],
+                changed_files=changed_files,
                 out_dir=str(run_dir),
                 report_name="validation_report.json",
             )
 
-            report = validate_run_payload(args)
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=changed_files,
+            ):
+                report = validate_run_payload(args)
 
         checks = {check["name"]: check for check in report["artifact_checks"]}
         self.assertEqual(report["overall_status"], "failed")
         self.assertFalse(report["sign_off_ready"])
         self.assertEqual(checks["changed_file_policy"]["status"], "failed")
         self.assertIn("Forbidden changed file: tools/validate_run.py", checks["changed_file_policy"]["details"])
+
+    def test_docs_only_profile_rejects_claimed_files_without_actual_worktree_diff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "docs-only-no-actual-diff"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="docs_only",
+                changed_files=["docs/walkthroughs/goose-acceptance-demo.md"],
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=[],
+            ):
+                report = validate_run_payload(args)
+
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertFalse(report["sign_off_ready"])
+        self.assertEqual(report["confidence"], 0.4)
+        self.assertEqual(checks["changed_file_policy"]["status"], "failed")
+        self.assertIn(
+            "Claimed changed file has no worktree diff: docs/walkthroughs/goose-acceptance-demo.md",
+            checks["changed_file_policy"]["details"],
+        )
 
     def test_docs_only_profile_accepts_empty_run_log_file_scope(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -219,7 +258,11 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
                 report_name="validation_report.json",
             )
 
-            report = validate_run_payload(args)
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=["README.md"],
+            ):
+                report = validate_run_payload(args)
 
         self.assertEqual(report["profile"], "docs_only")
         self.assertEqual(report["profile_source"], "model_selection")
