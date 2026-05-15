@@ -49,6 +49,8 @@ Every dogfood run should contain the standard evidence artifacts:
 
 A run is accepted only when deterministic validation passed and the quality gate returned `accepted`. Goose prose by itself is not acceptance evidence.
 
+Focused change profiles require non-empty changed-file evidence that exactly matches the current worktree diff. The agent should pass the same exact file list to `workbench_record_execution(files_touched=...)` and `workbench_validate_run(changed_files=...)`; no-op or underreported diffs should become review-blocking validation failures. Artifact-only smoke profiles such as `scaffold` are not change-producing sign-off profiles.
+
 For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation.
 
 ## Outcome Buckets

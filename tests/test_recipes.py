@@ -224,6 +224,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
 
         self.assertIsInstance(policy, dict)
         self.assertTrue(policy.get("require_actual_diff"))
+        self.assertTrue(policy.get("require_non_empty"))
         self.assertIn("*.md", policy.get("allowed_patterns", []))
         self.assertIn("docs/**/*.md", policy.get("allowed_patterns", []))
         self.assertIn("examples/**/*.md", policy.get("allowed_patterns", []))
@@ -231,6 +232,34 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("tools/**", policy.get("forbidden_patterns", []))
         self.assertIn("tests/**", policy.get("forbidden_patterns", []))
         self.assertIn("configs/**", policy.get("forbidden_patterns", []))
+
+    def test_focused_change_profiles_require_exact_non_empty_diff_evidence(self) -> None:
+        profiles = validation_profiles()
+
+        for profile_name in ("docs_only", "low_risk_coding", "python_package_maintenance", "test_fix"):
+            with self.subTest(profile=profile_name):
+                profile_data = profiles[profile_name]
+                policy = profile_data.get("changed_file_policy")
+
+                self.assertIsInstance(policy, dict)
+                self.assertTrue(policy.get("require_actual_diff"))
+                self.assertTrue(policy.get("require_non_empty"))
+
+    def test_focused_recipes_require_exact_changed_files_for_record_and_validate(self) -> None:
+        focused_recipes = (
+            DOCS_ONLY_RECIPE_PATH,
+            RECIPE_PATH,
+            PYTHON_PACKAGE_RECIPE_PATH,
+            TEST_FIX_RECIPE_PATH,
+        )
+
+        for recipe_path in focused_recipes:
+            with self.subTest(recipe=recipe_path.name):
+                text = recipe_path.read_text(encoding="utf-8")
+
+                self.assertIn("exact changed files list", text)
+                self.assertIn("files_touched set to the exact changed files list", text)
+                self.assertIn("changed_files set to the same exact changed files list", text)
 
     def test_full_acceptance_recipes_keep_six_tool_order(self) -> None:
         for recipe_path in recipe_files():

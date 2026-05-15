@@ -7,7 +7,12 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from ai_workbench_mcp.tools.validate_run import validate_captured_response_format, validate_run_payload
+from ai_workbench_mcp.tools.validate_run import (
+    load_validation_profile,
+    validate_captured_response_format,
+    validate_changed_file_policy,
+    validate_run_payload,
+)
 
 
 class ValidateCapturedResponseFormatTests(unittest.TestCase):
@@ -168,6 +173,7 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(checks["changed_file_policy"]["status"], "passed")
         self.assertIn("Changed-file source: cli_changed_files", checks["changed_file_policy"]["details"])
         self.assertIn("Actual changed-file evidence required: true", checks["changed_file_policy"]["details"])
+        self.assertIn("Non-empty changed-file evidence required: true", checks["changed_file_policy"]["details"])
 
     def test_docs_only_profile_rejects_source_changed_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -222,7 +228,7 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
             checks["changed_file_policy"]["details"],
         )
 
-    def test_docs_only_profile_accepts_empty_run_log_file_scope(self) -> None:
+    def test_docs_only_profile_rejects_empty_changed_file_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir) / "docs-only-no-changes"
             self.write_signoff_artifacts(run_dir)
@@ -234,13 +240,90 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
                 report_name="validation_report.json",
             )
 
-            report = validate_run_payload(args)
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=[],
+            ):
+                report = validate_run_payload(args)
 
         checks = {check["name"]: check for check in report["artifact_checks"]}
-        self.assertEqual(report["overall_status"], "passed")
-        self.assertEqual(checks["changed_file_policy"]["status"], "passed")
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertFalse(report["sign_off_ready"])
+        self.assertEqual(checks["changed_file_policy"]["status"], "failed")
         self.assertIn("Changed-file source: run_log_files_touched", checks["changed_file_policy"]["details"])
-        self.assertIn("Checked 0 changed files.", checks["changed_file_policy"]["details"])
+        self.assertIn(
+            "Changed-file evidence is required but no changed files were reported or discovered.",
+            checks["changed_file_policy"]["details"],
+        )
+
+    def test_docs_only_profile_rejects_unreported_actual_worktree_diff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "docs-only-unreported-diff"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="docs_only",
+                changed_files=["README.md"],
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=["README.md", "src/foo.py"],
+            ):
+                report = validate_run_payload(args)
+
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        self.assertEqual(report["overall_status"], "failed")
+        self.assertFalse(report["sign_off_ready"])
+        self.assertEqual(checks["changed_file_policy"]["status"], "failed")
+        self.assertIn("Unreported worktree diff file: src/foo.py", checks["changed_file_policy"]["details"])
+        self.assertIn("Forbidden changed file: src/foo.py", checks["changed_file_policy"]["details"])
+
+    def test_focused_profile_accepts_exact_reported_worktree_diff(self) -> None:
+        profile = load_validation_profile("low_risk_coding")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            run_dir = project_root / "runs" / "focused-exact-diff"
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=["src/ai_workbench_mcp/tools/validate_run.py", "tests/test_validate_run.py"],
+            ):
+                check = validate_changed_file_policy(
+                    profile,
+                    ["src/ai_workbench_mcp/tools/validate_run.py", "tests/test_validate_run.py"],
+                    "cli_changed_files",
+                    project_root=project_root,
+                    run_dir=run_dir,
+                )
+
+        self.assertIsNotNone(check)
+        self.assertEqual(check.status, "passed")
+        self.assertIn("Checked 2 changed files.", check.details)
+
+    def test_focused_profile_rejects_unreported_actual_worktree_diff(self) -> None:
+        profile = load_validation_profile("low_risk_coding")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            project_root = Path(tmpdir)
+            run_dir = project_root / "runs" / "focused-underreported-diff"
+            with patch(
+                "ai_workbench_mcp.tools.validate_run.parse_git_status_changed_files",
+                return_value=["src/ai_workbench_mcp/tools/validate_run.py", "tests/test_validate_run.py"],
+            ):
+                check = validate_changed_file_policy(
+                    profile,
+                    ["src/ai_workbench_mcp/tools/validate_run.py"],
+                    "cli_changed_files",
+                    project_root=project_root,
+                    run_dir=run_dir,
+                )
+
+        self.assertIsNotNone(check)
+        self.assertEqual(check.status, "failed")
+        self.assertIn("Unreported worktree diff file: tests/test_validate_run.py", check.details)
 
     def test_profile_defaults_to_model_selection_validation_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -300,8 +383,14 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
                 report_name="validation_report.json",
             )
 
-            def fake_subprocess_run(command: str, **kwargs):
-                return_code = 1 if "unittest discover" in command else 0
+            def fake_subprocess_run(command: str | list[str], **kwargs):
+                command_text = " ".join(command) if isinstance(command, list) else command
+                if isinstance(command, list) and command[:2] == ["git", "status"]:
+                    return SimpleNamespace(
+                        returncode=0,
+                        stdout=" M examples/tiny-python-fix/calculator.py\n",
+                    )
+                return_code = 1 if "unittest discover" in command_text else 0
                 return SimpleNamespace(returncode=return_code)
 
             with patch("ai_workbench_mcp.tools.validate_run.subprocess.run", side_effect=fake_subprocess_run):

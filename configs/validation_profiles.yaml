@@ -140,6 +140,7 @@ profiles:
       - model_output_status
     changed_file_policy:
       require_actual_diff: true
+      require_non_empty: true
       allowed_patterns:
         - "*.md"
         - "docs/**/*.md"
@@ -181,6 +182,9 @@ profiles:
       - run_log.jsonl
     review_checks:
       - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
 
   test_fix:
     description: Test-fix acceptance profile for bounded changes whose primary acceptance signal is a deterministic passing test suite.
@@ -215,6 +219,9 @@ profiles:
       - run_log.jsonl
     review_checks:
       - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
 
   low_risk_coding:
     description: Low-risk coding acceptance profile for bounded implementation changes with deterministic test coverage.
@@ -244,3 +251,6 @@ profiles:
       - run_log.jsonl
     review_checks:
       - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true

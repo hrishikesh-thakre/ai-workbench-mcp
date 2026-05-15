@@ -409,6 +409,7 @@ def validate_changed_file_policy(
         return None
 
     require_actual_diff = bool(profile.changed_file_policy.get("require_actual_diff", False))
+    require_non_empty = bool(profile.changed_file_policy.get("require_non_empty", False))
     allowed_patterns = [
         str(item)
         for item in profile.changed_file_policy.get("allowed_patterns", [])
@@ -421,25 +422,32 @@ def validate_changed_file_policy(
     ]
 
     violations: list[str] = []
-    for changed_file in changed_files:
+    actual_changed_files: list[str] | None = None
+    if require_actual_diff:
+        if project_root is None or run_dir is None:
+            violations.append("Actual changed-file evidence is required but unavailable.")
+        else:
+            actual_changed_files = parse_git_status_changed_files(project_root, run_dir)
+            reported_changed_file_set = set(changed_files)
+            actual_changed_file_set = set(actual_changed_files)
+            for changed_file in changed_files:
+                if changed_file not in actual_changed_file_set:
+                    violations.append(f"Claimed changed file has no worktree diff: {changed_file}")
+            if source != "git_status":
+                for actual_changed_file in actual_changed_files:
+                    if actual_changed_file not in reported_changed_file_set:
+                        violations.append(f"Unreported worktree diff file: {actual_changed_file}")
+
+    effective_changed_files = sorted(set(changed_files) | set(actual_changed_files or []))
+    if require_non_empty and not effective_changed_files:
+        violations.append("Changed-file evidence is required but no changed files were reported or discovered.")
+
+    for changed_file in effective_changed_files:
         if forbidden_patterns and matches_any_pattern(changed_file, forbidden_patterns):
             violations.append(f"Forbidden changed file: {changed_file}")
             continue
         if allowed_patterns and not matches_any_pattern(changed_file, allowed_patterns):
             violations.append(f"Changed file is outside allowed scope: {changed_file}")
-
-    actual_changed_files: list[str] | None = None
-    if require_actual_diff:
-        if source == "git_status":
-            actual_changed_files = changed_files
-        elif project_root is None or run_dir is None:
-            violations.append("Actual changed-file evidence is required but unavailable.")
-        elif changed_files:
-            actual_changed_files = parse_git_status_changed_files(project_root, run_dir)
-            actual_changed_file_set = set(actual_changed_files)
-            for changed_file in changed_files:
-                if changed_file not in actual_changed_file_set:
-                    violations.append(f"Claimed changed file has no worktree diff: {changed_file}")
 
     details = [f"Changed-file source: {source}"]
     if require_actual_diff:
@@ -447,6 +455,8 @@ def validate_changed_file_policy(
         if actual_changed_files is not None:
             details.append("Actual changed-file source: git_status")
             details.append(f"Actual changed files found: {len(actual_changed_files)}")
+    if require_non_empty:
+        details.append("Non-empty changed-file evidence required: true")
 
     if violations:
         return build_check(
@@ -462,7 +472,7 @@ def validate_changed_file_policy(
         summary="Changed files match the validation profile policy.",
         details=[
             *details,
-            f"Checked {len(changed_files)} changed files.",
+            f"Checked {len(effective_changed_files)} changed files.",
         ],
     )
 
