@@ -220,7 +220,7 @@ class PublicHygieneTests(unittest.TestCase):
         launch_issues_text = (ROOT / "docs" / "github" / "launch-issues.md").read_text(encoding="utf-8")
 
         self.assertIn("dist/", gitignore_text)
-        self.assertIn("has not been published to PyPI yet", pypi_text)
+        self.assertIn("published to PyPI as `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("code/server only", pypi_text)
         self.assertIn("checked-out repository", pypi_text)
         self.assertIn("python -m build", pypi_text)
@@ -240,8 +240,13 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("TestPyPI", pypi_text)
         self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
+        self.assertIn("PyPI release completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
+        self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
         self.assertIn('"ai-workbench-mcp==0.2.0a0"', pypi_text)
-        self.assertIn("Real PyPI remains pending.", pypi_text)
+        self.assertIn("python -m pip install ai-workbench-mcp==0.2.0a0", pypi_text)
+        self.assertIn("MCP Registry submission remains pending.", pypi_text)
+        self.assertNotIn("has not been published to PyPI yet", pypi_text)
+        self.assertNotIn("Real PyPI remains pending.", pypi_text)
         self.assertIn("Only run this after", pypi_text)
 
         for topic in (

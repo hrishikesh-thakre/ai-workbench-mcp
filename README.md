@@ -83,13 +83,19 @@ The agent performs. Workbench accepts. MCP connects them.
 
 ## 5-Minute Quickstart
 
-Install from the repository root:
+Install the published MCP server package:
+
+```bash
+python -m pip install ai-workbench-mcp==0.2.0a0
+```
+
+For the full Goose recipe workflow in this checked-out repository, install from the repository root:
 
 ```bash
 python -m pip install -e .
 ```
 
-The PyPI package is not published yet. The current wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
+The published PyPI wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
 
 Register the MCP server in Goose:
 

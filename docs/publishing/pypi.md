@@ -1,8 +1,8 @@
 # PyPI Publishing Prep
 
-AI Workbench MCP has not been published to PyPI yet.
+AI Workbench MCP is published to PyPI as `ai-workbench-mcp==0.2.0a0`.
 
-This guide prepares a package release, but it does not authorize or automate publishing. Recheck the project name on PyPI immediately before any upload.
+This guide records the package boundary and release checklist. Recheck the project name and version on PyPI immediately before any future upload because PyPI versions are immutable.
 
 ## Current Package Boundary
 
@@ -83,20 +83,30 @@ python -c "import shutil; assert shutil.which('ai-workbench-mcp')"
 
 ## PyPI Upload
 
-Real PyPI remains pending. Only run this after TestPyPI verification, final version review, and explicit release approval:
+Status: PyPI release completed for `ai-workbench-mcp==0.2.0a0` on 2026-05-15.
 
-```powershell
-python -m twine upload dist/*
+PyPI package page:
+
+```text
+https://pypi.org/project/ai-workbench-mcp/0.2.0a0/
 ```
 
-After publishing, update README install instructions from source install to:
+The completed release verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to PyPI, and an exact-version install smoke from PyPI.
+
+Do not rerun the upload for `0.2.0a0`. Future PyPI uploads require a version bump, TestPyPI verification, final version review, and explicit release approval:
+
+```powershell
+python -m twine upload --repository pypi --non-interactive dist/*
+```
+
+Published install command:
 
 ```bash
-python -m pip install ai-workbench-mcp
+python -m pip install ai-workbench-mcp==0.2.0a0
 ```
 
 ## MCP Registry Prep
 
 The MCP Registry metadata is prepared in `server.json`, but registry submission is separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
 
-Do not run `mcp-publisher login` or `mcp-publisher publish` until after the package exists on PyPI and registry submission has explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata prep.
+MCP Registry submission remains pending. Do not run `mcp-publisher login` or `mcp-publisher publish` until registry submission has explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata prep.
