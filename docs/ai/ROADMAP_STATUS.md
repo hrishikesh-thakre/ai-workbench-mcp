@@ -34,7 +34,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Public CI gate prototype | Public-readiness hardening | GitHub Actions repo self-validation runs install, tests, scaffold validation, and diff hygiene; semantic PR acceptance remains future work |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
-| PyPI and package plumbing | Public-readiness prep | Package build checks, wheel smoke, publishing docs, and demo walkthrough are prepared without external publishing |
+| PyPI and package plumbing | TestPyPI verified | Package build checks, wheel smoke, and exact-version TestPyPI install passed for `0.2.0a0`; real PyPI remains pending |
 | GitHub launch setup | Done | Public repository topics are applied and launch issues `#1`-`#6` are open with public links |
 | Codex local/IDE host metadata | Proof sample committed | One shared MCP server now records `execution_host` and `response_source`; sanitized Codex tiny Python fix evidence, bounded live walkthrough, and preflight/countdown handoff helper are committed |
 | Dogfood Batch 1 | Evidence collected | Eight isolated local Goose/Gemma-backed runs produced 4 accepted and 4 review-required outcomes; report is aggregate-only and raw evidence stays ignored |

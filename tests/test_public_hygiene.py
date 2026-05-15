@@ -238,6 +238,10 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("explicit approval", pypi_text)
         self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata prep.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
+        self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
+        self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
+        self.assertIn('"ai-workbench-mcp==0.2.0a0"', pypi_text)
+        self.assertIn("Real PyPI remains pending.", pypi_text)
         self.assertIn("Only run this after", pypi_text)
 
         for topic in (

@@ -57,23 +57,33 @@ Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP ser
 
 ## TestPyPI Dry Run
 
-Only run this after confirming credentials and release intent:
+Status: TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0` on 2026-05-15.
+
+TestPyPI package page:
+
+```text
+https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/
+```
+
+The completed rehearsal verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to TestPyPI, and an exact-version install smoke from TestPyPI with PyPI as the dependency fallback.
+
+Only run this after confirming credentials and release intent, and only after checking that the target version does not already exist on TestPyPI. Do not use `--skip-existing`:
 
 ```powershell
-python -m twine upload --repository testpypi dist/*
+python -m twine upload --repository testpypi --non-interactive dist/*
 ```
 
 Then verify installation in a fresh environment:
 
 ```powershell
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple ai-workbench-mcp
+python -m pip install --no-cache-dir --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "ai-workbench-mcp==0.2.0a0"
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
 python -c "import shutil; assert shutil.which('ai-workbench-mcp')"
 ```
 
 ## PyPI Upload
 
-Only run this after TestPyPI verification, final version review, and explicit release approval:
+Real PyPI remains pending. Only run this after TestPyPI verification, final version review, and explicit release approval:
 
 ```powershell
 python -m twine upload dist/*
