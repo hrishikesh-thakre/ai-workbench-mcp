@@ -388,8 +388,28 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("code/server only", pypi_text)
         self.assertIn("python -m twine check dist/*", pypi_text)
         self.assertIn("model-context-protocol", topics_text)
+        self.assertIn("The public GitHub repository has the recommended topics applied.", topics_text)
+        self.assertIn("Topics applied: 11", topics_text)
+        self.assertIn("Do not rerun unless recreating the topic setup after checking", topics_text)
         self.assertIn("gh repo edit", topics_text)
+        for issue_number, issue_title in (
+            (1, "dogfooding: collect 20-50 Goose acceptance runs"),
+            (2, "analytics: promote routing feedback candidates into policy experiments"),
+            (3, "cost evidence: capture provider token and cost metadata"),
+            (4, "policy packs: design first-class validation policy metadata"),
+            (5, "ci: prototype PR acceptance gate"),
+            (6, "docs: record a five-minute Goose acceptance demo"),
+        ):
+            issue_link = f"https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/{issue_number}"
+            self.assertIn(f"`#{issue_number}` {issue_title}", launch_text)
+            self.assertIn(f"`#{issue_number}` {issue_title}", create_issues_text)
+            self.assertIn(issue_link, launch_text)
+            self.assertIn(issue_link, create_issues_text)
+        self.assertIn("Do not rerun the creation commands unless recreating after duplicate checks.", create_issues_text)
+        self.assertIn("gh issue list", create_issues_text)
         self.assertIn("gh issue create", create_issues_text)
+        self.assertIn("GitHub launch setup", roadmap_text)
+        self.assertIn("launch issues `#1`-`#6` are open with public links", roadmap_text)
         self.assertIn("Goose Acceptance Demo Walkthrough", walkthrough_text)
         self.assertIn("recording-ready runbook", walkthrough_text)
         self.assertIn("sample-only path", walkthrough_text)

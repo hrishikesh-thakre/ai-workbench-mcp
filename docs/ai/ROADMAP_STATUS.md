@@ -34,12 +34,13 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Public CI gate prototype | Public-readiness hardening | GitHub Actions repo self-validation runs install, tests, scaffold validation, and diff hygiene; semantic PR acceptance remains future work |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
-| PyPI and launch plumbing | Public-readiness prep | Package build checks, wheel smoke, publishing docs, topic guide, issue drafts, and demo walkthrough are prepared without external publishing |
+| PyPI and package plumbing | Public-readiness prep | Package build checks, wheel smoke, publishing docs, and demo walkthrough are prepared without external publishing |
+| GitHub launch setup | Done | Public repository topics are applied and launch issues `#1`-`#6` are open with public links |
 | Codex local/IDE host metadata | Proof sample committed | One shared MCP server now records `execution_host` and `response_source`; sanitized Codex tiny Python fix evidence, bounded live walkthrough, and preflight/countdown handoff helper are committed |
 | Dogfood Batch 1 | Evidence collected | Eight isolated local Goose/Gemma-backed runs produced 4 accepted and 4 review-required outcomes; report is aggregate-only and raw evidence stays ignored |
 | Focused validation hardening | Done | Validation now falls back to model-selection profile metadata, `test_fix` requires focused task-specific Python test evidence, and focused profiles require non-empty exact changed-file evidence |
 | Dogfood Batch 2 | Evidence collected | Stage A and Stage B produced eight isolated Goose/Gemma-backed runs; Stage B confirmed exact-diff validation blocks no-op and underreported changed-file claims |
-| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, and current launch issue seeds document the next public evidence loop |
+| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, and public launch issues `#1`-`#6` document the next evidence loop |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -141,7 +142,8 @@ Tasks:
 - Add a public CI gate prototype for repo self-validation before broader PR acceptance automation.
 - Generate a static single-file evidence dashboard from run analytics for local scanning and demos.
 - Add a local golden-case eval harness for accepted sanitized baselines.
-- Prepare PyPI packaging checks, public launch issue drafts, repository topics, and the recording-ready demo walkthrough.
+- Prepare PyPI packaging checks and the recording-ready demo walkthrough.
+- Apply public repository topics and create launch issues `#1`-`#6`.
 - Add explicit execution-host and response-source metadata, with Codex local/IDE as the first second-host proof.
 
 ## Current Next Step

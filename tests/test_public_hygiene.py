@@ -212,11 +212,12 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("pull_request:", workflow)
         self.assertIn("push:", workflow)
 
-    def test_publishing_and_launch_docs_are_prepared_without_external_actions(self) -> None:
+    def test_publishing_and_launch_docs_record_completed_external_setup(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
         pypi_text = PYPI_GUIDE.read_text(encoding="utf-8")
         topics_text = TOPICS_GUIDE.read_text(encoding="utf-8")
         create_issues_text = CREATE_ISSUES_GUIDE.read_text(encoding="utf-8")
+        launch_issues_text = (ROOT / "docs" / "github" / "launch-issues.md").read_text(encoding="utf-8")
 
         self.assertIn("dist/", gitignore_text)
         self.assertIn("has not been published to PyPI yet", pypi_text)
@@ -254,20 +255,51 @@ class PublicHygieneTests(unittest.TestCase):
         ):
             self.assertIn(topic, topics_text)
         self.assertIn("hrishikesh-thakre/ai-workbench-mcp", topics_text)
+        self.assertIn("The public GitHub repository has the recommended topics applied.", topics_text)
+        self.assertIn("Topics applied: 11", topics_text)
+        self.assertIn("recovery/reference guidance only", topics_text)
+        self.assertIn("Do not rerun unless recreating the topic setup after checking", topics_text)
         self.assertIn("gh repo edit", topics_text)
 
-        expected_drafts = [
-            "analytics-routing-feedback-policy-experiments.md",
-            "ci-pr-acceptance-gate.md",
-            "cost-evidence-provider-metadata.md",
-            "docs-five-minute-goose-demo.md",
-            "dogfooding-collect-goose-runs.md",
-            "policy-packs-validation-metadata.md",
-        ]
+        expected_issues = {
+            1: (
+                "dogfooding: collect 20-50 Goose acceptance runs",
+                "dogfooding-collect-goose-runs.md",
+            ),
+            2: (
+                "analytics: promote routing feedback candidates into policy experiments",
+                "analytics-routing-feedback-policy-experiments.md",
+            ),
+            3: (
+                "cost evidence: capture provider token and cost metadata",
+                "cost-evidence-provider-metadata.md",
+            ),
+            4: (
+                "policy packs: design first-class validation policy metadata",
+                "policy-packs-validation-metadata.md",
+            ),
+            5: (
+                "ci: prototype PR acceptance gate",
+                "ci-pr-acceptance-gate.md",
+            ),
+            6: (
+                "docs: record a five-minute Goose acceptance demo",
+                "docs-five-minute-goose-demo.md",
+            ),
+        }
+        expected_drafts = sorted(draft for _title, draft in expected_issues.values())
         self.assertEqual(sorted(path.name for path in ISSUE_DRAFTS_DIR.glob("*.md")), expected_drafts)
-        for draft_name in expected_drafts:
+        for issue_number, (issue_title, draft_name) in expected_issues.items():
+            issue_link = f"https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/{issue_number}"
+            self.assertIn(f"`#{issue_number}` {issue_title}", create_issues_text)
+            self.assertIn(issue_link, create_issues_text)
+            self.assertIn(f"`#{issue_number}` {issue_title}", launch_issues_text)
+            self.assertIn(issue_link, launch_issues_text)
             self.assertIn(f"docs/github/issue-drafts/{draft_name}", create_issues_text)
-        self.assertIn("Do not run them", create_issues_text)
+        self.assertIn("Do not rerun the creation commands unless recreating after duplicate checks.", create_issues_text)
+        self.assertIn("Do not rerun them unless recreating the launch backlog", create_issues_text)
+        self.assertIn("gh issue list", create_issues_text)
+        self.assertIn("gh issue create", create_issues_text)
 
     def test_acceptance_concept_guide_locks_mcp_workbench_boundary(self) -> None:
         self.assertTrue(ACCEPTANCE_CONCEPT.is_file())

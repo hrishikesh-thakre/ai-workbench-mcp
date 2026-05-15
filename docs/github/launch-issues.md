@@ -1,8 +1,19 @@
 # Launch Issue Seeds
 
-Use these as initial public GitHub issues after the v0.2 public alpha and Phase 5 analytics hardening work. These issues should gather real evidence before adding more recipes or broadening provider integrations.
+These launch issue seeds have been created as public GitHub issues. They should gather real evidence before adding more recipes or broadening provider integrations.
+
+| Issue | Public link |
+|---|---|
+| `#1` dogfooding: collect 20-50 Goose acceptance runs | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/1 |
+| `#2` analytics: promote routing feedback candidates into policy experiments | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/2 |
+| `#3` cost evidence: capture provider token and cost metadata | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/3 |
+| `#4` policy packs: design first-class validation policy metadata | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/4 |
+| `#5` ci: prototype PR acceptance gate | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/5 |
+| `#6` docs: record a five-minute Goose acceptance demo | https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/6 |
 
 ## dogfooding: collect 20-50 Goose acceptance runs
+
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/1
 
 Run the Phase 5 dogfooding protocol across a mix of docs-only, low-risk coding, package maintenance, and test-fix tasks.
 
@@ -15,6 +26,8 @@ Acceptance criteria:
 
 ## analytics: promote routing feedback candidates into policy experiments
 
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/2
+
 Use `routing_feedback_candidates` from `run_metrics.json` to propose model-selection policy changes.
 
 Acceptance criteria:
@@ -24,6 +37,8 @@ Acceptance criteria:
 - No routing rule is changed solely from synthetic sample data.
 
 ## cost evidence: capture provider token and cost metadata
+
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/3
 
 Add real provider cost metadata capture for runs where the provider exposes token or cost evidence.
 
@@ -35,6 +50,8 @@ Acceptance criteria:
 
 ## policy packs: design first-class validation policy metadata
 
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/4
+
 Evaluate when `configs/validation_profiles.yaml` should become versioned policy packs with metadata, changed-file rules, evidence requirements, and risk labels.
 
 Acceptance criteria:
@@ -45,6 +62,8 @@ Acceptance criteria:
 
 ## ci: prototype PR acceptance gate
 
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/5
+
 Prototype running Workbench validation and quality-gate reporting as a pull-request acceptance check.
 
 Acceptance criteria:
@@ -54,6 +73,8 @@ Acceptance criteria:
 - It does not require committing local `runs/` history.
 
 ## docs: record a five-minute Goose acceptance demo
+
+Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/6
 
 Create a short public demo that shows Goose executing work while Workbench records evidence, validates, gates, and analyzes the run.
 

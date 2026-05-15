@@ -1,8 +1,16 @@
 # Repository Topics
 
-The public GitHub repository currently needs topics set manually or with an authenticated GitHub CLI.
+The public GitHub repository has the recommended topics applied.
 
-Recommended topics:
+Verified state:
+
+```text
+Repository: https://github.com/hrishikesh-thakre/ai-workbench-mcp
+Visibility: public
+Topics applied: 11
+```
+
+Applied topics:
 
 ```text
 goose
@@ -18,15 +26,21 @@ quality-gates
 audit-trail
 ```
 
-## GitHub CLI
+## Recovery Reference
 
-After authenticating with `gh auth login`, run:
+The command below is kept as recovery/reference guidance only. Do not rerun unless recreating the topic setup after checking the current repository topics and confirming a topic is missing.
 
 ```bash
 gh repo edit hrishikesh-thakre/ai-workbench-mcp --add-topic goose --add-topic mcp --add-topic model-context-protocol --add-topic ai-agents --add-topic agentic-ai --add-topic coding-agents --add-topic developer-tools --add-topic validation --add-topic evals --add-topic quality-gates --add-topic audit-trail
 ```
 
-## GitHub UI
+Read-only duplicate check:
+
+```bash
+gh repo view hrishikesh-thakre/ai-workbench-mcp --json repositoryTopics,nameWithOwner,isPrivate
+```
+
+## GitHub UI Reference
 
 Open:
 
@@ -34,4 +48,4 @@ Open:
 https://github.com/hrishikesh-thakre/ai-workbench-mcp
 ```
 
-Use the repository About panel to add the topics above.
+Use the repository About panel only if a topic must be restored manually.
