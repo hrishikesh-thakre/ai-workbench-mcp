@@ -103,6 +103,15 @@ In the current advisory loop, `workbench_select_model` may read `routing_feedbac
 
 The first isolated Goose dogfood batch is summarized in `docs/dogfooding/phase5-batch1-report.md`. It contains only aggregate sanitized facts; raw run folders remain ignored under `runs/`.
 
+## Batch 2 Reports
+
+Batch 2 is summarized in two sanitized reports:
+
+- `docs/dogfooding/phase5-batch2-stage-a-report.md`: four post-hardening Goose runs across the focused workflows, with one accepted outcome and three review-required outcomes.
+- `docs/dogfooding/phase5-batch2-stage-b-report.md`: four exact-diff hardening runs after non-empty, exact changed-file evidence became required, with all four outcomes review-required.
+
+Stage B is evidence only. It confirms that focused profiles block no-op or underreported changed-file claims, but it does not justify routing-policy mutation by itself.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:
