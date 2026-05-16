@@ -107,6 +107,14 @@ python -m pip install ai-workbench-mcp==0.2.0a0
 
 ## MCP Registry Prep
 
-The MCP Registry metadata is prepared in `server.json`, but registry submission is separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
+Status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.2.0a0` on 2026-05-16.
 
-MCP Registry submission remains pending. Do not run `mcp-publisher login` or `mcp-publisher publish` until registry submission has explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata prep.
+Registry API lookup:
+
+```text
+https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp
+```
+
+The MCP Registry metadata is prepared in `server.json`, but registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
+
+Do not rerun `mcp-publisher publish` for `0.2.0a0`. Future registry updates require a version bump, a published package version, `mcp-publisher validate`, and explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.

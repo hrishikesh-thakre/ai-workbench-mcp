@@ -146,6 +146,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertEqual(metadata["name"], EXPECTED_MCP_SERVER_NAME)
         self.assertEqual(metadata["title"], "AI Workbench MCP")
         self.assertIn("Workbench-owned acceptance evidence", metadata["description"])
+        self.assertLessEqual(len(metadata["description"]), 100)
         self.assertEqual(
             metadata["repository"],
             {
@@ -233,10 +234,9 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("python -m pip install -e \".[dev,publish]\"", pypi_text)
         self.assertIn("server.json.version", pypi_text)
         self.assertIn("server.json.packages[0].version", pypi_text)
-        self.assertIn("mcp-publisher login", pypi_text)
         self.assertIn("mcp-publisher publish", pypi_text)
         self.assertIn("explicit approval", pypi_text)
-        self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata prep.", pypi_text)
+        self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
         self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
@@ -244,7 +244,10 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
         self.assertIn('"ai-workbench-mcp==0.2.0a0"', pypi_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.2.0a0", pypi_text)
-        self.assertIn("MCP Registry submission remains pending.", pypi_text)
+        self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
+        self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", pypi_text)
+        self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0`.", pypi_text)
+        self.assertNotIn("MCP Registry submission remains pending.", pypi_text)
         self.assertNotIn("has not been published to PyPI yet", pypi_text)
         self.assertNotIn("Real PyPI remains pending.", pypi_text)
         self.assertIn("Only run this after", pypi_text)

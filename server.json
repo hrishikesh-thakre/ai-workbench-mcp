@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.hrishikesh-thakre/ai-workbench-mcp",
   "title": "AI Workbench MCP",
-  "description": "Goose-first MCP server for Workbench-owned acceptance evidence, deterministic validation, quality gates, and run analytics.",
+  "description": "Goose-first MCP server for Workbench-owned acceptance evidence, validation gates, and analytics.",
   "version": "0.2.0a0",
   "repository": {
     "url": "https://github.com/hrishikesh-thakre/ai-workbench-mcp",
