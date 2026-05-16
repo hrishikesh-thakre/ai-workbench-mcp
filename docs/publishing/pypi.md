@@ -115,6 +115,8 @@ Registry API lookup:
 https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp
 ```
 
-The MCP Registry metadata is prepared in `server.json`, but registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
+The MCP Registry metadata is prepared in `server.json`. The public proof note is `docs/publishing/mcp-registry-proof.md`.
+
+Registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
 
 Do not rerun `mcp-publisher publish` for `0.2.0a0`. Future registry updates require a version bump, a published package version, `mcp-publisher validate`, and explicit approval. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.

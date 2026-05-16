@@ -206,6 +206,20 @@ Codex uses the same `ai-workbench-mcp` server. The first Codex slice is local/ID
 - [Codex live-test handoff](docs/codex/live-test-handoff.md): batch/Python helper that runs safe preflight checks, shows a timer, prints a one-shot prompt, and checks the resulting Codex evidence folders.
 - [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): bounded local/IDE proof path with loop and crash guardrails.
 
+## Proof Pack
+
+The v0.2 public proof pack is in [docs/proof/proof-pack-v0.2.md](docs/proof/proof-pack-v0.2.md).
+
+It shows:
+
+- accepted Goose evidence
+- accepted Codex local/IDE evidence
+- review-required evidence
+- analytics by execution host and response source
+- a 3-5 minute demo script
+
+The proof pack uses committed sanitized sample evidence under `examples/sample-runs/`. Raw local `runs/` evidence stays ignored.
+
 ## Sample Analytics Demo
 
 To inspect the trust loop without provider setup, run analytics over the committed synthetic sample runs:
