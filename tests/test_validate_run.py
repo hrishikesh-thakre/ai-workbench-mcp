@@ -149,6 +149,40 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
             "Captured model response matches the preferred structured format.",
         )
 
+    def test_response_captured_with_markdown_heading_sections_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_output = Path(tmpdir) / "model_output.md"
+            model_output.write_text(
+                "\n".join(
+                    [
+                        "# Model Output",
+                        "",
+                        "## Execution Metadata",
+                        "",
+                        "- Status: `response_captured`",
+                        "",
+                        "## Captured Response",
+                        "",
+                        "### Summary",
+                        "Fixed the fixture bug.",
+                        "",
+                        "### Files touched:",
+                        "- examples/tiny-python-fix/calculator.py",
+                        "",
+                        "### Validation run:",
+                        "- python -m unittest discover -s examples/tiny-python-fix -p test_*.py -> passed",
+                        "",
+                        "### Risks / follow-ups:",
+                        "- None.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            check = validate_captured_response_format(model_output)
+
+        self.assertEqual(check.status, "passed")
+
     def test_docs_only_profile_accepts_documentation_changed_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             run_dir = Path(tmpdir) / "docs-only-allowed"
@@ -403,6 +437,41 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(focused_command["status"], "failed")
         self.assertEqual(report["overall_status"], "failed")
         self.assertEqual(checks["task_test_command"]["status"], "passed")
+
+    def test_fixture_repair_proof_profile_skips_full_suite_but_requires_focused_command_and_exact_diff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "fixture-repair-proof"
+            self.write_signoff_artifacts(run_dir)
+            args = SimpleNamespace(
+                project="ai_workbench_mcp",
+                profile="fixture_repair_proof",
+                changed_files=["examples/tiny-python-fix/calculator.py"],
+                task_test_command='python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"',
+                out_dir=str(run_dir),
+                report_name="validation_report.json",
+            )
+
+            def fake_subprocess_run(command: str | list[str], **kwargs):
+                command_text = " ".join(command) if isinstance(command, list) else command
+                if isinstance(command, list) and command[:2] == ["git", "status"]:
+                    return SimpleNamespace(
+                        returncode=0,
+                        stdout=" M examples/tiny-python-fix/calculator.py\n",
+                    )
+                if "pytest -q" in command_text and "tests/test_recipes.py" not in command_text:
+                    return SimpleNamespace(returncode=1)
+                return SimpleNamespace(returncode=0)
+
+            with patch("ai_workbench_mcp.tools.validate_run.subprocess.run", side_effect=fake_subprocess_run):
+                report = validate_run_payload(args)
+
+        command_names = [command["name"] for command in report["commands_run"]]
+        checks = {check["name"]: check for check in report["artifact_checks"]}
+        self.assertEqual(command_names[0], "task_test_command")
+        self.assertNotIn("full_test_suite", command_names)
+        self.assertEqual(report["overall_status"], "passed")
+        self.assertTrue(report["sign_off_ready"])
+        self.assertEqual(checks["changed_file_policy"]["status"], "passed")
 
     def test_task_test_command_rejects_shell_control_syntax(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -38,7 +38,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | GitHub launch setup | Done | Public repository topics are applied and launch issues `#1`-`#6` are open with public links |
 | Codex local/IDE host metadata | Proof sample committed | One shared MCP server now records `execution_host` and `response_source`; sanitized Codex tiny Python fix evidence, bounded live walkthrough, and preflight/countdown handoff helper are committed |
 | Dogfood Batch 1 | Evidence collected | Eight isolated local Goose/Gemma-backed runs produced 4 accepted and 4 review-required outcomes; report is aggregate-only and raw evidence stays ignored |
-| Focused validation hardening | Done | Validation now falls back to model-selection profile metadata, `test_fix` requires focused task-specific Python test evidence, and focused profiles require non-empty exact changed-file evidence |
+| Focused validation hardening | Done | Validation now falls back to model-selection profile metadata, `test_fix` requires focused task-specific Python test evidence for repo-target repairs, fixture proof profiles avoid repo self-test contradictions, and focused profiles require non-empty exact changed-file evidence |
 | Dogfood Batch 2 | Evidence collected | Stage A and Stage B produced eight isolated Goose/Gemma-backed runs; Stage B confirmed exact-diff validation blocks no-op and underreported changed-file claims |
 | Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, and public launch issues `#1`-`#6` document the next evidence loop |
 

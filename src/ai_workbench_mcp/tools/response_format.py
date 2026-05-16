@@ -84,9 +84,17 @@ def extract_preferred_response_text(model_output_text: str) -> str:
     return get_markdown_section(model_output_text, "## Captured Response")
 
 
+def _label_scan_text(stripped_line: str) -> str:
+    return re.sub(r"^#{1,6}\s+", "", stripped_line).strip()
+
+
 def _matched_label(stripped_line: str) -> str | None:
+    normalized_line = _label_scan_text(stripped_line)
     for label in RESPONSE_SECTION_ORDER:
-        if stripped_line.startswith(label):
+        label_name = label.rstrip(":")
+        if normalized_line == label_name or normalized_line.startswith(label):
+            return label
+        if normalized_line.startswith(f"{label_name}:"):
             return label
     return None
 
@@ -117,7 +125,14 @@ def _parse_sections(text: str) -> tuple[list[str], dict[str, list[str]]]:
         label = _matched_label(stripped)
         if label:
             current_label = label
-            remainder = stripped[len(label) :].strip()
+            normalized_line = _label_scan_text(stripped)
+            label_name = label.rstrip(":")
+            if normalized_line == label_name:
+                remainder = ""
+            elif normalized_line.startswith(label):
+                remainder = normalized_line[len(label) :].strip()
+            else:
+                remainder = normalized_line[len(label_name) :].lstrip(":").strip()
             if remainder:
                 sections[label].append(remainder)
             continue
@@ -228,7 +243,12 @@ def normalize_response_text(response_text: str) -> ResponseNormalizationResult:
 
 
 def missing_required_sections(response_text: str) -> list[str]:
-    missing = [marker for marker in REQUIRED_RESPONSE_MARKERS if marker not in response_text]
-    if VALIDATION_RUN_LABEL not in response_text and VALIDATION_NOT_RUN_LABEL not in response_text:
+    present_markers = {
+        label
+        for line in response_text.splitlines()
+        if (label := _matched_label(line.strip())) is not None
+    }
+    missing = [marker for marker in REQUIRED_RESPONSE_MARKERS if marker not in present_markers]
+    if VALIDATION_RUN_LABEL not in present_markers and VALIDATION_NOT_RUN_LABEL not in present_markers:
         missing.append(f"{VALIDATION_RUN_LABEL} or {VALIDATION_NOT_RUN_LABEL}")
     return missing

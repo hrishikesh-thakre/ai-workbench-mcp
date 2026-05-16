@@ -162,9 +162,21 @@ For bounded test-fix work, use:
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-test-fix \
-  --params task="Fix the requested failing test signal with the smallest justified change and report the exact validation command." \
-  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params task="Fix the requested failing test signal with the smallest justified change, keep the repo test suite passing, and report the exact validation command." \
+  --params task_test_command="python -m pytest tests/test_target.py -q" \
   --params risk=medium
+```
+
+The default `test_fix` profile is for repo-target repairs and requires the broader project suite. For intentionally broken demo fixtures, use the focused fixture proof profile instead:
+
+```bash
+goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-fixture-repair-proof \
+  --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
+  --params validation_profile=fixture_repair_proof \
+  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params risk=low
 ```
 
 For a general low-risk implementation task with deterministic test coverage, use the engineering recipe with the low-risk coding profile:

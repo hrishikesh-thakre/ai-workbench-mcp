@@ -34,16 +34,31 @@ goose run --recipe ./recipes/workbench-python-package-maintenance.yaml \
 
 ## Test-Fix Work
 
-Use this when the task starts from a failing deterministic test signal. The
-recipe defaults to the `test_fix` validation profile.
+Use this when the task starts from a failing deterministic test signal and the
+broader repository test suite must remain green. The recipe defaults to the
+`test_fix` validation profile.
 
 ```bash
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-test-fix \
-  --params task="Fix the requested failing test signal with the smallest justified change and report the exact validation command." \
-  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params task="Fix the requested failing test signal with the smallest justified change, keep the repo test suite passing, and report the exact validation command." \
+  --params task_test_command="python -m pytest tests/test_target.py -q" \
   --params risk=medium
+```
+
+For intentionally broken demo fixtures, use the focused fixture proof profile
+so the proof validates the target fixture without contradicting repo self-tests
+that assert the checked-in fixture starts broken:
+
+```bash
+goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-fixture-repair-proof \
+  --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
+  --params validation_profile=fixture_repair_proof \
+  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params risk=low
 ```
 
 ## Low-Risk Coding

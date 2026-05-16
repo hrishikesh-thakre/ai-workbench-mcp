@@ -1,6 +1,6 @@
 version: "1.0.0"
 title: "Workbench Test-Fix Acceptance"
-description: "Run a bounded test-fix task through AI Workbench acceptance with the test_fix validation profile."
+description: "Run a bounded test-fix task through AI Workbench acceptance. Defaults to the repo-target test_fix profile; use fixture_repair_proof for intentionally broken demo fixtures."
 
 parameters:
   - key: project
@@ -28,7 +28,7 @@ parameters:
   - key: validation_profile
     input_type: string
     requirement: optional
-    description: "Validation profile from configs/validation_profiles.yaml."
+    description: "Validation profile from configs/validation_profiles.yaml. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures."
     default: "test_fix"
   - key: routing_feedback_path
     input_type: string
@@ -51,6 +51,9 @@ parameters:
     description: "Exact focused Python pytest or unittest command for the failing test signal."
 
 extensions:
+  - type: builtin
+    name: developer
+    description: "Goose developer tools for shell commands, file reads, and edits."
   - type: stdio
     name: "AI Workbench MCP"
     cmd: "ai-workbench-mcp"
@@ -74,6 +77,8 @@ instructions: |
   Boundaries:
   - Start from the failing test signal and make the smallest production or test update that is justified by the intended behavior.
   - Do not weaken, delete, skip, xfail, or broadly rewrite tests unless the task explicitly asks for test-correction work and the reason is captured in the response.
+  - Use validation_profile="fixture_repair_proof" for intentionally broken demo fixtures whose source repo self-tests assert that the fixture starts broken.
+  - Use validation_profile="test_fix" for repo-target repairs that must keep the broader project suite passing.
   - Do not add private run history, provider secrets, personal machine paths, broad UI/provider plumbing, or target-repo-specific configuration.
   - If deterministic validation cannot be run, stop and report that this test-fix recipe cannot produce an accepted run.
 

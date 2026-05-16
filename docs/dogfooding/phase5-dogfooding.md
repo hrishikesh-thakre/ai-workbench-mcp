@@ -21,6 +21,7 @@ Start with a balanced set:
 | Low-risk implementation | `workbench-engineering-acceptance.yaml` | `low_risk_coding` |
 | Python package maintenance | `workbench-python-package-maintenance.yaml` | `python_package_maintenance` |
 | Failing test repair | `workbench-test-fix-acceptance.yaml` | `test_fix` |
+| Intentionally broken fixture repair proof | `workbench-test-fix-acceptance.yaml` | `fixture_repair_proof` |
 
 Use real tasks, but keep them bounded. Avoid tasks that require private services, credentials, or broad product rewrites.
 
@@ -51,7 +52,7 @@ A run is accepted only when deterministic validation passed and the quality gate
 
 Focused change profiles require non-empty changed-file evidence that exactly matches the current worktree diff. The agent should pass the same exact file list to `workbench_record_execution(files_touched=...)` and `workbench_validate_run(changed_files=...)`; no-op or underreported diffs should become review-blocking validation failures. Artifact-only smoke profiles such as `scaffold` are not change-producing sign-off profiles.
 
-For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation.
+For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation. Use `fixture_repair_proof` instead when the proof target is an intentionally broken demo fixture and the Workbench repo's self-tests intentionally assert that the checked-in fixture remains broken.
 
 ## Outcome Buckets
 

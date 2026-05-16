@@ -35,6 +35,29 @@ class NormalizeResponseTextTests(unittest.TestCase):
         self.assertNotIn("Ran 5 commands", result.normalized_text)
         self.assertIn("Summary:\nAdded focused unit coverage.", result.normalized_text)
 
+    def test_normalizes_markdown_heading_section_labels(self) -> None:
+        raw_response = "\n".join(
+            [
+                "### Summary",
+                "Fixed the focused fixture bug.",
+                "",
+                "### Files touched:",
+                "- examples/tiny-python-fix/calculator.py",
+                "",
+                "### Validation run:",
+                "- python -m unittest discover -s examples/tiny-python-fix -p test_*.py -> passed",
+                "",
+                "### Risks / follow-ups:",
+                "- None.",
+            ]
+        )
+
+        result = normalize_response_text(raw_response)
+
+        self.assertIsNotNone(result.normalized_text)
+        self.assertIn("Summary:\nFixed the focused fixture bug.", result.normalized_text)
+        self.assertIn("Files touched:\n- examples/tiny-python-fix/calculator.py", result.normalized_text)
+
     def test_infers_summary_and_files_when_other_required_sections_exist(self) -> None:
         raw_response = "\n".join(
             [
@@ -144,6 +167,25 @@ class PreferredResponseSelectionTests(unittest.TestCase):
             missing_required_sections(response_text),
             ["Validation run: or Validation not run:"],
         )
+
+    def test_missing_required_sections_accepts_markdown_headings(self) -> None:
+        response_text = "\n".join(
+            [
+                "### Summary",
+                "Did work.",
+                "",
+                "### Files touched",
+                "- foo.py",
+                "",
+                "### Validation run",
+                "- pytest -> passed",
+                "",
+                "### Risks / follow-ups",
+                "- None.",
+            ]
+        )
+
+        self.assertEqual(missing_required_sections(response_text), [])
 
 
 if __name__ == "__main__":

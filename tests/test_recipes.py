@@ -157,6 +157,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("docs_only", profiles)
         self.assertIn("python_package_maintenance", profiles)
         self.assertIn("test_fix", profiles)
+        self.assertIn("fixture_repair_proof", profiles)
         self.assertIn("low_risk_coding", profiles)
 
         for profile_name, profile_data in profiles.items():
@@ -190,6 +191,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         profiles = validation_profiles()
         profile_names = {
             "docs_only",
+            "fixture_repair_proof",
             "python_package_maintenance",
             "test_fix",
             "low_risk_coding",
@@ -236,7 +238,14 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
     def test_focused_change_profiles_require_exact_non_empty_diff_evidence(self) -> None:
         profiles = validation_profiles()
 
-        for profile_name in ("docs_only", "low_risk_coding", "python_package_maintenance", "test_fix"):
+        for profile_name in (
+            "docs_only",
+            "fixture_repair_proof",
+            "low_risk_coding",
+            "python_package_maintenance",
+            "test_fix",
+            "tiny_python_fix",
+        ):
             with self.subTest(profile=profile_name):
                 profile_data = profiles[profile_name]
                 policy = profile_data.get("changed_file_policy")
@@ -260,6 +269,22 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("exact changed files list", text)
                 self.assertIn("files_touched set to the exact changed files list", text)
                 self.assertIn("changed_files set to the same exact changed files list", text)
+
+    def test_mutating_recipes_include_goose_developer_builtin(self) -> None:
+        mutating_recipes = (
+            DOCS_ONLY_RECIPE_PATH,
+            RECIPE_PATH,
+            PYTHON_PACKAGE_RECIPE_PATH,
+            TEST_FIX_RECIPE_PATH,
+        )
+
+        for recipe_path in mutating_recipes:
+            with self.subTest(recipe=recipe_path.name):
+                text = recipe_path.read_text(encoding="utf-8")
+
+                self.assertIn("type: builtin", text)
+                self.assertIn("name: developer", text)
+                self.assertIn("Goose developer tools", text)
 
     def test_full_acceptance_recipes_keep_six_tool_order(self) -> None:
         for recipe_path in recipe_files():
@@ -319,6 +344,22 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("task_test_command", text)
         self.assertIn("Call workbench_record_execution exactly once", text)
         self.assertEqual(positions, sorted(positions))
+
+    def test_fixture_repair_proof_profile_is_focused_and_explicitly_not_full_suite(self) -> None:
+        profile_data = validation_profiles()["fixture_repair_proof"]
+        command_names = [
+            command.get("name")
+            for command in profile_data.get("commands", [])
+            if isinstance(command, dict)
+        ]
+        policy = profile_data.get("changed_file_policy")
+
+        self.assertIn("task_test_command", profile_data)
+        self.assertTrue(profile_data["task_test_command"]["required"])
+        self.assertEqual(command_names, ["recipe_policy_discovery_tests", "validate_run_help"])
+        self.assertNotIn("full_test_suite", command_names)
+        self.assertIsInstance(policy, dict)
+        self.assertIn("examples/**/*.py", policy.get("allowed_patterns", []))
 
 
 if __name__ == "__main__":

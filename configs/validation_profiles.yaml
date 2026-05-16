@@ -83,7 +83,7 @@ profiles:
       - model_output_status
 
   tiny_python_fix:
-    description: Validation profile for the tiny Python fix example.
+    description: Focused validation profile for the intentionally broken tiny Python fixture demo.
     commands:
       - name: tiny_python_fix_tests
         command: python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"
@@ -105,6 +105,11 @@ profiles:
       - run_log.jsonl
     review_checks:
       - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - examples/tiny-python-fix/calculator.py
 
   public_docs:
     description: Verify public operating docs exist.
@@ -187,7 +192,7 @@ profiles:
       require_non_empty: true
 
   test_fix:
-    description: Test-fix acceptance profile for bounded changes whose primary acceptance signal is a deterministic passing test suite.
+    description: Repo-target test-fix acceptance profile for bounded changes that must keep the full project test suite passing.
     task_test_command:
       required: true
       allowed_prefixes:
@@ -222,6 +227,40 @@ profiles:
     changed_file_policy:
       require_actual_diff: true
       require_non_empty: true
+
+  fixture_repair_proof:
+    description: Focused fixture-repair proof profile for intentionally broken demo fixtures; use when the repo self-tests assert that the source fixture remains broken.
+    task_test_command:
+      required: true
+      allowed_prefixes:
+        - python -m pytest
+        - python -m unittest
+    commands:
+      - name: recipe_policy_discovery_tests
+        command: python -m pytest tests/test_recipes.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: validate_run_help
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - examples/**/*.py
 
   low_risk_coding:
     description: Low-risk coding acceptance profile for bounded implementation changes with deterministic test coverage.

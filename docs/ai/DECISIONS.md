@@ -121,6 +121,7 @@ Implications:
 
 - Discovery tests should verify that recipes reference valid validation profiles.
 - Profile growth should be revisited before v0.3 if command lists, artifact policy, or risk policy become hard to maintain in one YAML file.
+- Fixture repair proofs must not reuse repo-wide self-validation when the repo intentionally asserts that a fixture starts broken. Use focused fixture profiles such as `tiny_python_fix` or `fixture_repair_proof` for demo targets, and keep `test_fix` for repo-target repairs that must preserve the full suite.
 
 ## 8. Goose-First, Codex-First-Class
 
