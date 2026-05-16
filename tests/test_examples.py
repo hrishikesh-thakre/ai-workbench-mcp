@@ -25,6 +25,8 @@ TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
 CODEX_WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "codex-acceptance-demo.md"
+PROOF_PACK = ROOT / "docs" / "proof" / "proof-pack-v0.2.md"
+GEMINI_FIXTURE_PROOF = ROOT / "docs" / "proof" / "gemini-fixture-accepted-run.md"
 CODEX_SETUP = ROOT / "docs" / "codex" / "setup.md"
 CODEX_WORKFLOW = ROOT / "docs" / "codex" / "acceptance-workflow.md"
 CODEX_HANDOFF = ROOT / "docs" / "codex" / "live-test-handoff.md"
@@ -215,6 +217,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/sample-runs/accepted-codex-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
         self.assertIn("docs/analytics/event-ledger.md", text)
         self.assertIn("docs/configuration/model-registry.md", text)
@@ -269,6 +272,8 @@ class PublicExamplesTests(unittest.TestCase):
         start_here_text = START_HERE.read_text(encoding="utf-8")
         project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
         roadmap_text = ROADMAP_STATUS.read_text(encoding="utf-8")
+        proof_pack_text = PROOF_PACK.read_text(encoding="utf-8")
+        gemini_proof_text = GEMINI_FIXTURE_PROOF.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
         self.assertIn("accepted-codex-tiny-python-fix", sample_text)
@@ -336,6 +341,14 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", readme_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", start_here_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", project_map_text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", readme_text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", proof_pack_text)
+        self.assertIn("gemini_oauth / gemini-3-flash-preview", gemini_proof_text)
+        self.assertIn("fixture_repair_proof", gemini_proof_text)
+        self.assertIn("changed_file_policy = passed", gemini_proof_text)
+        self.assertIn("full_test_suite command = absent", gemini_proof_text)
+        self.assertIn("Isolated analytics", gemini_proof_text)
+        self.assertIn("Do not change routing policy from this proof alone", gemini_proof_text)
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)

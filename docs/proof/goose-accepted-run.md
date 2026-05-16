@@ -83,3 +83,5 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
 ```
 
 Keep the live run under ignored `runs/`. Promote only sanitized evidence if it adds new public value.
+
+For the current focused fixture proof path, see `docs/proof/gemini-fixture-accepted-run.md`. That live run uses `workbench-test-fix-acceptance.yaml` with `fixture_repair_proof` and isolated analytics.

@@ -58,8 +58,13 @@ goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
   --params validation_profile=fixture_repair_proof \
   --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params analytics_runs_dir=runs/goose-fixture-repair-proof \
+  --params analytics_out_dir=runs/goose-fixture-repair-proof/_reports \
   --params risk=low
 ```
+
+Use the analytics scope parameters for isolated live proofs so unrelated local
+smokes or abandoned run folders do not pollute the proof summary.
 
 ## Low-Risk Coding
 

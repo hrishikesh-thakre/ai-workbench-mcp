@@ -64,6 +64,14 @@ The public proof uses:
 
 Each sample keeps only sanitized evidence. Raw local run ledgers remain under ignored `runs/` folders.
 
+Recent live proof summary:
+
+| Proof | Raw evidence policy | Outcome |
+|---|---|---|
+| Fresh Gemini fixture proof | Ignored local `runs/gemini-fixture-proof/` ledger; sanitized summary only | accepted |
+
+See `docs/proof/gemini-fixture-accepted-run.md`.
+
 ## Standard Evidence Artifacts
 
 The proof runs use the standard Workbench evidence ledger:
@@ -95,6 +103,12 @@ For review-required evidence, deterministic validation or quality-gate findings 
 See `docs/proof/goose-accepted-run.md`.
 
 The Goose sample proves the default host path can produce accepted evidence. The run fixes the tiny Python calculator example, records captured output, runs a unittest command, and receives an accepted quality-gate decision.
+
+### Gemini Fixture Accepted
+
+See `docs/proof/gemini-fixture-accepted-run.md`.
+
+The fresh live proof used Goose `1.34.1` with the configured `gemini_oauth / gemini-3-flash-preview` default and no provider/model overrides. It ran `workbench-test-fix-acceptance.yaml` with `fixture_repair_proof`, repaired only `examples/tiny-python-fix/calculator.py`, passed the focused unittest and changed-file policy checks, received `final_status=accepted`, and analyzed only the isolated proof parent.
 
 ### Codex Local/IDE Accepted
 
@@ -170,7 +184,7 @@ The current PyPI wheel installs the server code and console script. Full Goose r
 The next useful proof is not another architecture pass. Collect:
 
 - one fresh Codex local/IDE run using `docs/codex/live-test-handoff.md`
-- one provider-backed or stronger-model Goose run after exact-diff hardening
+- additional provider-backed Goose runs across focused recipe types
 - additional dogfood runs until there are at least 20 complete evidence folders
 
 Do not mutate routing policy from the current small sample set.
