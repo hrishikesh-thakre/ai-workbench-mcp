@@ -69,8 +69,9 @@ Recent live proof summary:
 | Proof | Raw evidence policy | Outcome |
 |---|---|---|
 | Fresh Gemini fixture proof | Ignored local `runs/gemini-fixture-proof/` ledger; sanitized summary only | accepted |
+| Fresh Codex fixture proof | Ignored local `runs/codex-live-20260516-fixture-proof/` ledger; sanitized summary only | accepted |
 
-See `docs/proof/gemini-fixture-accepted-run.md`.
+See `docs/proof/gemini-fixture-accepted-run.md` and `docs/proof/codex-fixture-accepted-run.md`.
 
 ## Standard Evidence Artifacts
 
@@ -120,6 +121,12 @@ The Codex sample proves the shared Workbench server can represent a non-Goose ho
 execution_host = codex
 response_source = codex
 ```
+
+### Codex Fixture Accepted
+
+See `docs/proof/codex-fixture-accepted-run.md`.
+
+The fresh live proof used Codex local/IDE with the `aiWorkbench` MCP server, recorded `execution_host=codex` and `response_source=codex`, repaired only `examples/tiny-python-fix/calculator.py`, passed the focused unittest and changed-file policy checks under `fixture_repair_proof`, received `final_status=accepted`, and analyzed only the isolated proof parent.
 
 ### Review Required
 
@@ -183,7 +190,7 @@ The current PyPI wheel installs the server code and console script. Full Goose r
 
 The next useful proof is not another architecture pass. Collect:
 
-- one fresh Codex local/IDE run using `docs/codex/live-test-handoff.md`
+- additional Codex local/IDE runs across focused workflow types
 - additional provider-backed Goose runs across focused recipe types
 - additional dogfood runs until there are at least 20 complete evidence folders
 

@@ -229,6 +229,7 @@ It shows:
 - accepted Goose evidence
 - accepted Codex local/IDE evidence
 - a fresh accepted Gemini Goose fixture proof summary
+- a fresh accepted Codex local/IDE fixture proof summary
 - review-required evidence
 - analytics by execution host and response source
 - a 3-5 minute demo script
@@ -344,6 +345,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md): sanitized live Goose proof summary using `fixture_repair_proof` with isolated analytics.
+- [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): sanitized live Codex local/IDE proof summary using `fixture_repair_proof` with host/source evidence.
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/): sanitized committed evidence showing an accepted run folder.
 - [Sample Codex accepted run](examples/sample-runs/accepted-codex-tiny-python-fix/): sanitized Codex local/IDE evidence showing `execution_host="codex"` and `response_source="codex"`.
 - [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
