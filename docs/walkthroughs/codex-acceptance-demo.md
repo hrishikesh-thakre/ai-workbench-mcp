@@ -18,6 +18,7 @@ Do not:
 - delegate this walkthrough to Codex cloud
 - run multiple Codex acceptance attempts against the same `run_dir`
 - keep retrying a hanging MCP call
+- assume Unix-only shell commands such as `cat`; use OS-appropriate file inspection commands
 
 If a tool call hangs or fails unexpectedly, stop that run and start a new run directory after checking `codex mcp list` and the local package install. The committed fallback proof is `examples/sample-runs/accepted-codex-tiny-python-fix/`.
 
@@ -115,25 +116,26 @@ Lifecycle:
 
 2. Select the advisory model/runtime tier with workbench_select_model:
    project="ai_workbench_mcp"
-   task_type="implement"
+   task_type="test"
    risk="low"
    out="runs/codex-local-demo/tiny-python-fix/model_selection.json"
-   validation_profile="tiny_python_fix"
+   validation_profile="fixture_repair_proof"
    complexity_score=4
 
-3. Make the minimal code fix.
+3. Confirm the focused unittest starts failing, then make the minimal code fix.
 
 4. Record execution with workbench_record_execution:
    project="ai_workbench_mcp"
    run_dir="runs/codex-local-demo/tiny-python-fix"
-   response_text="Summary:\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\n\nFiles touched:\n- examples/tiny-python-fix/calculator.py\n\nValidation run:\n- Workbench validation is run in the next step.\n\nRisks / follow-ups:\n- None."
+   response_text="Summary:\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\n\nFiles touched:\n- examples/tiny-python-fix/calculator.py\n\nValidation run:\n- python -m unittest discover -s examples/tiny-python-fix -p test_*.py -> passed before Workbench validation.\n\nRisks / follow-ups:\n- None."
    response_source="codex"
    files_touched=["examples/tiny-python-fix/calculator.py"]
 
 5. Validate with workbench_validate_run:
    project="ai_workbench_mcp"
    out_dir="runs/codex-local-demo/tiny-python-fix"
-   profile="tiny_python_fix"
+   profile="fixture_repair_proof"
+   task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py"
    changed_files=["examples/tiny-python-fix/calculator.py"]
 
 6. Apply workbench_quality_gate:
@@ -155,6 +157,13 @@ Expected accepted artifacts:
 - `revision_decision.json`
 - `run_log.jsonl`
 - `events.jsonl`
+
+Expected validation details:
+
+- `profile="fixture_repair_proof"`
+- `task_test_command` passed
+- `changed_file_policy` passed
+- no `full_test_suite` command is present
 
 ## 4. Analyze Host Outcomes
 

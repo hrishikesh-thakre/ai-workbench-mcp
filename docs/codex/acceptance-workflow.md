@@ -28,6 +28,7 @@ Codex local/IDE support uses the existing six MCP tools. The only Codex-specific
 5. `workbench_validate_run`
    - Run deterministic validation for the selected profile.
    - Write `validation_report.json`.
+   - For the intentionally broken tiny Python fixture, use `fixture_repair_proof` with the exact focused unittest as `task_test_command`.
 
 6. `workbench_quality_gate`
    - Apply the quality gate.

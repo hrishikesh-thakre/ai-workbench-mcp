@@ -502,6 +502,14 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("workbench_quality_gate", examples_text)
         self.assertIn("workbench_analyze_runs", examples_text)
         self.assertIn('response_source="codex"', examples_text)
+        self.assertIn("fixture_repair_proof", docs_text)
+        self.assertIn("fixture_repair_proof", examples_text)
+        self.assertIn("task_test_command", docs_text)
+        self.assertIn("task_test_command", examples_text)
+        self.assertIn("changed_file_policy", docs_text)
+        self.assertIn("changed_file_policy", examples_text)
+        self.assertIn("full_test_suite", docs_text)
+        self.assertIn("full_test_suite", examples_text)
         self.assertIn(
             'task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes."',
             docs_text,

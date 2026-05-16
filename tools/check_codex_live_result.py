@@ -121,6 +121,21 @@ def add_check(checks: list[dict[str, Any]], name: str, passed: bool, detail: str
     checks.append(check)
 
 
+def named_item(items: object, name: str) -> dict[str, Any]:
+    if not isinstance(items, list):
+        return {}
+    for item in items:
+        if isinstance(item, dict) and item.get("name") == name:
+            return item
+    return {}
+
+
+def item_names(items: object) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    return [str(item.get("name")) for item in items if isinstance(item, dict) and item.get("name")]
+
+
 def check_tool_smoke(run_dir: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     checks: list[dict[str, Any]] = []
     metadata, metadata_error = read_json_file(run_dir / "task_metadata.json")
@@ -192,6 +207,12 @@ def check_acceptance_smoke(run_dir: Path) -> tuple[dict[str, Any], list[dict[str
     response_source = metadata_line(model_output, "Response Source")
     final_prompt_host = metadata_line(final_prompt, "Execution Host")
     final_prompt_mode = metadata_line(final_prompt, "Mode")
+    commands_run = validation.get("commands_run", [])
+    artifact_checks = validation.get("artifact_checks", [])
+    command_names = item_names(commands_run)
+    task_test_command = named_item(commands_run, "task_test_command")
+    task_test_check = named_item(artifact_checks, "task_test_command")
+    changed_file_policy = named_item(artifact_checks, "changed_file_policy")
 
     record_event_sources = [
         entry.get("summary", {}).get("response_source")
@@ -246,6 +267,13 @@ def check_acceptance_smoke(run_dir: Path) -> tuple[dict[str, Any], list[dict[str
     )
     add_check(
         checks,
+        "acceptance_model_selection_profile",
+        selection.get("validation_profile") == "fixture_repair_proof",
+        "model_selection.validation_profile should be fixture_repair_proof",
+        selection.get("validation_profile"),
+    )
+    add_check(
+        checks,
         "acceptance_model_output_present",
         model_output_error is None,
         model_output_error or "model_output.md present",
@@ -280,6 +308,41 @@ def check_acceptance_smoke(run_dir: Path) -> tuple[dict[str, Any], list[dict[str
             "sign_off_ready": validation.get("sign_off_ready"),
             "confidence": validation.get("confidence"),
         },
+    )
+    add_check(
+        checks,
+        "acceptance_validation_profile",
+        validation.get("profile") == "fixture_repair_proof",
+        "validation_report.profile should be fixture_repair_proof",
+        validation.get("profile"),
+    )
+    add_check(
+        checks,
+        "acceptance_task_test_command_passed",
+        task_test_command.get("status") == "passed",
+        "commands_run should include a passed task_test_command",
+        task_test_command.get("status"),
+    )
+    add_check(
+        checks,
+        "acceptance_task_test_policy_passed",
+        task_test_check.get("status") == "passed",
+        "artifact_checks should include passed task_test_command policy",
+        task_test_check.get("status"),
+    )
+    add_check(
+        checks,
+        "acceptance_changed_file_policy_passed",
+        changed_file_policy.get("status") == "passed",
+        "artifact_checks should include passed changed_file_policy",
+        changed_file_policy.get("status"),
+    )
+    add_check(
+        checks,
+        "acceptance_no_full_test_suite",
+        "full_test_suite" not in command_names,
+        "fixture proof validation should not run full_test_suite",
+        command_names,
     )
     add_check(
         checks,
@@ -321,10 +384,12 @@ def check_acceptance_smoke(run_dir: Path) -> tuple[dict[str, Any], list[dict[str
         "execution_host": metadata.get("execution_host"),
         "response_source": response_source,
         "model_selection_status": selection.get("status"),
+        "validation_profile": validation.get("profile"),
         "validation_status": validation.get("overall_status"),
         "sign_off_ready": validation.get("sign_off_ready"),
         "confidence": validation.get("confidence"),
         "quality_gate_status": decision.get("final_status"),
+        "commands_run": command_names,
         "event_operations": sorted(operations),
     }
     return summary, checks
@@ -347,6 +412,7 @@ def print_text_report(result: dict[str, Any]) -> None:
     print(f"- run_dir: {acceptance['run_dir']}")
     print(f"- execution_host: {acceptance.get('execution_host')}")
     print(f"- response_source: {acceptance.get('response_source')}")
+    print(f"- validation_profile: {acceptance.get('validation_profile')}")
     print(f"- validation: {acceptance.get('validation_status')}")
     print(f"- sign_off_ready: {acceptance.get('sign_off_ready')}")
     print(f"- confidence: {acceptance.get('confidence')}")
