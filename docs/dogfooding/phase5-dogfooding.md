@@ -115,6 +115,10 @@ Batch 2 is summarized in two sanitized reports:
 
 Stage B is evidence only. It confirms that focused profiles block no-op or underreported changed-file claims, but it does not justify routing-policy mutation by itself.
 
+## Batch 3 Report
+
+Batch 3 is summarized in `docs/dogfooding/phase5-batch3-report.md`. It contains four complete-scope live Goose runs across docs-only, low-risk coding, Python package maintenance, and seeded test-fix workflows. All four were accepted, and analytics used `--evidence-scope complete`.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:
