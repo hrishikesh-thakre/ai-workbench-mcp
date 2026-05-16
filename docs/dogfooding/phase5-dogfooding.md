@@ -119,6 +119,10 @@ Stage B is evidence only. It confirms that focused profiles block no-op or under
 
 Batch 3 is summarized in `docs/dogfooding/phase5-batch3-report.md`. It contains four complete-scope live Goose runs across docs-only, low-risk coding, Python package maintenance, and seeded test-fix workflows. All four were accepted, and analytics used `--evidence-scope complete`.
 
+## Batch 4 Report
+
+Batch 4 is summarized in `docs/dogfooding/phase5-batch4-report.md`. It contains complete-scope exclusion evidence from a tool-smoke folder plus accepted and review-required Goose runs. Analytics used `--evidence-scope complete` and excluded incomplete lifecycle evidence from routing feedback.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:
