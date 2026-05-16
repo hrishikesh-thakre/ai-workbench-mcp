@@ -69,8 +69,10 @@ Preserve detailed failure reasons such as `command_failed:full_test_suite` even 
 After collecting a batch, run:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics
+python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics --evidence-scope complete
 ```
+
+Use `--evidence-scope complete` for dogfood batches so routing feedback is generated only from folders with `run_log.jsonl`, `validation_report.json`, and `revision_decision.json`. Connectivity or tool-smoke runs can live beside acceptance runs in the same parent, but routing feedback should come from complete lifecycle evidence only.
 
 Do not analyze the whole `runs/` directory for dogfooding reports. Local smoke, scaffold, abandoned, and one-off outputs can pollute the aggregate.
 

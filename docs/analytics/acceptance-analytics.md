@@ -10,6 +10,14 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 
 The committed sample set includes legacy Goose evidence, explicit Codex local/IDE evidence, and a revision-required run so host/source breakdowns and outcome buckets are visible without provider setup.
 
+For mixed local parents that include connectivity checks, tool-smoke folders, or interrupted attempts beside full acceptance runs, use complete-evidence scope:
+
+```bash
+python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics --evidence-scope complete
+```
+
+`--evidence-scope all` is the default and preserves legacy behavior: any child folder with `run_log.jsonl` is counted. `--evidence-scope complete` counts only child folders that also contain `validation_report.json` and `revision_decision.json`. Excluded logged folders are summarized in `excluded_runs_total` and `excluded_runs_by_reason`.
+
 This writes:
 
 - `run_metrics.json`: machine-readable metrics for routing, reporting, and future policy work.
@@ -30,6 +38,9 @@ Detailed failure reasons remain available even when the public bucket is `review
 
 Use these fields in `run_metrics.json` first:
 
+- `evidence_scope`: `all` or `complete`.
+- `excluded_runs_total`: logged child folders excluded by complete-evidence scope.
+- `excluded_runs_by_reason`: missing-artifact reasons for excluded folders, such as `missing_validation_report` or `missing_revision_decision`.
 - `runs_total`: number of run folders scanned.
 - `outcome_counts`: accepted, review-required, failed, and other counts.
 - `accepted_runs_total`: accepted count preserved for existing consumers.

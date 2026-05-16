@@ -88,7 +88,7 @@ The repair changed the fixture implementation from subtraction to addition:
 +    return left + right
 ```
 
-Isolated analytics over `runs/codex-live-20260516-fixture-proof` reported two evidence folders: one accepted fixture repair and one tool-smoke folder without a quality-gate decision. The accepted fixture run counted under `execution_host=codex`, `response_source=codex`, and `validation_profile=fixture_repair_proof`.
+Isolated analytics over `runs/codex-live-20260516-fixture-proof` originally used the default `all` scope and reported two logged folders: one accepted fixture repair and one tool-smoke folder without a quality-gate decision. Complete-scope analytics should now be used for mixed parents so the tool-smoke folder is recorded in exclusion metrics rather than acceptance metrics. The accepted fixture run counted under `execution_host=codex`, `response_source=codex`, and `validation_profile=fixture_repair_proof`.
 
 ## Interpretation
 

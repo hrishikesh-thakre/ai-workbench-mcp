@@ -118,6 +118,7 @@ def build_codex_prompt(tool_run_dir: Path, acceptance_run_dir: Path) -> str:
            run_dir="{acceptance_run_dir.as_posix()}"
            risk="low"
            execution_host="codex"
+           recipe="workbench-test-fix-acceptance.yaml"
 
         2. Select the advisory model/runtime tier with workbench_select_model:
            project="ai_workbench_mcp"
@@ -126,6 +127,7 @@ def build_codex_prompt(tool_run_dir: Path, acceptance_run_dir: Path) -> str:
            out="{(acceptance_run_dir / "model_selection.json").as_posix()}"
            validation_profile="fixture_repair_proof"
            complexity_score=4
+           recipe="workbench-test-fix-acceptance.yaml"
 
         3. Confirm the focused unittest starts failing, then fix examples/tiny-python-fix/calculator.py so:
            python -m unittest discover -s examples/tiny-python-fix -p test_*.py
@@ -221,7 +223,11 @@ def main() -> int:
     print(f"Tool smoke run dir: {tool_run_dir.as_posix()}")
     print(f"Acceptance run dir: {acceptance_run_dir.as_posix()}")
     print(f"After Codex finishes, run: {result_check_command(args.run_id_stem, stamp)}")
-    print(f"Analyze only this live batch with: python tools/run_analyze.py --runs-dir {live_run_parent.as_posix()} --out-dir {(live_run_parent / '_reports').as_posix()}")
+    print(
+        "Analyze only this live batch with: "
+        f"python tools/run_analyze.py --runs-dir {live_run_parent.as_posix()} "
+        f"--out-dir {(live_run_parent / '_reports').as_posix()} --evidence-scope complete"
+    )
     print()
     print_countdown(max(0, args.countdown_seconds))
     print("READY: Start Codex now, then use the generated prompt.")

@@ -19,6 +19,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--since", help="Optional ISO timestamp/date lower bound.")
     parser.add_argument("--out-dir", help="Report directory. Defaults to <runs-dir>/_reports.")
     parser.add_argument("--evals-dir", default="evals/golden_cases", help="Directory containing golden cases.")
+    parser.add_argument(
+        "--evidence-scope",
+        choices=("all", "complete"),
+        default="all",
+        help=(
+            "Run evidence scope. 'all' preserves legacy behavior and counts any folder with run_log.jsonl. "
+            "'complete' counts only folders with run_log.jsonl, validation_report.json, and revision_decision.json."
+        ),
+    )
     return parser
 
 
@@ -74,6 +83,22 @@ def as_int(value: object) -> int | None:
 
 def as_dict(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
+
+
+def evidence_scope_for(args: argparse.Namespace) -> str:
+    scope = str(getattr(args, "evidence_scope", "all") or "all")
+    if scope not in {"all", "complete"}:
+        raise ValueError(f"invalid_evidence_scope={scope}")
+    return scope
+
+
+def missing_complete_evidence(run_dir: Path) -> list[str]:
+    required = ("run_log.jsonl", "validation_report.json", "revision_decision.json")
+    return [artifact_name for artifact_name in required if not (run_dir / artifact_name).exists()]
+
+
+def exclusion_reason_for_missing_artifact(artifact_name: str) -> str:
+    return f"missing_{artifact_name.removesuffix('.json').removesuffix('.jsonl')}"
 
 
 def relative_artifact_href(out_dir: Path, artifact_path: Path) -> str:
@@ -296,7 +321,9 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
                 "This static report links to evidence artifacts but does not embed model outputs or provider logs.</p>"
             ),
             "<section class=\"grid\" aria-label=\"Outcome metrics\">",
+            f"<div class=\"metric\">Evidence Scope<strong>{html_escape(metrics.get('evidence_scope', 'all'))}</strong></div>",
             f"<div class=\"metric\">Runs Total<strong>{html_escape(metrics.get('runs_total', 0))}</strong></div>",
+            f"<div class=\"metric\">Excluded Runs<strong>{html_escape(metrics.get('excluded_runs_total', 0))}</strong></div>",
             f"<div class=\"metric\">Accepted<strong>{html_escape(outcome_counts.get('accepted', 0))}</strong></div>",
             f"<div class=\"metric\">Review Required<strong>{html_escape(outcome_counts.get('review_required', 0))}</strong></div>",
             f"<div class=\"metric\">Failed<strong>{html_escape(outcome_counts.get('failed', 0))}</strong></div>",
@@ -474,6 +501,7 @@ def recipe_for(
         "docs_only": "workbench-docs-only-acceptance.yaml",
         "python_package_maintenance": "workbench-python-package-maintenance.yaml",
         "test_fix": "workbench-test-fix-acceptance.yaml",
+        "fixture_repair_proof": "workbench-test-fix-acceptance.yaml",
         "low_risk_coding": "workbench-engineering-acceptance.yaml",
         "run_signoff": "workbench-engineering-acceptance.yaml",
         "tiny_python_fix": "workbench-engineering-acceptance.yaml",
@@ -806,6 +834,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     out_dir = Path(args.out_dir) if args.out_dir else runs_dir / "_reports"
     out_dir.mkdir(parents=True, exist_ok=True)
     runtime = load_runtime_config()
+    evidence_scope = evidence_scope_for(args)
+    excluded_runs_total = 0
+    excluded_runs_by_reason: Counter[str] = Counter()
 
     runs: list[dict[str, object]] = []
     for run_dir in sorted(path for path in runs_dir.iterdir() if path.is_dir() and not path.name.startswith("_")):
@@ -817,6 +848,12 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             continue
         task_type = task_type_for(run_dir, logs)
         if args.task_type and task_type != args.task_type:
+            continue
+        missing_evidence = missing_complete_evidence(run_dir)
+        if evidence_scope == "complete" and missing_evidence:
+            excluded_runs_total += 1
+            for artifact_name in missing_evidence:
+                excluded_runs_by_reason[exclusion_reason_for_missing_artifact(artifact_name)] += 1
             continue
         report = read_json(run_dir / "validation_report.json")
         decision = read_json(run_dir / "revision_decision.json")
@@ -1186,6 +1223,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
 
     metrics = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "evidence_scope": evidence_scope,
+        "excluded_runs_total": excluded_runs_total,
+        "excluded_runs_by_reason": dict(excluded_runs_by_reason),
         "runs_total": len(runs),
         "runs_passed": status_counts.get("passed", 0),
         "runs_failed": status_counts.get("failed", 0),
@@ -1334,6 +1374,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             for key, counts in sorted(routing_feedback.items())
         },
         "workflow_kpis": {
+            "evidence_scope": evidence_scope,
+            "excluded_runs_total": excluded_runs_total,
+            "excluded_runs_by_reason": dict(excluded_runs_by_reason),
             "runs_total": len(runs),
             "runs_passed": status_counts.get("passed", 0),
             "runs_failed": status_counts.get("failed", 0),
@@ -1433,6 +1476,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Workflow KPIs",
         "",
+        f"- Evidence scope: {metrics['evidence_scope']}",
+        f"- Excluded runs total: {metrics['excluded_runs_total']}",
+        f"- Excluded runs by reason: {metrics['excluded_runs_by_reason']}",
         f"- Runs total: {metrics['runs_total']}",
         f"- Passed: {metrics['runs_passed']}",
         f"- Failed: {metrics['runs_failed']}",

@@ -175,6 +175,7 @@ def register_tools(mcp: Any) -> Any:
         since: str | None = None,
         out_dir: str | None = None,
         evals_dir: str = "evals/golden_cases",
+        evidence_scope: str = "all",
     ) -> JsonObject:
         """Analyze local Workbench run ledgers and write report artifacts."""
 
@@ -185,6 +186,7 @@ def register_tools(mcp: Any) -> Any:
                 since=since,
                 out_dir=out_dir,
                 evals_dir=evals_dir,
+                evidence_scope=evidence_scope,
             )
         except Exception as exc:
             return _tool_error("workbench_analyze_runs", exc)

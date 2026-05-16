@@ -95,6 +95,7 @@ The checker prints `RESULT: PASS` only when:
 - the acceptance run used `fixture_repair_proof`
 - `task_test_command` passed
 - `changed_file_policy` passed
+- recipe metadata is `workbench-test-fix-acceptance.yaml`
 - no `full_test_suite` command was present
 - deterministic validation passed and is sign-off ready
 - the quality gate wrote `final_status="accepted"`
@@ -103,11 +104,13 @@ The checker prints `RESULT: PASS` only when:
 Analyze only the isolated live-test parent:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports
+python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports --evidence-scope complete
 ```
 
 Check:
 
+- `evidence_scope` is `complete`
+- `excluded_runs_total` records any tool-smoke folder excluded from acceptance metrics
 - `execution_host_counts` includes `codex`
 - `response_source_counts` includes `codex`
 - the Codex acceptance run has a passing `validation_report.json`

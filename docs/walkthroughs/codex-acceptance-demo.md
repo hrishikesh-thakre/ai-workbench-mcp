@@ -113,6 +113,7 @@ Lifecycle:
    run_dir="runs/codex-local-demo/tiny-python-fix"
    risk="low"
    execution_host="codex"
+   recipe="workbench-test-fix-acceptance.yaml"
 
 2. Select the advisory model/runtime tier with workbench_select_model:
    project="ai_workbench_mcp"
@@ -121,6 +122,7 @@ Lifecycle:
    out="runs/codex-local-demo/tiny-python-fix/model_selection.json"
    validation_profile="fixture_repair_proof"
    complexity_score=4
+   recipe="workbench-test-fix-acceptance.yaml"
 
 3. Confirm the focused unittest starts failing, then make the minimal code fix.
 
@@ -161,6 +163,7 @@ Expected accepted artifacts:
 Expected validation details:
 
 - `profile="fixture_repair_proof"`
+- recipe metadata is `workbench-test-fix-acceptance.yaml`
 - `task_test_command` passed
 - `changed_file_policy` passed
 - no `full_test_suite` command is present
@@ -170,7 +173,7 @@ Expected validation details:
 Run analytics over only the isolated Codex demo parent:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs/codex-local-demo --out-dir runs/codex-local-demo/_reports
+python tools/run_analyze.py --runs-dir runs/codex-local-demo --out-dir runs/codex-local-demo/_reports --evidence-scope complete
 ```
 
 Open:
@@ -181,6 +184,8 @@ Open:
 
 Check:
 
+- `evidence_scope` is `complete`
+- tool-smoke folders are excluded from acceptance metrics and recorded in `excluded_runs_total`
 - `execution_host_counts` includes `codex`
 - `response_source_counts` includes `codex`
 - `outcome_breakdown.by_execution_host.codex` reflects the new run

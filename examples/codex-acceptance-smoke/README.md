@@ -32,6 +32,7 @@ Lifecycle:
    run_dir="runs/codex-smoke/tiny-python-fix"
    risk="low"
    execution_host="codex"
+   recipe="workbench-test-fix-acceptance.yaml"
 
 2. Select the advisory model/runtime tier with workbench_select_model:
    project="ai_workbench_mcp"
@@ -40,6 +41,7 @@ Lifecycle:
    out="runs/codex-smoke/tiny-python-fix/model_selection.json"
    validation_profile="fixture_repair_proof"
    complexity_score=4
+   recipe="workbench-test-fix-acceptance.yaml"
 
 3. Confirm the focused unittest starts failing, then make the minimal code fix. Use OS-appropriate file inspection commands; do not assume Unix-only `cat`.
 
@@ -70,6 +72,7 @@ Expected accepted evidence:
 
 - `task_metadata.json` with `execution_host="codex"`
 - `final_prompt.md` with `Execution Host: codex` and compatibility `Mode: codex`
+- recipe metadata `workbench-test-fix-acceptance.yaml` in run metadata and model selection
 - `model_output.md` with `Execution Host` and `Response Source`
 - `validation_report.json`
 - `revision_decision.json`

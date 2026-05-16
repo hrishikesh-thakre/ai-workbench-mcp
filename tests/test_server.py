@@ -270,6 +270,7 @@ class ServerToolHandlerTests(unittest.TestCase):
                 runs_dir="runs",
                 task_type="implementation",
                 out_dir="runs/_reports",
+                evidence_scope="complete",
             )
 
         self.assertEqual(response, expected)
@@ -279,6 +280,7 @@ class ServerToolHandlerTests(unittest.TestCase):
             since=None,
             out_dir="runs/_reports",
             evals_dir="evals/golden_cases",
+            evidence_scope="complete",
         )
 
     def test_handler_exception_returns_error_envelope(self) -> None:

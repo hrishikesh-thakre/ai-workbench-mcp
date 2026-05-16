@@ -185,6 +185,9 @@ def run_analysis_response(metrics: JsonObject, artifacts: JsonObject | None = No
         artifacts=artifacts,
         summary={
             "runs_total": metrics.get("runs_total"),
+            "evidence_scope": metrics.get("evidence_scope"),
+            "excluded_runs_total": metrics.get("excluded_runs_total"),
+            "excluded_runs_by_reason": metrics.get("excluded_runs_by_reason"),
             "runs_passed": metrics.get("runs_passed"),
             "runs_failed": metrics.get("runs_failed"),
             "runs_needs_review": metrics.get("runs_needs_review"),
@@ -716,6 +719,7 @@ def analyze_runs(
     since: str | None = None,
     out_dir: str | Path | None = None,
     evals_dir: str | Path = "evals/golden_cases",
+    evidence_scope: str = "all",
 ) -> JsonObject:
     report_dir = _workbench_path(out_dir) if out_dir is not None else _workbench_path(runs_dir) / "_reports"
     metrics_path = report_dir / "run_metrics.json"
@@ -727,6 +731,7 @@ def analyze_runs(
         since=since,
         out_dir=str(_workbench_path(out_dir)) if out_dir is not None else None,
         evals_dir=str(_workbench_path(evals_dir)),
+        evidence_scope=evidence_scope,
     )
     try:
         metrics = run_analyze_tool.run_analysis_payload(args)

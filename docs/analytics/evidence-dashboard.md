@@ -19,6 +19,7 @@ This creates:
 The dashboard is a local report for acceptance evidence. It shows:
 
 - accepted, review-required, failed, and total run counts
+- evidence scope and excluded-run count
 - acceptance rate and average confidence
 - outcome and quality-gate counts
 - common failure reasons

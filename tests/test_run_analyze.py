@@ -294,6 +294,101 @@ def write_codex_sample_run(runs_dir: Path) -> Path:
     return run_dir
 
 
+def write_tool_smoke_like_run(runs_dir: Path) -> Path:
+    run_dir = runs_dir / "tool-smoke"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_log.jsonl").write_text(
+        json.dumps(
+            {
+                "timestamp": "2026-05-12T14:00:00",
+                "model_tier": "local_coding",
+                "decision": "model_selected",
+                "prompt": "implement_request_change_request",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    write_json(
+        run_dir / "task_metadata.json",
+        {
+            "run_id": "tool-smoke",
+            "project": "ai_workbench_mcp",
+            "task_type": "implementation",
+            "prompt": "implement_request_change_request",
+            "execution_host": "codex",
+        },
+    )
+    write_json(
+        run_dir / "model_selection.json",
+        {
+            "selected_tier": "local_coding",
+            "task_type": "implementation",
+            "risk": "low",
+            "complexity_band": "easy",
+            "prompt": "implement_request_change_request",
+        },
+    )
+    return run_dir
+
+
+def write_fixture_repair_run_without_recipe(runs_dir: Path) -> Path:
+    run_dir = runs_dir / "fixture-repair"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run_log.jsonl").write_text(
+        json.dumps(
+            {
+                "timestamp": "2026-05-12T15:00:00",
+                "model_tier": "local_coding",
+                "decision": "model_response_captured",
+                "prompt": "bug_root_cause_investigation",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    write_json(
+        run_dir / "task_metadata.json",
+        {
+            "run_id": "fixture-repair",
+            "project": "ai_workbench_mcp",
+            "task_type": "test",
+            "prompt": "bug_root_cause_investigation",
+        },
+    )
+    write_json(
+        run_dir / "model_selection.json",
+        {
+            "selected_tier": "local_coding",
+            "task_type": "test",
+            "risk": "low",
+            "complexity_band": "easy",
+            "prompt": "bug_root_cause_investigation",
+            "validation_profile": "fixture_repair_proof",
+        },
+    )
+    write_json(
+        run_dir / "validation_report.json",
+        {
+            "overall_status": "passed",
+            "sign_off_ready": True,
+            "confidence": 1.0,
+            "profile": "fixture_repair_proof",
+            "artifact_checks": [
+                {"name": "task_test_command", "status": "passed"},
+                {"name": "changed_file_policy", "status": "passed"},
+            ],
+            "commands_run": [
+                {"name": "task_test_command", "status": "passed"},
+            ],
+            "missing_context_notes": {"needs_review": [], "info": []},
+        },
+    )
+    write_json(run_dir / "revision_decision.json", {"final_status": "accepted", "loop_type": "none"})
+    write_model_output(run_dir)
+    return run_dir
+
+
 class RunAnalyzePayloadTests(unittest.TestCase):
     def test_run_analysis_payload_writes_metrics_and_summary(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -315,6 +410,9 @@ class RunAnalyzePayloadTests(unittest.TestCase):
             dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
 
         self.assertEqual(metrics, written)
+        self.assertEqual(metrics["evidence_scope"], "all")
+        self.assertEqual(metrics["excluded_runs_total"], 0)
+        self.assertEqual(metrics["excluded_runs_by_reason"], {})
         self.assertEqual(metrics["runs_total"], 1)
         self.assertEqual(metrics["runs_passed"], 1)
         self.assertEqual(metrics["runs_failed"], 0)
@@ -336,6 +434,8 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["quality_gate_outcomes"], {"accepted": 1})
         self.assertEqual(metrics["response_captured_count"], 1)
         self.assertIn("## Acceptance Analytics", summary)
+        self.assertIn("- Evidence scope: all", summary)
+        self.assertIn("- Excluded runs total: 0", summary)
         self.assertIn("### Public Outcomes By Execution Host", summary)
         self.assertIn("| goose | 1 | 0 | 0 | 0 | 1 | 1.0 | 0.0 | 0.0 |", summary)
         self.assertIn("### Public Outcomes By Response Source", summary)
@@ -378,6 +478,86 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         candidate_key = "workbench-engineering-acceptance.yaml|run_signoff|local_coding|medium|moderate"
         self.assertEqual(metrics["routing_feedback_candidates"][candidate_key]["total"], 2)
         self.assertNotIn("codex", candidate_key)
+
+    def test_run_analysis_payload_default_all_counts_logged_tool_smoke_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            write_sample_run(runs_dir)
+            write_tool_smoke_like_run(runs_dir)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            metrics = run_analysis_payload(args)
+
+        self.assertEqual(metrics["evidence_scope"], "all")
+        self.assertEqual(metrics["runs_total"], 2)
+        self.assertEqual(metrics["excluded_runs_total"], 0)
+        self.assertEqual(metrics["outcome_counts"], {"accepted": 1, "other": 1})
+        self.assertEqual(metrics["other_runs_total"], 1)
+        tool_smoke_key = "unknown|unknown|local_coding|low|easy"
+        self.assertEqual(metrics["routing_feedback_candidates"][tool_smoke_key]["other"], 1)
+
+    def test_run_analysis_payload_complete_scope_excludes_tool_smoke_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            write_sample_run(runs_dir)
+            write_tool_smoke_like_run(runs_dir)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+                evidence_scope="complete",
+            )
+
+            metrics = run_analysis_payload(args)
+            written = json.loads((out_dir / "run_metrics.json").read_text(encoding="utf-8"))
+            summary = (out_dir / "run_summary.md").read_text(encoding="utf-8")
+
+        self.assertEqual(metrics, written)
+        self.assertEqual(metrics["evidence_scope"], "complete")
+        self.assertEqual(metrics["runs_total"], 1)
+        self.assertEqual(metrics["excluded_runs_total"], 1)
+        self.assertEqual(
+            metrics["excluded_runs_by_reason"],
+            {"missing_validation_report": 1, "missing_revision_decision": 1},
+        )
+        self.assertEqual(metrics["outcome_counts"], {"accepted": 1})
+        self.assertNotIn("unknown|unknown|local_coding|low|easy", metrics["routing_feedback_candidates"])
+        self.assertIn("- Evidence scope: complete", summary)
+        self.assertIn("- Excluded runs total: 1", summary)
+
+    def test_run_analysis_payload_maps_fixture_repair_proof_to_test_fix_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            write_fixture_repair_run_without_recipe(runs_dir)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+                evidence_scope="complete",
+            )
+
+            metrics = run_analysis_payload(args)
+
+        candidate_key = "workbench-test-fix-acceptance.yaml|fixture_repair_proof|local_coding|low|easy"
+        self.assertEqual(metrics["accepted_runs_by_recipe"], {"workbench-test-fix-acceptance.yaml": 1})
+        self.assertEqual(metrics["routing_feedback_candidates"][candidate_key]["accepted"], 1)
+        self.assertEqual(metrics["routing_feedback_candidates"][candidate_key]["total"], 1)
 
     def test_run_analysis_payload_summarizes_acceptance_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
