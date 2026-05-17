@@ -135,7 +135,7 @@ Tasks:
 - Track cost per accepted artifact when real provider cost evidence exists.
 - Promote sanitized golden cases.
 - Run the Phase 5 dogfooding protocol across 20-50 real Goose tasks.
-- Keep the analytics-to-routing loop advisory until enough real dogfood evidence exists.
+- Keep the analytics-to-routing loop advisory until a bounded policy experiment proves a candidate change with fresh isolated evidence.
 - Feed historical evidence back into routing recommendations.
 - Allow adopters to use local ignored model-registry overrides without editing committed defaults.
 - Emit local best-effort operation events for future analytics and CI integration.

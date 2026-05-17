@@ -52,6 +52,6 @@ Expected:
 
 ## Next Evidence After This Pack
 
-- Collect one fresh Codex local/IDE run with `docs/codex/live-test-handoff.md`.
-- Collect one stronger-model or provider-backed Goose run after exact-diff hardening.
-- Continue dogfooding toward 20-50 complete evidence runs before proposing routing-policy changes.
+- Phase 5 evidence collection is complete; use `docs/dogfooding/phase5-final-report.md` as the closeout baseline.
+- Collect new evidence only for bounded routing-policy experiments, PR-gate behavior, policy-pack gaps, or additional host/source proof.
+- Keep routing feedback advisory until a policy experiment branch proves a candidate change with fresh isolated evidence.

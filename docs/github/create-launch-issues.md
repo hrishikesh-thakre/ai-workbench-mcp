@@ -2,6 +2,8 @@
 
 The prepared launch issue drafts have already been created as public GitHub issues. Do not rerun the creation commands unless recreating after duplicate checks.
 
+Current repo status: the Phase 5 dogfooding target behind issue `#1` is complete in `docs/dogfooding/phase5-final-report.md`. The table and commands below remain the launch issue record and recovery reference, not instructions to recreate or reopen the same work.
+
 Verified state:
 
 | Issue | Public link | Draft file |

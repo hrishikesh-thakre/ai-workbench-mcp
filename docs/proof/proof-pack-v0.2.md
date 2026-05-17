@@ -43,7 +43,7 @@ This proof pack does not claim:
 - replacement for CI, code review, security review, or human judgment
 - reliable model comparison from the current small sample set
 
-Routing feedback remains advisory until enough real dogfood evidence exists.
+Routing feedback remains advisory. Phase 5 now has enough complete evidence to plan bounded routing-policy experiments, but not enough to broadly auto-route or remove quality gates.
 
 ## Evidence Set
 
@@ -188,10 +188,11 @@ The current PyPI wheel installs the server code and console script. Full Goose r
 
 ## Next Evidence To Collect
 
-The next useful proof is not another architecture pass. Collect:
+The next useful proof is not another broad dogfooding pass. Phase 5 evidence collection is complete in `docs/dogfooding/phase5-final-report.md`. Collect only targeted evidence for:
 
+- bounded routing-policy experiments backed by fresh isolated runs
 - additional Codex local/IDE runs across focused workflow types
 - additional provider-backed Goose runs across focused recipe types
-- additional dogfood runs until there are at least 20 complete evidence folders
+- PR-gate and policy-pack behavior that needs public evidence
 
-Do not mutate routing policy from the current small sample set.
+Do not mutate routing policy from committed samples or deterministic controls alone.

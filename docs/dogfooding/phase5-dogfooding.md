@@ -1,10 +1,12 @@
 # Phase 5 Dogfooding Protocol
 
-Phase 5 is about proving that Workbench analytics can improve routing decisions from real accepted artifacts. Do this with local Goose runs first, then commit only sanitized examples when they are useful as public documentation.
+Phase 5 proved that Workbench analytics can improve routing decisions from real accepted artifacts. The original 20-50 real Goose acceptance runs goal is met; `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls.
+
+Keep this protocol as the evidence hygiene reference for any future routing-policy experiment batches. Future batches should test one narrow candidate policy at a time rather than reopening broad Phase 5 collection.
 
 ## Goal
 
-Collect 20-50 real Goose acceptance runs with complete Workbench evidence:
+Original goal, now complete: collect 20-50 real Goose acceptance runs with complete Workbench evidence:
 
 - accepted runs
 - review-required or revision-required runs
@@ -155,3 +157,5 @@ Phase 5 dogfooding is ready to feed routing-policy work when:
 - outcome buckets include accepted and review-required examples
 - repeated failure reasons are visible in analytics
 - routing feedback candidates show stable enough patterns to propose a bounded policy experiment
+
+These criteria are now met by the Phase 5 closeout. New dogfood runs should be tied to explicit routing-policy experiments, PR-gate evidence, host/source proof, or policy-pack validation gaps.

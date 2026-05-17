@@ -71,7 +71,7 @@ This proves Workbench can report cross-host outcomes without changing the core a
 
 `routing_feedback_candidates` is report-ready input for future policy work. The current sample set is too small and synthetic to justify routing-policy changes.
 
-Use analytics now to show evidence shape and failure reasons. Use dogfooding later to propose bounded routing experiments.
+Use analytics over committed samples to show evidence shape and failure reasons. Use the completed Phase 5 closeout plus fresh isolated experiment runs to propose bounded routing experiments.
 
 ## Dashboard
 
