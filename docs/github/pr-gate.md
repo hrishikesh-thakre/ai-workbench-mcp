@@ -2,6 +2,8 @@
 
 This repository uses GitHub Actions as a repo self-validation gate and now renders a Workbench PR gate summary. It is still a CI gate prototype: the workflow proves repo hygiene, emits PR-facing artifacts, and posts one guarded sticky PR comment for same-repository pull requests, but it does not enforce semantic acceptance yet.
 
+The PR gate now distinguishes full Workbench acceptance evidence from scaffold CI evidence. Full acceptance evidence means a run folder with deterministic validation and quality-gate artifacts, especially `validation_report.json` and `revision_decision.json`. Scaffold evidence proves the repository self-validation path ran, but it is not enough to accept PR work.
+
 The Markdown artifact remains the source of truth for the PR-facing surface:
 
 ```text
@@ -26,6 +28,7 @@ Fork pull requests still render and upload the artifacts, but skip comment posti
 - Workbench can render a PR-facing acceptance summary from a prepared evidence folder.
 - The workflow can upload the PR gate Markdown and JSON artifacts.
 - Same-repository pull requests get a single updated PR gate comment rather than duplicate comments.
+- The comment states when only scaffold CI evidence is available.
 
 ## What It Does Not Prove
 
@@ -37,17 +40,36 @@ Fork pull requests still render and upload the artifacts, but skip comment posti
 - It does not replace deterministic validation and quality-gate evidence for an actual run.
 - It does not embed raw model output, provider logs, or private run contents in the PR comment.
 
-The scaffold validation folder used by CI normally renders `Block` because it has a `validation_report.json` but does not have a full Workbench acceptance lifecycle with `revision_decision.json`. That is intentional. Green CI alone is not accepted agent work.
+The scaffold validation folder used by CI normally renders `Block` with `pr_gate.acceptance_evidence_missing` because it is fallback evidence, not a full Workbench acceptance lifecycle. That is intentional. Green CI alone is not accepted agent work.
 
 Semantic PR acceptance comes later through real Workbench evidence folders, validation profiles, quality-gate decisions, and an enforcement policy. The current comment is a GitHub-native visibility layer for the existing artifact renderer.
 
 ## Local PR Gate Artifact
 
-Render a local PR gate artifact from any Workbench evidence folder:
+Render a local PR gate artifact from an explicit Workbench acceptance run:
 
 ```bash
 python tools/pr_gate.py \
   --run-dir examples/sample-runs/accepted-tiny-python-fix \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+You can also resolve a run by parent folder and run id:
+
+```bash
+python tools/pr_gate.py \
+  --runs-dir examples/sample-runs \
+  --run-id accepted-tiny-python-fix \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+Render the CI-style fallback message from scaffold evidence:
+
+```bash
+python tools/pr_gate.py \
+  --fallback-run-dir runs/ci_scaffold \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
 ```
@@ -74,7 +96,7 @@ Before pushing a PR, contributors can run the same checks locally:
 python -m pip install -e ".[dev]"
 python -m pytest -q -p no:cacheprovider
 python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
-python tools/pr_gate.py --run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
+python tools/pr_gate.py --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
 git diff --check
 ```
 

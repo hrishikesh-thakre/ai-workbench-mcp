@@ -209,9 +209,10 @@ class PublicHygieneTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            "python tools/pr_gate.py --run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+            "python tools/pr_gate.py --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
             workflow,
         )
+        self.assertNotIn("python tools/pr_gate.py --run-dir runs/ci_scaffold", workflow)
         self.assertIn("actions/upload-artifact@v4", workflow)
         self.assertIn("runs/pr_gate/pr_comment.md", workflow)
         self.assertIn("runs/pr_gate/pr_decision.json", workflow)

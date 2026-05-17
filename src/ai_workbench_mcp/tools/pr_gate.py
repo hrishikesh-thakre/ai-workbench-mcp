@@ -21,6 +21,8 @@ STANDARD_EVIDENCE = (
     ("model_output", "model_output.md"),
     ("run_log", "run_log.jsonl"),
 )
+ACCEPTANCE_EVIDENCE_MISSING_CODE = "pr_gate.acceptance_evidence_missing"
+ACCEPTANCE_EVIDENCE_MISSING_REASON = "No complete Workbench acceptance evidence found for this PR."
 
 
 @dataclass(frozen=True)
@@ -33,9 +35,22 @@ class ArtifactRead:
     error: str | None = None
 
 
+@dataclass(frozen=True)
+class EvidenceSelection:
+    run_dir: Path
+    evidence_source: str
+    source_run_dir: str
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Render a PR-facing Workbench acceptance gate artifact.")
-    parser.add_argument("--run-dir", required=True, help="Run directory containing Workbench evidence artifacts.")
+    parser.add_argument("--run-dir", help="Run directory containing Workbench acceptance evidence artifacts.")
+    parser.add_argument("--runs-dir", help="Parent directory containing Workbench run folders.")
+    parser.add_argument("--run-id", help="Run folder name to resolve under --runs-dir.")
+    parser.add_argument(
+        "--fallback-run-dir",
+        help="Fallback scaffold or CI evidence directory used only when no full acceptance run is supplied.",
+    )
     parser.add_argument("--out", required=True, help="Markdown PR comment artifact path to write.")
     parser.add_argument("--json-out", required=True, help="JSON PR gate decision artifact path to write.")
     parser.add_argument(
@@ -44,6 +59,59 @@ def build_parser() -> argparse.ArgumentParser:
         help="Exit non-zero when the rendered PR gate outcome is block.",
     )
     return parser
+
+
+def normalized_public_path(value: str) -> str:
+    return value.strip().replace("\\", "/").lstrip("./")
+
+
+def safe_source_label(path: Path, preferred: str | None = None) -> str:
+    if preferred and not Path(preferred).is_absolute():
+        return normalized_public_path(preferred)
+    try:
+        cwd = Path.cwd().resolve()
+        resolved = path.resolve()
+        return normalized_public_path(str(resolved.relative_to(cwd)))
+    except (OSError, ValueError):
+        return path.name or "unknown"
+
+
+def resolve_evidence_selection(args: argparse.Namespace | SimpleNamespace) -> EvidenceSelection:
+    run_dir_value = str(getattr(args, "run_dir", "") or "").strip()
+    runs_dir_value = str(getattr(args, "runs_dir", "") or "").strip()
+    run_id_value = str(getattr(args, "run_id", "") or "").strip()
+    fallback_value = str(getattr(args, "fallback_run_dir", "") or "").strip()
+
+    if run_dir_value and (runs_dir_value or run_id_value):
+        raise ValueError("Use either --run-dir or --runs-dir with --run-id, not both.")
+    if bool(runs_dir_value) != bool(run_id_value):
+        raise ValueError("--runs-dir and --run-id must be provided together.")
+
+    if run_dir_value:
+        run_dir = Path(run_dir_value)
+        return EvidenceSelection(
+            run_dir=run_dir,
+            evidence_source="acceptance_run",
+            source_run_dir=safe_source_label(run_dir, run_dir_value),
+        )
+
+    if runs_dir_value and run_id_value:
+        run_dir = Path(runs_dir_value) / run_id_value
+        return EvidenceSelection(
+            run_dir=run_dir,
+            evidence_source="acceptance_run",
+            source_run_dir=safe_source_label(run_dir, f"{runs_dir_value}/{run_id_value}"),
+        )
+
+    if fallback_value:
+        run_dir = Path(fallback_value)
+        return EvidenceSelection(
+            run_dir=run_dir,
+            evidence_source="fallback_scaffold" if run_dir.exists() else "missing",
+            source_run_dir=safe_source_label(run_dir, fallback_value),
+        )
+
+    raise ValueError("Provide --run-dir, --runs-dir with --run-id, or --fallback-run-dir.")
 
 
 def read_json_artifact(run_dir: Path, label: str, file_name: str) -> ArtifactRead:
@@ -119,6 +187,12 @@ def reason_codes_from(*payloads: dict[str, object]) -> list[str]:
     return codes
 
 
+def append_reason_code(codes: list[str], code: str) -> list[str]:
+    if code not in codes:
+        return [*codes, code]
+    return codes
+
+
 def reason_sources_from(*payloads: dict[str, object]) -> list[dict[str, object]]:
     sources: list[dict[str, object]] = []
     for payload in payloads:
@@ -164,7 +238,12 @@ def default_next_action(outcome: str) -> str:
     return "Produce complete Workbench validation and quality-gate evidence, resolve blockers, then regenerate the PR gate artifact."
 
 
-def decision_from_evidence(run_dir: Path) -> dict[str, object]:
+def decision_from_evidence(
+    run_dir: Path,
+    *,
+    evidence_source: str = "acceptance_run",
+    source_run_dir: str | None = None,
+) -> dict[str, object]:
     validation_read = read_json_artifact(run_dir, "validation_report", "validation_report.json")
     decision_read = read_json_artifact(run_dir, "revision_decision", "revision_decision.json")
     evidence = [evidence_entry(run_dir, label, file_name) for label, file_name in STANDARD_EVIDENCE]
@@ -216,12 +295,40 @@ def decision_from_evidence(run_dir: Path) -> dict[str, object]:
         "outcome": outcome,
         "ok": True,
         "run_id": str(report.get("run_id") or decision.get("run_id") or run_dir.name),
+        "evidence_source": evidence_source,
+        "source_run_dir": source_run_dir or safe_source_label(run_dir),
         "validation_status": validation_status,
         "quality_gate_status": quality_gate_status,
         "reason": reason,
         "reason_codes": reason_codes,
         "evidence": evidence,
         "required_next_action": next_action,
+    }
+
+
+def fallback_decision_from_evidence(selection: EvidenceSelection) -> dict[str, object]:
+    validation_read = read_json_artifact(selection.run_dir, "validation_report", "validation_report.json")
+    report = validation_read.payload
+    evidence = [evidence_entry(selection.run_dir, label, file_name) for label, file_name in STANDARD_EVIDENCE]
+    validation_status = str(report.get("overall_status", "unknown"))
+    reason_codes = append_reason_code(reason_codes_from(report), ACCEPTANCE_EVIDENCE_MISSING_CODE)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "operation": OPERATION,
+        "outcome": "block",
+        "ok": True,
+        "run_id": str(report.get("run_id") or selection.run_dir.name or "unknown"),
+        "evidence_source": selection.evidence_source,
+        "source_run_dir": selection.source_run_dir,
+        "validation_status": validation_status,
+        "quality_gate_status": "unknown",
+        "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
+        "reason_codes": reason_codes,
+        "evidence": evidence,
+        "required_next_action": (
+            "Provide a complete Workbench acceptance run with validation_report.json and "
+            "revision_decision.json, then regenerate the PR gate artifact."
+        ),
     }
 
 
@@ -237,6 +344,8 @@ def render_comment(decision: dict[str, object]) -> str:
         f"# AI Workbench PR Gate: {display_outcome(outcome)}",
         "",
         f"**Run ID:** `{decision.get('run_id', 'unknown')}`",
+        f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
+        f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
         f"**Reason:** {decision.get('reason', 'unknown')}",
         f"**Required next action:** {decision.get('required_next_action', default_next_action(outcome))}",
         "",
@@ -280,8 +389,15 @@ def write_outputs(decision: dict[str, object], comment_path: Path, json_path: Pa
 
 
 def pr_gate_payload(args: argparse.Namespace | SimpleNamespace) -> dict[str, object]:
-    run_dir = Path(str(args.run_dir))
-    decision = decision_from_evidence(run_dir)
+    selection = resolve_evidence_selection(args)
+    if selection.evidence_source == "acceptance_run":
+        decision = decision_from_evidence(
+            selection.run_dir,
+            evidence_source=selection.evidence_source,
+            source_run_dir=selection.source_run_dir,
+        )
+    else:
+        decision = fallback_decision_from_evidence(selection)
     write_outputs(decision, Path(str(args.out)), Path(str(args.json_out)))
     return decision
 
@@ -289,7 +405,10 @@ def pr_gate_payload(args: argparse.Namespace | SimpleNamespace) -> dict[str, obj
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
-    decision = pr_gate_payload(args)
+    try:
+        decision = pr_gate_payload(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     print(f"pr_gate_outcome={decision['outcome']}")
     print(f"pr_gate_comment={args.out}")
     print(f"pr_gate_decision={args.json_out}")
