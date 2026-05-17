@@ -15,6 +15,8 @@ These launch issue seeds have been created as public GitHub issues. They should 
 
 Public issue: https://github.com/hrishikesh-thakre/ai-workbench-mcp/issues/1
 
+Current repo status: Phase 5 evidence collection is complete in `docs/dogfooding/phase5-final-report.md`. This issue seed is retained as the public launch backlog record; the next repository work should use the closeout evidence for bounded routing-policy experiments rather than broad collection.
+
 Run the Phase 5 dogfooding protocol across a mix of docs-only, low-risk coding, package maintenance, and test-fix tasks.
 
 Acceptance criteria:

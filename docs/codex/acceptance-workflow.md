@@ -10,10 +10,12 @@ Codex local/IDE support uses the existing six MCP tools. The only Codex-specific
 1. `workbench_open_run`
    - Create `runs/<run_id>/`.
    - Pass `execution_host="codex"`.
+   - Pass the recipe filename when the run follows a recipe, for example `recipe="workbench-test-fix-acceptance.yaml"` for `fixture_repair_proof`.
    - Confirm `task_metadata.json` and `final_prompt.md` include `Execution Host: codex`.
 
 2. `workbench_select_model`
    - Ask Workbench for the advisory model/runtime tier.
+   - Pass the same recipe filename and validation profile when the run is recipe-backed.
    - Treat this as advisory for Codex because Codex may control the actual model/runtime.
 
 3. Codex performs the task
@@ -28,6 +30,7 @@ Codex local/IDE support uses the existing six MCP tools. The only Codex-specific
 5. `workbench_validate_run`
    - Run deterministic validation for the selected profile.
    - Write `validation_report.json`.
+   - For the intentionally broken tiny Python fixture, use `fixture_repair_proof` with the exact focused unittest as `task_test_command`.
 
 6. `workbench_quality_gate`
    - Apply the quality gate.

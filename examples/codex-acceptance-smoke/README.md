@@ -32,28 +32,31 @@ Lifecycle:
    run_dir="runs/codex-smoke/tiny-python-fix"
    risk="low"
    execution_host="codex"
+   recipe="workbench-test-fix-acceptance.yaml"
 
 2. Select the advisory model/runtime tier with workbench_select_model:
    project="ai_workbench_mcp"
-   task_type="implement"
+   task_type="test"
    risk="low"
    out="runs/codex-smoke/tiny-python-fix/model_selection.json"
-   validation_profile="tiny_python_fix"
+   validation_profile="fixture_repair_proof"
    complexity_score=4
+   recipe="workbench-test-fix-acceptance.yaml"
 
-3. Make the minimal code fix.
+3. Confirm the focused unittest starts failing, then make the minimal code fix. Use OS-appropriate file inspection commands; do not assume Unix-only `cat`.
 
 4. Record execution with workbench_record_execution:
    project="ai_workbench_mcp"
    run_dir="runs/codex-smoke/tiny-python-fix"
-   response_text="Summary:\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\n\nFiles touched:\n- examples/tiny-python-fix/calculator.py\n\nValidation run:\n- Workbench validation is run in the next step.\n\nRisks / follow-ups:\n- None."
+   response_text="Summary:\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\n\nFiles touched:\n- examples/tiny-python-fix/calculator.py\n\nValidation run:\n- python -m unittest discover -s examples/tiny-python-fix -p test_*.py -> passed before Workbench validation.\n\nRisks / follow-ups:\n- None."
    response_source="codex"
    files_touched=["examples/tiny-python-fix/calculator.py"]
 
 5. Validate with workbench_validate_run:
    project="ai_workbench_mcp"
    out_dir="runs/codex-smoke/tiny-python-fix"
-   profile="tiny_python_fix"
+   profile="fixture_repair_proof"
+   task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py"
    changed_files=["examples/tiny-python-fix/calculator.py"]
 
 6. Apply workbench_quality_gate:
@@ -69,9 +72,13 @@ Expected accepted evidence:
 
 - `task_metadata.json` with `execution_host="codex"`
 - `final_prompt.md` with `Execution Host: codex` and compatibility `Mode: codex`
+- recipe metadata `workbench-test-fix-acceptance.yaml` in run metadata and model selection
 - `model_output.md` with `Execution Host` and `Response Source`
 - `validation_report.json`
 - `revision_decision.json`
 - `run_log.jsonl`
+- validation profile `fixture_repair_proof`
+- passed `task_test_command` and `changed_file_policy`
+- no `full_test_suite` command
 
 Do not commit `runs/`. A sanitized accepted Codex sample run belongs to a later Codex proof pass.

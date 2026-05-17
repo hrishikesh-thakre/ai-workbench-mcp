@@ -36,12 +36,22 @@ def write_minimal_codex_live_run(root: Path, *, accepted: bool = True) -> tuple[
         ],
     )
 
-    write_json(acceptance_run_dir / "task_metadata.json", {"execution_host": "codex"})
+    write_json(
+        acceptance_run_dir / "task_metadata.json",
+        {"execution_host": "codex", "recipe": "workbench-test-fix-acceptance.yaml"},
+    )
     (acceptance_run_dir / "final_prompt.md").write_text(
         "- Execution Host: `codex`\n- Mode: `codex`\n",
         encoding="utf-8",
     )
-    write_json(acceptance_run_dir / "model_selection.json", {"status": "selected"})
+    write_json(
+        acceptance_run_dir / "model_selection.json",
+        {
+            "status": "selected",
+            "validation_profile": "fixture_repair_proof",
+            "recipe": "workbench-test-fix-acceptance.yaml",
+        },
+    )
     (acceptance_run_dir / "model_output.md").write_text(
         "- Execution Host: `codex`\n- Response Source: `codex`\n",
         encoding="utf-8",
@@ -49,6 +59,20 @@ def write_minimal_codex_live_run(root: Path, *, accepted: bool = True) -> tuple[
     write_json(
         acceptance_run_dir / "validation_report.json",
         {
+            "profile": "fixture_repair_proof",
+            "commands_run": [
+                {
+                    "name": "task_test_command",
+                    "command": 'python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"',
+                    "status": "passed",
+                },
+                {"name": "recipe_policy_discovery_tests", "status": "passed"},
+                {"name": "validate_run_help", "status": "passed"},
+            ],
+            "artifact_checks": [
+                {"name": "task_test_command", "status": "passed"},
+                {"name": "changed_file_policy", "status": "passed"},
+            ],
             "overall_status": "passed",
             "sign_off_ready": True,
             "confidence": 1.0,
@@ -108,7 +132,7 @@ class CodexLiveHandoffTests(unittest.TestCase):
             result.stdout,
         )
         self.assertIn(
-            "Analyze only this live batch with: python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports",
+            "Analyze only this live batch with: python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports --evidence-scope complete",
             result.stdout,
         )
         self.assertTrue(prompt_exists)
@@ -116,6 +140,12 @@ class CodexLiveHandoffTests(unittest.TestCase):
         self.assertIn("runs/codex-live-20260513-120000/tiny-python-fix", prompt)
         self.assertIn('execution_host="codex"', prompt)
         self.assertIn('response_source="codex"', prompt)
+        self.assertIn('task_type="test"', prompt)
+        self.assertIn('validation_profile="fixture_repair_proof"', prompt)
+        self.assertIn('recipe="workbench-test-fix-acceptance.yaml"', prompt)
+        self.assertIn('profile="fixture_repair_proof"', prompt)
+        self.assertIn('task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py"', prompt)
+        self.assertIn("OS-appropriate shell inspection commands", prompt)
         self.assertIn('response_text="Summary:', prompt)
         self.assertIn("Do not ask Codex to launch another Codex session.", prompt)
         self.assertIn("Do not start ai-workbench-mcp directly", prompt)
@@ -176,6 +206,8 @@ class CodexLiveHandoffTests(unittest.TestCase):
         self.assertIn("RESULT: PASS", result.stdout)
         self.assertIn("execution_host: codex", result.stdout)
         self.assertIn("response_source: codex", result.stdout)
+        self.assertIn("recipe: workbench-test-fix-acceptance.yaml", result.stdout)
+        self.assertIn("validation_profile: fixture_repair_proof", result.stdout)
         self.assertIn("quality_gate: accepted", result.stdout)
 
     def test_result_checker_rejects_unaccepted_quality_gate(self) -> None:
@@ -202,6 +234,39 @@ class CodexLiveHandoffTests(unittest.TestCase):
         self.assertFalse(payload["ok"])
         failed_checks = {check["name"] for check in payload["checks"] if check["status"] == "failed"}
         self.assertEqual(failed_checks, {"acceptance_quality_gate_accepted"})
+
+    def test_result_checker_rejects_missing_acceptance_recipe_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool_run_dir, acceptance_run_dir = write_minimal_codex_live_run(Path(tmpdir))
+            write_json(acceptance_run_dir / "task_metadata.json", {"execution_host": "codex"})
+            write_json(
+                acceptance_run_dir / "model_selection.json",
+                {"status": "selected", "validation_profile": "fixture_repair_proof"},
+            )
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(RESULT_CHECK_SCRIPT),
+                    "--json",
+                    "--tool-run-dir",
+                    str(tool_run_dir),
+                    "--acceptance-run-dir",
+                    str(acceptance_run_dir),
+                ],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            payload = json.loads(result.stdout)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertFalse(payload["ok"])
+        failed_checks = {check["name"] for check in payload["checks"] if check["status"] == "failed"}
+        self.assertEqual(
+            failed_checks,
+            {"acceptance_metadata_recipe", "acceptance_model_selection_recipe"},
+        )
 
 
 if __name__ == "__main__":

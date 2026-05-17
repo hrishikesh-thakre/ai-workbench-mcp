@@ -92,6 +92,7 @@ def build_codex_prompt(tool_run_dir: Path, acceptance_run_dir: Path) -> str:
         - Do not delegate this to Codex cloud.
         - If a tool call hangs or fails unexpectedly, stop and report the failing step.
         - Do not reuse an existing run directory.
+        - Use OS-appropriate shell inspection commands. On Windows, prefer PowerShell Get-Content or cmd type instead of assuming Unix-only commands such as cat.
 
         Tool smoke:
         1. Call workbench_open_run with:
@@ -117,30 +118,33 @@ def build_codex_prompt(tool_run_dir: Path, acceptance_run_dir: Path) -> str:
            run_dir="{acceptance_run_dir.as_posix()}"
            risk="low"
            execution_host="codex"
+           recipe="workbench-test-fix-acceptance.yaml"
 
         2. Select the advisory model/runtime tier with workbench_select_model:
            project="ai_workbench_mcp"
-           task_type="implement"
+           task_type="test"
            risk="low"
            out="{(acceptance_run_dir / "model_selection.json").as_posix()}"
-           validation_profile="tiny_python_fix"
+           validation_profile="fixture_repair_proof"
            complexity_score=4
+           recipe="workbench-test-fix-acceptance.yaml"
 
-        3. Fix examples/tiny-python-fix/calculator.py so:
+        3. Confirm the focused unittest starts failing, then fix examples/tiny-python-fix/calculator.py so:
            python -m unittest discover -s examples/tiny-python-fix -p test_*.py
            passes. Keep the change minimal.
 
         4. Record execution with workbench_record_execution:
            project="ai_workbench_mcp"
            run_dir="{acceptance_run_dir.as_posix()}"
-           response_text="Summary:\\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\\n\\nFiles touched:\\n- examples/tiny-python-fix/calculator.py\\n\\nValidation run:\\n- Workbench validation is run in the next step.\\n\\nRisks / follow-ups:\\n- None."
+           response_text="Summary:\\nFixed examples/tiny-python-fix/calculator.py so add returns the sum of two integers.\\n\\nFiles touched:\\n- examples/tiny-python-fix/calculator.py\\n\\nValidation run:\\n- python -m unittest discover -s examples/tiny-python-fix -p test_*.py -> passed before Workbench validation.\\n\\nRisks / follow-ups:\\n- None."
            response_source="codex"
            files_touched=["examples/tiny-python-fix/calculator.py"]
 
         5. Validate with workbench_validate_run:
            project="ai_workbench_mcp"
            out_dir="{acceptance_run_dir.as_posix()}"
-           profile="tiny_python_fix"
+           profile="fixture_repair_proof"
+           task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py"
            changed_files=["examples/tiny-python-fix/calculator.py"]
 
         6. Apply workbench_quality_gate:
@@ -219,7 +223,11 @@ def main() -> int:
     print(f"Tool smoke run dir: {tool_run_dir.as_posix()}")
     print(f"Acceptance run dir: {acceptance_run_dir.as_posix()}")
     print(f"After Codex finishes, run: {result_check_command(args.run_id_stem, stamp)}")
-    print(f"Analyze only this live batch with: python tools/run_analyze.py --runs-dir {live_run_parent.as_posix()} --out-dir {(live_run_parent / '_reports').as_posix()}")
+    print(
+        "Analyze only this live batch with: "
+        f"python tools/run_analyze.py --runs-dir {live_run_parent.as_posix()} "
+        f"--out-dir {(live_run_parent / '_reports').as_posix()} --evidence-scope complete"
+    )
     print()
     print_countdown(max(0, args.countdown_seconds))
     print("READY: Start Codex now, then use the generated prompt.")

@@ -157,7 +157,11 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("docs_only", profiles)
         self.assertIn("python_package_maintenance", profiles)
         self.assertIn("test_fix", profiles)
+        self.assertIn("fixture_repair_proof", profiles)
         self.assertIn("low_risk_coding", profiles)
+        self.assertIn("low_risk_bug_fix", profiles)
+        self.assertIn("api_contract_change", profiles)
+        self.assertIn("security_privacy_sensitive", profiles)
 
         for profile_name, profile_data in profiles.items():
             with self.subTest(profile=profile_name):
@@ -189,8 +193,12 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
     def test_v02_acceptance_profiles_require_evidence_artifacts(self) -> None:
         profiles = validation_profiles()
         profile_names = {
+            "api_contract_change",
             "docs_only",
+            "fixture_repair_proof",
+            "low_risk_bug_fix",
             "python_package_maintenance",
+            "security_privacy_sensitive",
             "test_fix",
             "low_risk_coding",
         }
@@ -236,7 +244,17 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
     def test_focused_change_profiles_require_exact_non_empty_diff_evidence(self) -> None:
         profiles = validation_profiles()
 
-        for profile_name in ("docs_only", "low_risk_coding", "python_package_maintenance", "test_fix"):
+        for profile_name in (
+            "docs_only",
+            "fixture_repair_proof",
+            "low_risk_bug_fix",
+            "low_risk_coding",
+            "python_package_maintenance",
+            "api_contract_change",
+            "security_privacy_sensitive",
+            "test_fix",
+            "tiny_python_fix",
+        ):
             with self.subTest(profile=profile_name):
                 profile_data = profiles[profile_name]
                 policy = profile_data.get("changed_file_policy")
@@ -244,6 +262,56 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIsInstance(policy, dict)
                 self.assertTrue(policy.get("require_actual_diff"))
                 self.assertTrue(policy.get("require_non_empty"))
+
+    def test_core_policy_packs_define_machine_readable_metadata(self) -> None:
+        profiles = validation_profiles()
+        core_profiles = {
+            "docs_only",
+            "low_risk_bug_fix",
+            "test_fix",
+            "api_contract_change",
+            "security_privacy_sensitive",
+        }
+
+        for profile_name in core_profiles:
+            profile_data = profiles[profile_name]
+            commands = {
+                command.get("name")
+                for command in profile_data.get("commands", [])
+                if isinstance(command, dict)
+            }
+            if profile_data.get("task_test_command"):
+                commands.add("task_test_command")
+            policy_pack = profile_data.get("policy_pack")
+
+            with self.subTest(profile=profile_name):
+                self.assertIsInstance(policy_pack, dict)
+                self.assertEqual(policy_pack.get("name"), profile_name)
+                self.assertEqual(policy_pack.get("version"), "v0.2")
+
+                for key in (
+                    "allowed_files",
+                    "required_tests",
+                    "required_evidence",
+                    "review_triggers",
+                    "blocker_rules",
+                ):
+                    value = policy_pack.get(key)
+                    self.assertIsInstance(value, list)
+                    self.assertGreater(len(value), 0)
+
+                reason_codes = policy_pack.get("reason_codes")
+                self.assertIsInstance(reason_codes, dict)
+                self.assertIn("accepted", reason_codes)
+                self.assertIn("required_test_missing", reason_codes)
+                self.assertIn("required_test_failed", reason_codes)
+
+                self.assertEqual(
+                    policy_pack.get("required_evidence"),
+                    profile_data.get("required_artifacts"),
+                )
+                for required_test in policy_pack.get("required_tests", []):
+                    self.assertIn(required_test, commands)
 
     def test_focused_recipes_require_exact_changed_files_for_record_and_validate(self) -> None:
         focused_recipes = (
@@ -260,6 +328,22 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("exact changed files list", text)
                 self.assertIn("files_touched set to the exact changed files list", text)
                 self.assertIn("changed_files set to the same exact changed files list", text)
+
+    def test_mutating_recipes_include_goose_developer_builtin(self) -> None:
+        mutating_recipes = (
+            DOCS_ONLY_RECIPE_PATH,
+            RECIPE_PATH,
+            PYTHON_PACKAGE_RECIPE_PATH,
+            TEST_FIX_RECIPE_PATH,
+        )
+
+        for recipe_path in mutating_recipes:
+            with self.subTest(recipe=recipe_path.name):
+                text = recipe_path.read_text(encoding="utf-8")
+
+                self.assertIn("type: builtin", text)
+                self.assertIn("name: developer", text)
+                self.assertIn("Goose developer tools", text)
 
     def test_full_acceptance_recipes_keep_six_tool_order(self) -> None:
         for recipe_path in recipe_files():
@@ -308,6 +392,8 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn('title: "Workbench Test-Fix Acceptance"', text)
         self.assertEqual(recipe_parameter_default(text, "validation_profile"), "test_fix")
         self.assertEqual(recipe_parameter_default(text, "prompt"), "bug_root_cause_investigation")
+        self.assertEqual(recipe_parameter_default(text, "analytics_runs_dir"), "runs")
+        self.assertEqual(recipe_parameter_default(text, "analytics_out_dir"), "runs/_reports")
         self.assertIn("task_test_command", profile_data)
         self.assertTrue(profile_data["task_test_command"]["required"])
         self.assertIn("python -m pytest", profile_data["task_test_command"]["allowed_prefixes"])
@@ -315,10 +401,29 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("Test-fix", text)
         self.assertIn('task_type="test"', text)
         self.assertIn("Do not weaken, delete, skip, xfail, or broadly rewrite tests", text)
+        self.assertIn("OS-appropriate shell inspection commands", text)
+        self.assertIn("runs_dir=\"{{ analytics_runs_dir }}\"", text)
+        self.assertIn("out_dir=\"{{ analytics_out_dir }}\"", text)
         self.assertIn("Include the exact test command and result", text)
         self.assertIn("task_test_command", text)
         self.assertIn("Call workbench_record_execution exactly once", text)
         self.assertEqual(positions, sorted(positions))
+
+    def test_fixture_repair_proof_profile_is_focused_and_explicitly_not_full_suite(self) -> None:
+        profile_data = validation_profiles()["fixture_repair_proof"]
+        command_names = [
+            command.get("name")
+            for command in profile_data.get("commands", [])
+            if isinstance(command, dict)
+        ]
+        policy = profile_data.get("changed_file_policy")
+
+        self.assertIn("task_test_command", profile_data)
+        self.assertTrue(profile_data["task_test_command"]["required"])
+        self.assertEqual(command_names, ["recipe_policy_discovery_tests", "validate_run_help"])
+        self.assertNotIn("full_test_suite", command_names)
+        self.assertIsInstance(policy, dict)
+        self.assertIn("examples/**/*.py", policy.get("allowed_patterns", []))
 
 
 if __name__ == "__main__":

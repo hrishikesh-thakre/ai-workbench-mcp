@@ -97,6 +97,16 @@ python -m pip install -e .
 
 The published PyPI wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
 
+For a first local run, use this order:
+
+1. Install from the checked-out repository with `python -m pip install -e .`.
+2. Register `ai-workbench-mcp` in Goose.
+3. Run the two-tool smoke to prove Goose can reach the MCP server.
+4. Run one full acceptance recipe with a focused validation profile.
+5. Inspect `validation_report.json` and `revision_decision.json` before calling the run accepted.
+
+If Goose or a provider is not configured yet, use the committed sample evidence under `examples/sample-runs/` and the [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md) first. That path shows the acceptance artifacts without creating private local evidence.
+
 Register the MCP server in Goose:
 
 ```bash
@@ -135,6 +145,21 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params complexity_score=4
 ```
 
+Choose the validation profile from the task shape:
+
+| Task shape | Recipe | Validation profile |
+|---|---|---|
+| Documentation-only Markdown or example docs | `recipes/workbench-docs-only-acceptance.yaml` | `docs_only` |
+| Low-risk bug fix with a focused regression command | `recipes/workbench-test-fix-acceptance.yaml` | `low_risk_bug_fix` |
+| Bounded package, config, tool, recipe, or test maintenance | `recipes/workbench-python-package-maintenance.yaml` | `python_package_maintenance` |
+| Repo-target failing test repair with a focused test command | `recipes/workbench-test-fix-acceptance.yaml` | `test_fix` |
+| API or MCP contract change | `recipes/workbench-engineering-acceptance.yaml` | `api_contract_change` |
+| Security or privacy-sensitive change | `recipes/workbench-engineering-acceptance.yaml` | `security_privacy_sensitive` |
+| Intentionally broken demo fixture proof | `recipes/workbench-test-fix-acceptance.yaml` | `fixture_repair_proof` |
+| General low-risk implementation with deterministic tests | `recipes/workbench-engineering-acceptance.yaml` | `low_risk_coding` |
+
+See [focused v0.2 workflows](examples/focused-workflows/) for copy-ready commands.
+
 For bounded documentation-only changes, use the focused v0.2 recipe:
 
 ```bash
@@ -162,9 +187,23 @@ For bounded test-fix work, use:
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-test-fix \
-  --params task="Fix the requested failing test signal with the smallest justified change and report the exact validation command." \
-  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params task="Fix the requested failing test signal with the smallest justified change, keep the repo test suite passing, and report the exact validation command." \
+  --params task_test_command="python -m pytest tests/test_target.py -q" \
   --params risk=medium
+```
+
+The default `test_fix` profile is for repo-target repairs and requires the broader project suite. For intentionally broken demo fixtures, use the focused fixture proof profile instead:
+
+```bash
+goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
+  --params project=ai_workbench_mcp \
+  --params run_dir=runs/goose-fixture-repair-proof \
+  --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
+  --params validation_profile=fixture_repair_proof \
+  --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
+  --params analytics_runs_dir=runs/goose-fixture-repair-proof \
+  --params analytics_out_dir=runs/goose-fixture-repair-proof/_reports \
+  --params risk=low
 ```
 
 For a general low-risk implementation task with deterministic test coverage, use the engineering recipe with the low-risk coding profile:
@@ -195,6 +234,12 @@ runs/goose-tiny-python-fix/
 
 Do not commit `runs/`. It is the local evidence ledger.
 
+Read outcomes from the evidence, not from the agent's final prose:
+
+- Accepted: `validation_report.json` has `overall_status="passed"` and `sign_off_ready=true`, and `revision_decision.json` has `final_status="accepted"`.
+- Needs-review or revision: validation or quality-gate evidence is incomplete, risky, or failed, and the quality gate records a review or revision status such as `revision_required`.
+- Blocked or failed: deterministic validation fails in a way that is not sign-off ready. Keep the evidence local, inspect the failing check, and do not call the run accepted.
+
 ## Codex Local/IDE
 
 Codex uses the same `ai-workbench-mcp` server. The first Codex slice is local/IDE MCP support, not Codex cloud.
@@ -205,6 +250,22 @@ Codex uses the same `ai-workbench-mcp` server. The first Codex slice is local/ID
 - [Codex cloud limitations](docs/codex/cloud-limitations.md): evidence persistence and export questions deferred to a later design pass.
 - [Codex live-test handoff](docs/codex/live-test-handoff.md): batch/Python helper that runs safe preflight checks, shows a timer, prints a one-shot prompt, and checks the resulting Codex evidence folders.
 - [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): bounded local/IDE proof path with loop and crash guardrails.
+
+## Proof Pack
+
+The v0.2 public proof pack is in [docs/proof/proof-pack-v0.2.md](docs/proof/proof-pack-v0.2.md).
+
+It shows:
+
+- accepted Goose evidence
+- accepted Codex local/IDE evidence
+- a fresh accepted Gemini Goose fixture proof summary
+- a fresh accepted Codex local/IDE fixture proof summary
+- review-required evidence
+- analytics by execution host and response source
+- a 3-5 minute demo script
+
+The proof pack uses committed sanitized sample evidence under `examples/sample-runs/`. Raw local `runs/` evidence stays ignored.
 
 ## Sample Analytics Demo
 
@@ -308,12 +369,15 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Goose recipe smoke](examples/goose-recipe-smoke/): exact command for a low-risk Goose acceptance run.
 - [Codex tool smoke](examples/codex-tool-smoke/): two-tool local/IDE MCP smoke using `execution_host="codex"`.
 - [Codex acceptance smoke](examples/codex-acceptance-smoke/): full six-tool local/IDE lifecycle using `response_source="codex"`.
-- [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, package maintenance, test-fix, and low-risk coding workflows.
+- [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, low-risk bug-fix, package maintenance, test-fix, API/contract, security/privacy, and low-risk coding workflows.
 - [How acceptance works](docs/concepts/how-acceptance-works.md): the MCP protocol, Workbench server, validation profile, and quality-gate distinction.
 - [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
 - [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
+- Core policy-pack profiles: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` in `configs/validation_profiles.yaml`.
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
+- [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md): sanitized live Goose proof summary using `fixture_repair_proof` with isolated analytics.
+- [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): sanitized live Codex local/IDE proof summary using `fixture_repair_proof` with host/source evidence.
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/): sanitized committed evidence showing an accepted run folder.
 - [Sample Codex accepted run](examples/sample-runs/accepted-codex-tiny-python-fix/): sanitized Codex local/IDE evidence showing `execution_host="codex"` and `response_source="codex"`.
 - [Sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/): sanitized focused workflow evidence using `documentation_accuracy_audit` and `docs_only`.
@@ -321,14 +385,15 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Acceptance analytics guide](docs/analytics/acceptance-analytics.md): how to read `run_metrics.json`, `run_summary.md`, outcome buckets, routing feedback candidates, and optional cost fields.
 - [Evidence dashboard guide](docs/analytics/evidence-dashboard.md): how to read the static `run_dashboard.html` generated by run analytics.
 - [Event ledger guide](docs/analytics/event-ledger.md): how local `events.jsonl` operation telemetry is written and why it stays out of committed runs by default.
+- [v0.2 contract baseline](docs/contracts/v0.2-contract-baseline.md): current non-v1-stable run evidence, MCP envelope, analytics, policy, and PR gate artifact shapes.
 - [Golden-case harness guide](docs/evals/golden-case-harness.md): how to score sanitized accepted evidence baselines locally.
-- [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): how to collect real Goose acceptance runs before changing routing policy.
+- [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): completed dogfooding protocol, evidence hygiene rules, and the path to bounded routing-policy experiments.
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
 - [CI gate prototype](docs/github/pr-gate.md): what the repo self-validation workflow proves and why semantic PR acceptance comes later.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 - [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
 - [Repository topics](docs/github/repository-topics.md): recommended GitHub topics and setup commands.
-- [Launch issue drafts](docs/github/create-launch-issues.md): ready-to-post public issue commands.
+- [Launch issue creation record](docs/github/create-launch-issues.md): created public issue links plus recovery-only creation commands.
 - [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): recording-ready 3-5 minute public demo runbook.
 - [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md): local/IDE proof path that avoids nested Codex or foreground stdio-server loops.
 
@@ -356,9 +421,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
-- `v0.3`: Codex local/IDE first-class proof and accepted-artifact routing feedback.
-- `v0.4`: accepted-artifact analytics.
-- `v0.5`: CI mode for PR acceptance.
+- Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
+- Next: bounded routing-policy experiments, GitHub-native PR acceptance gate, first-class policy metadata, cost/time evidence, and stable contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics

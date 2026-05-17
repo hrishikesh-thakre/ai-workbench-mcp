@@ -10,6 +10,14 @@ python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sampl
 
 The committed sample set includes legacy Goose evidence, explicit Codex local/IDE evidence, and a revision-required run so host/source breakdowns and outcome buckets are visible without provider setup.
 
+For mixed local parents that include connectivity checks, tool-smoke folders, or interrupted attempts beside full acceptance runs, use complete-evidence scope:
+
+```bash
+python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics --evidence-scope complete
+```
+
+`--evidence-scope all` is the default and preserves legacy behavior: any child folder with `run_log.jsonl` is counted. `--evidence-scope complete` counts only child folders that also contain `validation_report.json` and `revision_decision.json`. Excluded logged folders are summarized in `excluded_runs_total` and `excluded_runs_by_reason`.
+
 This writes:
 
 - `run_metrics.json`: machine-readable metrics for routing, reporting, and future policy work.
@@ -30,6 +38,9 @@ Detailed failure reasons remain available even when the public bucket is `review
 
 Use these fields in `run_metrics.json` first:
 
+- `evidence_scope`: `all` or `complete`.
+- `excluded_runs_total`: logged child folders excluded by complete-evidence scope.
+- `excluded_runs_by_reason`: missing-artifact reasons for excluded folders, such as `missing_validation_report` or `missing_revision_decision`.
 - `runs_total`: number of run folders scanned.
 - `outcome_counts`: accepted, review-required, failed, and other counts.
 - `accepted_runs_total`: accepted count preserved for existing consumers.
@@ -42,6 +53,9 @@ Use these fields in `run_metrics.json` first:
 - `acceptance_breakdown`: backward-compatible accepted/needs-review/failed breakdown.
 - `outcome_breakdown`: public accepted/review-required/failed breakdown by execution host, response source, recipe, validation profile, selected tier, and quality-gate outcome.
 - `failure_reasons`: most common deterministic validation and quality-gate reasons.
+- `cost_tracking`: provider token and estimated-cost aggregate fields when `model_call_metadata.json` evidence exists.
+- `time_tracking`: provider-call and validation-command duration aggregates when explicit duration evidence exists.
+- `run_cost_time`: per-run cost/time metadata keyed by run id, including booleans that distinguish missing evidence from zero values.
 
 ## Host And Source Metrics
 
@@ -93,6 +107,36 @@ The selector does not mutate `selected_tier`. Synthetic samples should normally 
 Cost tracking is optional provider metadata. Empty or zero cost fields mean no provider cost evidence was found in the scanned run folders. They do not mean the run was free.
 
 Cost fields are populated only when real `model_call_metadata.json` artifacts contain token or cost data.
+
+`model_call_metadata.json` may live directly inside a run folder. The minimum accepted shape is:
+
+```json
+{
+  "provider": "litellm",
+  "tier": "local_coding",
+  "model": "provider-model-id",
+  "usage_summary": {
+    "prompt_tokens": 1000,
+    "completion_tokens": 250,
+    "total_tokens": 1250,
+    "cached_input_tokens": 0,
+    "uncached_input_tokens": 1000
+  },
+  "estimated_cost_usd": 0.00123,
+  "pricing_source": "provider_reported",
+  "duration_ms": 2400
+}
+```
+
+Notes:
+
+- `provider`, `tier`, and `model` identify the provider call. `model` may also be read from a completed attempt when attempts are recorded.
+- `usage_summary.total_tokens` is enough to count token evidence. Prompt, completion, cached, and uncached token fields improve cost estimates when direct provider cost is unavailable.
+- `estimated_cost_usd` should be provider-reported when available. If it is missing, analytics can estimate cost only from real token metadata plus configured pricing data.
+- `duration_ms` is optional provider-call time evidence. Analytics also accepts explicit `elapsed_ms`, `latency_ms`, `wall_time_ms`, or their `_seconds` equivalents. Attempt-level duration fields can be summed when top-level duration is absent.
+- Missing cost or time fields stay missing in interpretation. They are not treated as free or zero-duration execution.
+
+Validation time is separate from provider-call time. It is summed from explicit `duration_ms` fields in `validation_report.json.commands_run`.
 
 ## Reading The Summary
 

@@ -12,6 +12,11 @@ This proves the Goose CLI can discover and call the AI Workbench MCP server
 without waiting for a full agent implementation, validation, quality gate, and
 analytics loop.
 
+Use this as the first live check after `python -m pip install -e .` and
+`goose configure`. A passing tool smoke means the MCP server is reachable from
+Goose; it is not an accepted Workbench run because no execution capture,
+deterministic validation, or quality gate has run yet.
+
 ```bash
 goose run --no-session --max-turns 4 --recipe ./recipes/workbench-mcp-tool-smoke.yaml \
   --params project=ai_workbench_mcp \
@@ -34,3 +39,6 @@ runs/goose-tool-smoke/
 Local Gemma models can take several minutes to warm up. If this minimal smoke
 passes, run the full recipe smoke from `examples/goose-recipe-smoke/` with a
 longer shell timeout.
+
+If this smoke fails, check the Goose extension command and package install
+before trying a full acceptance recipe.

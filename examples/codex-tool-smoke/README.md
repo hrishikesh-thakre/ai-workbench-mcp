@@ -2,6 +2,11 @@
 
 This smoke proves Codex local/IDE can call the existing `ai-workbench-mcp` server. It does not require Codex to edit files.
 
+Use this after the Goose-first path is understood or when checking Codex as the
+second host. A passing Codex tool smoke proves MCP reachability and host
+metadata capture; it is not an accepted run because execution capture,
+deterministic validation, and the quality gate are not part of this smoke.
+
 ## Goal
 
 Call the first two MCP tools:

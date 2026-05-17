@@ -1,10 +1,12 @@
 # Phase 5 Dogfooding Protocol
 
-Phase 5 is about proving that Workbench analytics can improve routing decisions from real accepted artifacts. Do this with local Goose runs first, then commit only sanitized examples when they are useful as public documentation.
+Phase 5 proved that Workbench analytics can improve routing decisions from real accepted artifacts. The original 20-50 real Goose acceptance runs goal is met; `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls.
+
+Keep this protocol as the evidence hygiene reference for any future routing-policy experiment batches. Future batches should test one narrow candidate policy at a time rather than reopening broad Phase 5 collection.
 
 ## Goal
 
-Collect 20-50 real Goose acceptance runs with complete Workbench evidence:
+Original goal, now complete: collect 20-50 real Goose acceptance runs with complete Workbench evidence:
 
 - accepted runs
 - review-required or revision-required runs
@@ -21,6 +23,7 @@ Start with a balanced set:
 | Low-risk implementation | `workbench-engineering-acceptance.yaml` | `low_risk_coding` |
 | Python package maintenance | `workbench-python-package-maintenance.yaml` | `python_package_maintenance` |
 | Failing test repair | `workbench-test-fix-acceptance.yaml` | `test_fix` |
+| Intentionally broken fixture repair proof | `workbench-test-fix-acceptance.yaml` | `fixture_repair_proof` |
 
 Use real tasks, but keep them bounded. Avoid tasks that require private services, credentials, or broad product rewrites.
 
@@ -51,7 +54,7 @@ A run is accepted only when deterministic validation passed and the quality gate
 
 Focused change profiles require non-empty changed-file evidence that exactly matches the current worktree diff. The agent should pass the same exact file list to `workbench_record_execution(files_touched=...)` and `workbench_validate_run(changed_files=...)`; no-op or underreported diffs should become review-blocking validation failures. Artifact-only smoke profiles such as `scaffold` are not change-producing sign-off profiles.
 
-For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation.
+For `test_fix` runs, pass an exact focused Python pytest or unittest command through the recipe's `task_test_command` parameter. The `test_fix` profile treats that focused command as required evidence before broader profile-level validation. Use `fixture_repair_proof` instead when the proof target is an intentionally broken demo fixture and the Workbench repo's self-tests intentionally assert that the checked-in fixture remains broken.
 
 ## Outcome Buckets
 
@@ -68,8 +71,10 @@ Preserve detailed failure reasons such as `command_failed:full_test_suite` even 
 After collecting a batch, run:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics
+python tools/run_analyze.py --runs-dir runs/dogfood-batchN --out-dir runs/dogfood-batchN-analytics --evidence-scope complete
 ```
+
+Use `--evidence-scope complete` for dogfood batches so routing feedback is generated only from folders with `run_log.jsonl`, `validation_report.json`, and `revision_decision.json`. Connectivity or tool-smoke runs can live beside acceptance runs in the same parent, but routing feedback should come from complete lifecycle evidence only.
 
 Do not analyze the whole `runs/` directory for dogfooding reports. Local smoke, scaffold, abandoned, and one-off outputs can pollute the aggregate.
 
@@ -112,6 +117,26 @@ Batch 2 is summarized in two sanitized reports:
 
 Stage B is evidence only. It confirms that focused profiles block no-op or underreported changed-file claims, but it does not justify routing-policy mutation by itself.
 
+## Batch 3 Report
+
+Batch 3 is summarized in `docs/dogfooding/phase5-batch3-report.md`. It contains four complete-scope live Goose runs across docs-only, low-risk coding, Python package maintenance, and seeded test-fix workflows. All four were accepted, and analytics used `--evidence-scope complete`.
+
+## Batch 4 Report
+
+Batch 4 is summarized in `docs/dogfooding/phase5-batch4-report.md`. It contains complete-scope exclusion evidence from a tool-smoke folder plus accepted and review-required Goose runs. Analytics used `--evidence-scope complete` and excluded incomplete lifecycle evidence from routing feedback.
+
+## Batch 5 Report
+
+Batch 5 is summarized in `docs/dogfooding/phase5-batch5-report.md`. It contains deterministic validation-failure evidence for underreported changed files and failing focused test commands. Analytics used `--evidence-scope complete` and kept the generated failure reasons visible even though the quality gate routed failed validation to review-required outcomes.
+
+## Batch 6 Report
+
+Batch 6 is summarized in `docs/dogfooding/phase5-batch6-report.md`. It contains six complete live Goose runs across docs-only, low-risk coding, Python package maintenance, fixture repair, and seeded test-fix profiles. Analytics used `--evidence-scope complete`, counted all six complete runs, and reported five accepted outcomes plus one medium-risk review-required outcome.
+
+## Final Closeout
+
+Phase 5 is closed out in `docs/dogfooding/phase5-final-report.md`. The final evidence set contains 31 complete runs: 29 live Goose runs and 2 deterministic controls. Phase 5 evidence collection is complete, and the next work should be bounded routing-policy experiments rather than more general evidence collection.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:
@@ -132,3 +157,5 @@ Phase 5 dogfooding is ready to feed routing-policy work when:
 - outcome buckets include accepted and review-required examples
 - repeated failure reasons are visible in analytics
 - routing feedback candidates show stable enough patterns to propose a bounded policy experiment
+
+These criteria are now met by the Phase 5 closeout. New dogfood runs should be tied to explicit routing-policy experiments, PR-gate evidence, host/source proof, or policy-pack validation gaps.

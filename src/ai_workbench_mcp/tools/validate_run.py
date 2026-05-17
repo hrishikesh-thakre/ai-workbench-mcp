@@ -26,6 +26,7 @@ class ValidationProfile:
     consistency_checks: list[str]
     changed_file_policy: dict[str, object]
     task_test_command: dict[str, object]
+    policy_pack: dict[str, object]
 
 
 @dataclass
@@ -34,6 +35,7 @@ class ValidationCheck:
     status: str
     summary: str
     details: list[str]
+    reason_codes: list[str]
 
 
 @dataclass
@@ -114,6 +116,9 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
         else {},
         task_test_command=profile_data.get("task_test_command", {})
         if isinstance(profile_data.get("task_test_command", {}), dict)
+        else {},
+        policy_pack=profile_data.get("policy_pack", {})
+        if isinstance(profile_data.get("policy_pack", {}), dict)
         else {},
     )
 
@@ -245,8 +250,57 @@ def parse_search_results(file_path: Path) -> ParsedSearchResults:
     )
 
 
-def build_check(name: str, status: str, summary: str, details: list[str]) -> ValidationCheck:
-    return ValidationCheck(name=name, status=status, summary=summary, details=details)
+def build_check(
+    name: str,
+    status: str,
+    summary: str,
+    details: list[str],
+    reason_codes: list[str] | None = None,
+) -> ValidationCheck:
+    return ValidationCheck(
+        name=name,
+        status=status,
+        summary=summary,
+        details=details,
+        reason_codes=reason_codes or [],
+    )
+
+
+def nested_reason_code(policy: dict[str, object], key: str, default: str) -> str:
+    reason_codes = policy.get("reason_codes", {})
+    if isinstance(reason_codes, dict):
+        configured = reason_codes.get(key)
+        if isinstance(configured, str) and configured.strip():
+            return configured.strip()
+    return default
+
+
+def severity_for_status(status: str) -> str:
+    if status == "failed":
+        return "blocker"
+    if status == "needs_review":
+        return "review"
+    return "info"
+
+
+def reason_source(
+    *,
+    code: str,
+    status: str,
+    source: str,
+    name: str,
+    summary: str,
+    details: list[str] | None = None,
+) -> dict[str, object]:
+    return {
+        "code": code,
+        "status": status,
+        "severity": severity_for_status(status),
+        "source": source,
+        "name": name,
+        "summary": summary,
+        "details": details or [],
+    }
 
 
 def validate_artifact_presence(run_dir: Path, required_artifacts: list[str]) -> ValidationCheck:
@@ -256,6 +310,7 @@ def validate_artifact_presence(run_dir: Path, required_artifacts: list[str]) -> 
             status="passed",
             summary="No required artifact presence checks were configured.",
             details=[],
+            reason_codes=["artifact_presence.not_required"],
         )
 
     if not run_dir.exists():
@@ -264,6 +319,7 @@ def validate_artifact_presence(run_dir: Path, required_artifacts: list[str]) -> 
             status="failed",
             summary="Run directory does not exist.",
             details=[f"Missing run directory: {run_dir}"],
+            reason_codes=["run_directory.missing"],
         )
 
     missing = [artifact for artifact in required_artifacts if not (run_dir / artifact).exists()]
@@ -273,6 +329,7 @@ def validate_artifact_presence(run_dir: Path, required_artifacts: list[str]) -> 
             status="failed",
             summary="Required run artifacts are missing.",
             details=[f"Missing artifact: {artifact}" for artifact in missing],
+            reason_codes=["artifact_presence.missing"],
         )
 
     return build_check(
@@ -280,6 +337,7 @@ def validate_artifact_presence(run_dir: Path, required_artifacts: list[str]) -> 
         status="passed",
         summary="All required run artifacts are present.",
         details=[f"Found {len(required_artifacts)} required artifacts."],
+        reason_codes=["artifact_presence.present"],
     )
 
 
@@ -290,6 +348,7 @@ def validate_non_empty_artifacts(run_dir: Path, artifact_names: list[str]) -> Va
             status="passed",
             summary="No required non-empty artifact checks were configured.",
             details=[],
+            reason_codes=["artifact_non_empty.not_required"],
         )
 
     empty_artifacts: list[str] = []
@@ -304,6 +363,7 @@ def validate_non_empty_artifacts(run_dir: Path, artifact_names: list[str]) -> Va
             status="failed",
             summary="Required artifacts must not be empty.",
             details=[f"Empty artifact: {artifact}" for artifact in empty_artifacts],
+            reason_codes=["artifact_non_empty.empty"],
         )
 
     return build_check(
@@ -311,6 +371,7 @@ def validate_non_empty_artifacts(run_dir: Path, artifact_names: list[str]) -> Va
         status="passed",
         summary="Required artifacts contain content.",
         details=[f"Checked {len(artifact_names)} artifacts for non-empty content."],
+        reason_codes=["artifact_non_empty.present"],
     )
 
 
@@ -422,32 +483,62 @@ def validate_changed_file_policy(
     ]
 
     violations: list[str] = []
+    violation_codes: list[str] = []
+
+    def add_violation(detail: str, code_key: str, default_code: str) -> None:
+        violations.append(detail)
+        violation_codes.append(nested_reason_code(profile.changed_file_policy, code_key, default_code))
+
     actual_changed_files: list[str] | None = None
     if require_actual_diff:
         if project_root is None or run_dir is None:
-            violations.append("Actual changed-file evidence is required but unavailable.")
+            add_violation(
+                "Actual changed-file evidence is required but unavailable.",
+                "actual_diff_unavailable",
+                "changed_file_policy.actual_diff_unavailable",
+            )
         else:
             actual_changed_files = parse_git_status_changed_files(project_root, run_dir)
             reported_changed_file_set = set(changed_files)
             actual_changed_file_set = set(actual_changed_files)
             for changed_file in changed_files:
                 if changed_file not in actual_changed_file_set:
-                    violations.append(f"Claimed changed file has no worktree diff: {changed_file}")
+                    add_violation(
+                        f"Claimed changed file has no worktree diff: {changed_file}",
+                        "claimed_without_diff",
+                        "changed_file_policy.claimed_without_diff",
+                    )
             if source != "git_status":
                 for actual_changed_file in actual_changed_files:
                     if actual_changed_file not in reported_changed_file_set:
-                        violations.append(f"Unreported worktree diff file: {actual_changed_file}")
+                        add_violation(
+                            f"Unreported worktree diff file: {actual_changed_file}",
+                            "unreported_worktree_diff",
+                            "changed_file_policy.unreported_worktree_diff",
+                        )
 
     effective_changed_files = sorted(set(changed_files) | set(actual_changed_files or []))
     if require_non_empty and not effective_changed_files:
-        violations.append("Changed-file evidence is required but no changed files were reported or discovered.")
+        add_violation(
+            "Changed-file evidence is required but no changed files were reported or discovered.",
+            "empty",
+            "changed_file_policy.empty",
+        )
 
     for changed_file in effective_changed_files:
         if forbidden_patterns and matches_any_pattern(changed_file, forbidden_patterns):
-            violations.append(f"Forbidden changed file: {changed_file}")
+            add_violation(
+                f"Forbidden changed file: {changed_file}",
+                "forbidden",
+                "changed_file_policy.forbidden",
+            )
             continue
         if allowed_patterns and not matches_any_pattern(changed_file, allowed_patterns):
-            violations.append(f"Changed file is outside allowed scope: {changed_file}")
+            add_violation(
+                f"Changed file is outside allowed scope: {changed_file}",
+                "outside_allowed_scope",
+                "changed_file_policy.outside_allowed_scope",
+            )
 
     details = [f"Changed-file source: {source}"]
     if require_actual_diff:
@@ -464,6 +555,7 @@ def validate_changed_file_policy(
             status="failed",
             summary="Changed files violate the validation profile policy.",
             details=[*details, *violations],
+            reason_codes=sorted(set(violation_codes)),
         )
 
     return build_check(
@@ -473,6 +565,13 @@ def validate_changed_file_policy(
         details=[
             *details,
             f"Checked {len(effective_changed_files)} changed files.",
+        ],
+        reason_codes=[
+            nested_reason_code(
+                profile.changed_file_policy,
+                "passed",
+                "changed_file_policy.passed",
+            )
         ],
     )
 
@@ -518,12 +617,14 @@ def task_test_command_policy_check(profile: ValidationProfile, command: str | No
                 details=[
                     "Pass --task-test-command or the MCP task_test_command argument with the exact focused test command.",
                 ],
+                reason_codes=["task_test_command.missing"],
             )
         return build_check(
             name="task_test_command",
             status="passed",
             summary="No task-specific test command was required.",
             details=[],
+            reason_codes=["task_test_command.not_required"],
         )
 
     lowered = normalized.lower()
@@ -536,6 +637,7 @@ def task_test_command_policy_check(profile: ValidationProfile, command: str | No
                 f"Allowed prefixes: {', '.join(allowed_prefixes)}",
                 f"Received command: {normalized}",
             ],
+            reason_codes=["task_test_command.invalid_prefix"],
         )
 
     if re.search(r"[;&|<>`\r\n]", normalized):
@@ -544,6 +646,7 @@ def task_test_command_policy_check(profile: ValidationProfile, command: str | No
             status="failed",
             summary="Task-specific test command contains shell control syntax.",
             details=["Use a single Python pytest or unittest command without shell chaining or redirection."],
+            reason_codes=["task_test_command.shell_control_syntax"],
         )
 
     return build_check(
@@ -551,6 +654,68 @@ def task_test_command_policy_check(profile: ValidationProfile, command: str | No
         status="passed",
         summary="Task-specific test command accepted for execution.",
         details=[f"Command: {normalized}"],
+        reason_codes=["task_test_command.accepted"],
+    )
+
+
+def validate_policy_required_tests(
+    profile: ValidationProfile,
+    commands_run: list[CommandResult],
+) -> ValidationCheck | None:
+    required_tests = profile.policy_pack.get("required_tests", [])
+    if not isinstance(required_tests, list):
+        return None
+
+    required_names = [str(item).strip() for item in required_tests if str(item).strip()]
+    if not required_names:
+        return None
+
+    command_status_by_name = {command.name: command.status for command in commands_run}
+    missing = [name for name in required_names if name not in command_status_by_name]
+    failed = [name for name in required_names if command_status_by_name.get(name) == "failed"]
+
+    if missing:
+        return build_check(
+            name="policy_required_tests",
+            status="needs_review",
+            summary="Policy-required tests were not found in the validation command evidence.",
+            details=[f"Missing required test command: {name}" for name in missing],
+            reason_codes=[
+                nested_reason_code(
+                    profile.policy_pack,
+                    "required_test_missing",
+                    "policy.required_test_missing",
+                )
+            ],
+        )
+
+    if failed:
+        return build_check(
+            name="policy_required_tests",
+            status="failed",
+            summary="Policy-required tests were run but did not pass.",
+            details=[f"Failed required test command: {name}" for name in failed],
+            reason_codes=[
+                nested_reason_code(
+                    profile.policy_pack,
+                    "required_test_failed",
+                    "policy.required_test_failed",
+                )
+            ],
+        )
+
+    return build_check(
+        name="policy_required_tests",
+        status="passed",
+        summary="All policy-required tests are present and passing.",
+        details=[f"Required test command passed: {name}" for name in required_names],
+        reason_codes=[
+            nested_reason_code(
+                profile.policy_pack,
+                "required_tests_passed",
+                "policy.required_tests_passed",
+            )
+        ],
     )
 
 
@@ -584,6 +749,7 @@ def validate_missing_context_review(file_path: Path) -> tuple[ValidationCheck, d
                 status="failed",
                 summary="missing_context.md is missing or empty.",
                 details=["The validator could not review missing_context.md because it has no readable content."],
+                reason_codes=["missing_context.missing"],
             ),
             {"needs_review": [], "info": []},
         )
@@ -599,6 +765,7 @@ def validate_missing_context_review(file_path: Path) -> tuple[ValidationCheck, d
                 status="passed",
                 summary="missing_context.md was reviewed and reports no open gaps.",
                 details=["No missing context items remain."],
+                reason_codes=["missing_context.none"],
             ),
             sections,
         )
@@ -610,6 +777,7 @@ def validate_missing_context_review(file_path: Path) -> tuple[ValidationCheck, d
                 status="needs_review",
                 summary="missing_context.md was reviewed and contains open gaps.",
                 details=[f"Open gap: {note}" for note in needs_review_notes],
+                reason_codes=["missing_context.needs_review"],
             ),
             sections,
         )
@@ -620,6 +788,7 @@ def validate_missing_context_review(file_path: Path) -> tuple[ValidationCheck, d
             status="passed",
             summary="missing_context.md contains informational notes only.",
             details=[f"Info: {note}" for note in info_notes] or ["No review-blocking missing context items remain."],
+            reason_codes=["missing_context.info_only"],
         ),
         sections,
     )
@@ -643,6 +812,7 @@ def validate_model_output_status(file_path: Path) -> ValidationCheck:
             status="failed",
             summary="model_output.md is missing or empty.",
             details=["The sign-off profile requires a non-empty model_output.md artifact."],
+            reason_codes=["model_output.missing"],
         )
 
     status = parse_model_output_status(file_path)
@@ -652,6 +822,7 @@ def validate_model_output_status(file_path: Path) -> ValidationCheck:
             status="passed",
             summary="model_output.md indicates an accepted execution state.",
             details=[f"Model output status: {status}"],
+            reason_codes=["model_output.response_captured"],
         )
 
     if status == "handoff_required":
@@ -660,6 +831,7 @@ def validate_model_output_status(file_path: Path) -> ValidationCheck:
             status="needs_review",
             summary="model_output.md indicates manual model handoff is still required.",
             details=["Model output status: handoff_required"],
+            reason_codes=["model_output.handoff_required"],
         )
 
     if status is None:
@@ -668,6 +840,7 @@ def validate_model_output_status(file_path: Path) -> ValidationCheck:
             status="failed",
             summary="model_output.md does not contain a parseable status field.",
             details=["Expected a metadata line in the form: - Status: `response_captured|handoff_required`"],
+            reason_codes=["model_output.status_unparseable"],
         )
 
     return build_check(
@@ -675,6 +848,7 @@ def validate_model_output_status(file_path: Path) -> ValidationCheck:
         status="failed",
         summary="model_output.md contains an unsupported status value.",
         details=[f"Unsupported model output status: {status}"],
+        reason_codes=["model_output.status_unsupported"],
     )
 
 
@@ -686,6 +860,7 @@ def validate_captured_response_format(file_path: Path) -> ValidationCheck:
             status="failed",
             summary="model_output.md is missing or empty.",
             details=["The validator could not inspect the captured response because model_output.md has no readable content."],
+            reason_codes=["captured_response.missing"],
         )
 
     status = parse_model_output_status(file_path)
@@ -695,6 +870,7 @@ def validate_captured_response_format(file_path: Path) -> ValidationCheck:
             status="passed",
             summary="Captured-response format check is not applicable until a response is captured.",
             details=[f"Model output status: {status or 'unknown'}"],
+            reason_codes=["captured_response.not_applicable"],
         )
 
     response_text = extract_preferred_response_text(text)
@@ -704,6 +880,7 @@ def validate_captured_response_format(file_path: Path) -> ValidationCheck:
             status="failed",
             summary="model_output.md is marked response_captured but does not contain a readable captured response section.",
             details=["Expected either ## Normalized Response or ## Captured Response content."],
+            reason_codes=["captured_response.content_missing"],
         )
 
     missing = missing_required_sections(response_text)
@@ -713,6 +890,7 @@ def validate_captured_response_format(file_path: Path) -> ValidationCheck:
             status="needs_review",
             summary="Captured model response is missing the preferred structured sections.",
             details=[f"Missing required response section: {section}" for section in missing],
+            reason_codes=["captured_response.required_sections_missing"],
         )
 
     section_used = "normalized" if "## Normalized Response" in text else "captured"
@@ -721,6 +899,7 @@ def validate_captured_response_format(file_path: Path) -> ValidationCheck:
         status="passed",
         summary="Captured model response matches the preferred structured format.",
         details=[f"Validated {section_used} response section."],
+        reason_codes=["captured_response.structured"],
     )
 
 
@@ -739,6 +918,7 @@ def validate_internal_consistency(
             status="passed",
             summary="No artifact consistency checks were configured.",
             details=[],
+            reason_codes=["artifact_consistency.not_required"],
         )
 
     details: list[str] = []
@@ -784,6 +964,7 @@ def validate_internal_consistency(
             status="failed",
             summary="Run artifacts are not internally consistent.",
             details=details,
+            reason_codes=["artifact_consistency.mismatch"],
         )
 
     return build_check(
@@ -795,6 +976,7 @@ def validate_internal_consistency(
             f"files_considered.txt count={files_considered_count}",
             f"search_results.md rows={len(search_results.rows)}",
         ],
+        reason_codes=["artifact_consistency.passed"],
     )
 
 
@@ -889,6 +1071,90 @@ def compute_overall_status(
     return "passed"
 
 
+def policy_reason_code(profile: ValidationProfile, key: str, default: str) -> str:
+    return nested_reason_code(profile.policy_pack, key, default)
+
+
+def collect_validation_reason_sources(
+    profile: ValidationProfile,
+    overall_status: str,
+    commands_run: list[CommandResult],
+    commands_not_run: list[dict[str, str]],
+    artifact_checks: list[ValidationCheck],
+    review_checks: list[ValidationCheck],
+) -> list[dict[str, object]]:
+    sources: list[dict[str, object]] = []
+
+    for command in commands_run:
+        if command.required and command.status == "failed":
+            sources.append(
+                reason_source(
+                    code=f"command_failed:{command.name}",
+                    status="failed",
+                    source="commands_run",
+                    name=command.name,
+                    summary=f"Required validation command failed: {command.name}",
+                    details=[f"exit_code={command.exit_code}", f"command={command.command}"],
+                )
+            )
+
+    for command in commands_not_run:
+        name = str(command.get("name", "unknown"))
+        sources.append(
+            reason_source(
+                code=f"command_not_run:{name}",
+                status="failed",
+                source="commands_not_run",
+                name=name,
+                summary=str(command.get("reason", "Validation command was not run.")),
+                details=[],
+            )
+        )
+
+    for section_name, checks in (("artifact_checks", artifact_checks), ("review_checks", review_checks)):
+        for check in checks:
+            if check.status not in {"failed", "needs_review"}:
+                continue
+            codes = check.reason_codes or [f"{section_name}:{check.status}:{check.name}"]
+            for code in codes:
+                sources.append(
+                    reason_source(
+                        code=code,
+                        status=check.status,
+                        source=section_name,
+                        name=check.name,
+                        summary=check.summary,
+                        details=check.details,
+                    )
+                )
+
+    if not sources:
+        if overall_status == "passed":
+            sources.append(
+                reason_source(
+                    code=policy_reason_code(profile, "accepted", "validation.accepted"),
+                    status="passed",
+                    source="validation_report",
+                    name=profile.name,
+                    summary="Validation passed and the run is sign-off ready.",
+                    details=[],
+                )
+            )
+        else:
+            sources.append(
+                reason_source(
+                    code=policy_reason_code(profile, overall_status, f"validation.{overall_status}"),
+                    status=overall_status,
+                    source="validation_report",
+                    name=profile.name,
+                    summary=f"Validation finished with overall status: {overall_status}.",
+                    details=[],
+                )
+            )
+
+    return sources
+
+
 def build_validation_report(
     run_id: str,
     project_key: str,
@@ -933,11 +1199,23 @@ def build_validation_report(
 
     confidence = round(confidence, 2)
     all_checks = [*artifact_checks, *review_checks]
+    reason_sources = collect_validation_reason_sources(
+        profile=profile,
+        overall_status=overall_status,
+        commands_run=commands_run,
+        commands_not_run=commands_not_run,
+        artifact_checks=artifact_checks,
+        review_checks=review_checks,
+    )
 
     return {
         "run_id": run_id,
         "project": project_key,
         "profile": profile.name,
+        "policy_pack": {
+            "name": str(profile.policy_pack.get("name", profile.name)),
+            "version": str(profile.policy_pack.get("version", "v0.2")),
+        },
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "commands_run": [asdict(result) for result in commands_run],
         "commands_not_run": commands_not_run,
@@ -947,6 +1225,8 @@ def build_validation_report(
         "overall_status": overall_status,
         "sign_off_ready": overall_status == "passed",
         "confidence": confidence,
+        "reason_sources": reason_sources,
+        "reason_codes": [str(source.get("code")) for source in reason_sources],
         "detailed_confidence": {
             "artifact_confidence": artifact_confidence,
             "command_confidence": command_confidence,
@@ -987,6 +1267,9 @@ def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
         artifact_checks.append(task_command_check)
     artifact_checks.append(validate_artifact_presence(run_dir, profile.required_artifacts))
     artifact_checks.append(validate_non_empty_artifacts(run_dir, profile.non_empty_artifacts))
+    policy_required_tests_check = validate_policy_required_tests(profile, commands_run)
+    if policy_required_tests_check is not None:
+        artifact_checks.append(policy_required_tests_check)
     changed_files, changed_file_source = collect_changed_files(args.changed_files, run_dir, project.root)
     changed_file_check = validate_changed_file_policy(
         profile,

@@ -126,6 +126,7 @@ Evidence boundary:
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
+- Read `docs/contracts/v0.2-contract-baseline.md` before building downstream host, analytics, policy, or PR gate integrations against current schemas.
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
 - Read `docs/concepts/how-acceptance-works.md` before explaining what MCP connects versus what Workbench accepts.
@@ -145,16 +146,19 @@ Before public release, remove or avoid:
 
 The public repo should look like a Goose-compatible acceptance extension, not an alternative agent platform.
 
-## 8. Phase 5 Launch Path
+## 8. Post-Phase 5 Launch Path
 
-The next product pass is not more recipes. It is collecting real Goose runs and using `workbench_analyze_runs` to decide whether routing policy should change.
+Phase 5 evidence collection is complete. The closeout report in `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls. Use that evidence to plan bounded routing-policy experiments; do not broadly auto-route or remove quality gates from the closeout report alone.
 
-The parallel host-portability pass is Codex local/IDE. Use it to prove that the same six-tool lifecycle and evidence folders work outside Goose without adding a Codex-specific server.
+The next product pass is not more general dogfooding or more recipes. It is one narrow routing-policy experiment at a time, plus the GitHub-native PR acceptance gate and first-class policy metadata work that make the product useful at merge time.
+
+Codex local/IDE remains the first second-host proof. Continue using the same six-tool lifecycle and evidence folders outside Goose without adding a Codex-specific server.
 
 Use:
 
 - `docs/concepts/how-acceptance-works.md` for the MCP protocol, Workbench tool server, validation profile, and quality-gate distinction.
-- `docs/dogfooding/phase5-dogfooding.md` for the dogfooding protocol.
+- `docs/dogfooding/phase5-dogfooding.md` for the completed dogfooding protocol and hygiene rules.
+- `docs/dogfooding/phase5-final-report.md` for the Phase 5 closeout and routing-experiment input.
 - `docs/analytics/acceptance-analytics.md` for reading metrics and summaries.
 - `docs/analytics/evidence-dashboard.md` for the static local evidence dashboard.
 - `docs/codex/acceptance-workflow.md` for the Codex local/IDE six-tool lifecycle.

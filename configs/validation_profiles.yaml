@@ -83,7 +83,7 @@ profiles:
       - model_output_status
 
   tiny_python_fix:
-    description: Validation profile for the tiny Python fix example.
+    description: Focused validation profile for the intentionally broken tiny Python fixture demo.
     commands:
       - name: tiny_python_fix_tests
         command: python -m unittest discover -s examples/tiny-python-fix -p "test_*.py"
@@ -105,6 +105,11 @@ profiles:
       - run_log.jsonl
     review_checks:
       - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - examples/tiny-python-fix/calculator.py
 
   public_docs:
     description: Verify public operating docs exist.
@@ -117,6 +122,33 @@ profiles:
 
   docs_only:
     description: Docs-only acceptance profile for bounded public documentation updates.
+    policy_pack:
+      name: docs_only
+      version: v0.2
+      allowed_files:
+        - "*.md"
+        - "docs/**/*.md"
+        - "examples/**/*.md"
+      required_tests:
+        - verify_public_docs
+        - recipe_policy_discovery_tests
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+      blocker_rules:
+        - source_or_config_file_changed
+        - changed_file_evidence_missing
+        - claimed_file_without_worktree_diff
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: docs_only.accepted
+        required_test_missing: docs_only.required_test_missing
+        required_test_failed: docs_only.required_test_failed
+        required_tests_passed: docs_only.required_tests_passed
     commands:
       - name: verify_public_docs
         command: python -c "from pathlib import Path; docs=('README.md','docs/ai/START_HERE.md','docs/ai/DECISIONS.md','docs/ai/PROJECT_MAP.md','docs/ai/ROADMAP_STATUS.md'); missing=[p for p in docs if not Path(p).is_file() or not Path(p).read_text(encoding='utf-8').strip()]; raise SystemExit(1 if missing else 0)"
@@ -141,6 +173,14 @@ profiles:
     changed_file_policy:
       require_actual_diff: true
       require_non_empty: true
+      reason_codes:
+        passed: docs_only.changed_files_allowed
+        forbidden: docs_only.source_file_blocked
+        outside_allowed_scope: docs_only.outside_allowed_scope
+        empty: docs_only.changed_file_evidence_missing
+        claimed_without_diff: docs_only.claimed_file_without_worktree_diff
+        unreported_worktree_diff: docs_only.unreported_worktree_diff
+        actual_diff_unavailable: docs_only.actual_diff_unavailable
       allowed_patterns:
         - "*.md"
         - "docs/**/*.md"
@@ -187,7 +227,40 @@ profiles:
       require_non_empty: true
 
   test_fix:
-    description: Test-fix acceptance profile for bounded changes whose primary acceptance signal is a deterministic passing test suite.
+    description: Repo-target test-fix acceptance profile for bounded changes that must keep the full project test suite passing.
+    policy_pack:
+      name: test_fix
+      version: v0.2
+      allowed_files:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "examples/**/*.py"
+        - "docs/**/*.md"
+      required_tests:
+        - task_test_command
+        - pytest_collection
+        - full_test_suite
+        - recipe_policy_discovery_tests
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+        - focused_test_command_missing
+      blocker_rules:
+        - task_test_command_missing
+        - task_test_command_failed
+        - full_suite_failed
+        - changed_file_evidence_missing
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: test_fix.accepted
+        required_test_missing: test_fix.required_test_missing
+        required_test_failed: test_fix.required_test_failed
+        required_tests_passed: test_fix.required_tests_passed
     task_test_command:
       required: true
       allowed_prefixes:
@@ -223,8 +296,102 @@ profiles:
       require_actual_diff: true
       require_non_empty: true
 
+  fixture_repair_proof:
+    description: Focused fixture-repair proof profile for intentionally broken demo fixtures; use when the repo self-tests assert that the source fixture remains broken.
+    policy_pack:
+      name: fixture_repair_proof
+      version: v0.2
+      allowed_files:
+        - examples/**/*.py
+      required_tests:
+        - task_test_command
+        - recipe_policy_discovery_tests
+        - validate_run_help
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+      blocker_rules:
+        - task_test_command_missing
+        - task_test_command_failed
+        - changed_file_evidence_missing
+        - changed_file_outside_fixture_scope
+      reason_codes:
+        accepted: fixture_repair_proof.accepted
+        required_test_missing: fixture_repair_proof.required_test_missing
+        required_test_failed: fixture_repair_proof.required_test_failed
+        required_tests_passed: fixture_repair_proof.required_tests_passed
+    task_test_command:
+      required: true
+      allowed_prefixes:
+        - python -m pytest
+        - python -m unittest
+    commands:
+      - name: recipe_policy_discovery_tests
+        command: python -m pytest tests/test_recipes.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: validate_run_help
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - examples/**/*.py
+
   low_risk_coding:
     description: Low-risk coding acceptance profile for bounded implementation changes with deterministic test coverage.
+    policy_pack:
+      name: low_risk_coding
+      version: v0.2
+      allowed_files:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "configs/**/*.yaml"
+        - "recipes/**/*.yaml"
+        - "docs/**/*.md"
+        - "README.md"
+        - "pyproject.toml"
+      required_tests:
+        - pytest_collection
+        - full_test_suite
+        - workbench_tool_help_smoke
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+        - medium_risk_local_tier
+      blocker_rules:
+        - deterministic_test_failure
+        - changed_file_evidence_missing
+        - claimed_file_without_worktree_diff
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: low_risk_coding.accepted
+        required_test_missing: low_risk_coding.required_test_missing
+        required_test_failed: low_risk_coding.required_test_failed
+        required_tests_passed: low_risk_coding.required_tests_passed
     commands:
       - name: pytest_collection
         command: python -m pytest --collect-only -q -p no:cacheprovider
@@ -254,3 +421,237 @@ profiles:
     changed_file_policy:
       require_actual_diff: true
       require_non_empty: true
+
+  low_risk_bug_fix:
+    description: Low-risk bug-fix profile for bounded production fixes with focused regression evidence and the full suite.
+    policy_pack:
+      name: low_risk_bug_fix
+      version: v0.2
+      allowed_files:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "examples/**/*.py"
+        - "docs/**/*.md"
+        - "README.md"
+      required_tests:
+        - task_test_command
+        - pytest_collection
+        - full_test_suite
+        - workbench_tool_help_smoke
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+        - regression_test_missing
+      blocker_rules:
+        - task_test_command_missing
+        - task_test_command_failed
+        - full_suite_failed
+        - changed_file_evidence_missing
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: low_risk_bug_fix.accepted
+        required_test_missing: low_risk_bug_fix.required_test_missing
+        required_test_failed: low_risk_bug_fix.required_test_failed
+        required_tests_passed: low_risk_bug_fix.required_tests_passed
+    task_test_command:
+      required: true
+      allowed_prefixes:
+        - python -m pytest
+        - python -m unittest
+    commands:
+      - name: pytest_collection
+        command: python -m pytest --collect-only -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 3.0
+      - name: workbench_tool_help_smoke
+        command: python tools/validate_run.py --help
+        cwd: .
+        required: true
+        weight: 1.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "examples/**/*.py"
+        - "docs/**/*.md"
+        - "README.md"
+
+  api_contract_change:
+    description: API and MCP contract change profile requiring contract-focused tests plus the full suite.
+    policy_pack:
+      name: api_contract_change
+      version: v0.2
+      allowed_files:
+        - "src/ai_workbench_mcp/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "configs/**/*.yaml"
+        - "recipes/**/*.yaml"
+        - "docs/**/*.md"
+        - "README.md"
+        - "pyproject.toml"
+        - "server.json"
+      required_tests:
+        - contract_tests
+        - full_test_suite
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+        - api_contract_surface_changed
+      blocker_rules:
+        - contract_tests_missing
+        - contract_tests_failed
+        - full_suite_failed
+        - changed_file_evidence_missing
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: api_contract_change.accepted
+        required_test_missing: api_contract_change.contract_test_missing
+        required_test_failed: api_contract_change.required_test_failed
+        required_tests_passed: api_contract_change.required_tests_passed
+    commands:
+      - name: contract_tests
+        command: python -m pytest tests/test_contracts.py tests/test_server.py tests/test_mcp_runtime.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 2.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 3.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - "src/ai_workbench_mcp/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "configs/**/*.yaml"
+        - "recipes/**/*.yaml"
+        - "docs/**/*.md"
+        - "README.md"
+        - "pyproject.toml"
+        - "server.json"
+
+  security_privacy_sensitive:
+    description: Security and privacy-sensitive change profile requiring hygiene checks, prompt coverage, and the full suite before review.
+    policy_pack:
+      name: security_privacy_sensitive
+      version: v0.2
+      allowed_files:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "configs/**/*.yaml"
+        - "prompts/**/*.md"
+        - "docs/**/*.md"
+        - "README.md"
+        - "pyproject.toml"
+        - "server.json"
+      required_tests:
+        - security_prompt_catalog
+        - public_hygiene_tests
+        - full_test_suite
+      required_evidence:
+        - model_selection.json
+        - model_output.md
+        - run_log.jsonl
+      review_triggers:
+        - model_output_status
+        - captured_response_format
+        - alternate_model_review
+        - high_risk_or_security_privacy_prompt
+      blocker_rules:
+        - public_hygiene_failed
+        - full_suite_failed
+        - private_or_secret_file_changed
+        - changed_file_evidence_missing
+        - unreported_worktree_diff
+      reason_codes:
+        accepted: security_privacy_sensitive.validation_passed
+        required_test_missing: security_privacy_sensitive.required_test_missing
+        required_test_failed: security_privacy_sensitive.required_test_failed
+        required_tests_passed: security_privacy_sensitive.required_tests_passed
+    commands:
+      - name: security_prompt_catalog
+        command: python -c "from pathlib import Path; assert Path('prompts/approved/security_privacy_risk_review.md').is_file(); assert Path('docs/concepts/how-acceptance-works.md').is_file()"
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: public_hygiene_tests
+        command: python -m pytest tests/test_public_hygiene.py tests/test_prompt_library.py -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 2.0
+      - name: full_test_suite
+        command: python -m pytest -q -p no:cacheprovider
+        cwd: .
+        required: true
+        weight: 3.0
+    required_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    non_empty_artifacts:
+      - model_selection.json
+      - model_output.md
+      - run_log.jsonl
+    review_checks:
+      - model_output_status
+    changed_file_policy:
+      require_actual_diff: true
+      require_non_empty: true
+      allowed_patterns:
+        - "src/**/*.py"
+        - "tools/*.py"
+        - "tests/**/*.py"
+        - "configs/**/*.yaml"
+        - "prompts/**/*.md"
+        - "docs/**/*.md"
+        - "README.md"
+        - "pyproject.toml"
+        - "server.json"
+      forbidden_patterns:
+        - ".env"
+        - ".env.*"
+        - "runs/**"
+        - "configs/model_registry.local.yaml"

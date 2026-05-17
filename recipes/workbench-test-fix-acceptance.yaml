@@ -1,6 +1,6 @@
 version: "1.0.0"
 title: "Workbench Test-Fix Acceptance"
-description: "Run a bounded test-fix task through AI Workbench acceptance with the test_fix validation profile."
+description: "Run a bounded test-fix task through AI Workbench acceptance. Defaults to the repo-target test_fix profile; use fixture_repair_proof for intentionally broken demo fixtures."
 
 parameters:
   - key: project
@@ -28,13 +28,23 @@ parameters:
   - key: validation_profile
     input_type: string
     requirement: optional
-    description: "Validation profile from configs/validation_profiles.yaml."
+    description: "Validation profile from configs/validation_profiles.yaml. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures."
     default: "test_fix"
   - key: routing_feedback_path
     input_type: string
     requirement: optional
     description: "Optional analytics report used for advisory routing feedback."
     default: "runs/_reports/run_metrics.json"
+  - key: analytics_runs_dir
+    input_type: string
+    requirement: optional
+    description: "Run parent directory to analyze after this proof. Use an isolated parent for live proof runs."
+    default: "runs"
+  - key: analytics_out_dir
+    input_type: string
+    requirement: optional
+    description: "Analytics output directory for this proof run."
+    default: "runs/_reports"
   - key: prompt
     input_type: string
     requirement: optional
@@ -51,6 +61,9 @@ parameters:
     description: "Exact focused Python pytest or unittest command for the failing test signal."
 
 extensions:
+  - type: builtin
+    name: developer
+    description: "Goose developer tools for shell commands, file reads, and edits."
   - type: stdio
     name: "AI Workbench MCP"
     cmd: "ai-workbench-mcp"
@@ -74,6 +87,9 @@ instructions: |
   Boundaries:
   - Start from the failing test signal and make the smallest production or test update that is justified by the intended behavior.
   - Do not weaken, delete, skip, xfail, or broadly rewrite tests unless the task explicitly asks for test-correction work and the reason is captured in the response.
+  - Use validation_profile="fixture_repair_proof" for intentionally broken demo fixtures whose source repo self-tests assert that the fixture starts broken.
+  - Use validation_profile="test_fix" for repo-target repairs that must keep the broader project suite passing.
+  - Use OS-appropriate shell inspection commands for the current environment. On Windows, prefer PowerShell Get-Content or cmd type instead of assuming Unix-only commands such as cat.
   - Do not add private run history, provider secrets, personal machine paths, broad UI/provider plumbing, or target-repo-specific configuration.
   - If deterministic validation cannot be run, stop and report that this test-fix recipe cannot produce an accepted run.
 
@@ -81,14 +97,14 @@ instructions: |
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-test-fix-acceptance.yaml".
   2. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-test-fix-acceptance.yaml", validation_profile="{{ validation_profile }}", routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
   3. Perform the requested test-fix task: {{ task }}
-  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran.
+  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran. If a shell inspection command fails because it is not available on the current OS, retry with an equivalent local command and do not treat the failed inspection as validation evidence.
   5. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
   6. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
      If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
   7. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", task_test_command="{{ task_test_command }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
   8. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
   9. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
-  10. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
+  10. Call workbench_analyze_runs with runs_dir="{{ analytics_runs_dir }}" and out_dir="{{ analytics_out_dir }}" after validation and quality gate artifacts exist.
 
 prompt: |
   Task: {{ task }}
@@ -98,6 +114,8 @@ prompt: |
   Risk: {{ risk }}
   Validation profile: {{ validation_profile }}
   Focused test command: {{ task_test_command }}
+  Analytics runs dir: {{ analytics_runs_dir }}
+  Analytics out dir: {{ analytics_out_dir }}
 
   Start by opening the Workbench run, then select the model tier with Workbench. Repair the failing test signal with a bounded change, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
 

@@ -17,6 +17,8 @@ EVIDENCE_DASHBOARD_GUIDE = ROOT / "docs" / "analytics" / "evidence-dashboard.md"
 EVENT_LEDGER_GUIDE = ROOT / "docs" / "analytics" / "event-ledger.md"
 MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
+PHASE5_BATCH6_REPORT = ROOT / "docs" / "dogfooding" / "phase5-batch6-report.md"
+PHASE5_FINAL_REPORT = ROOT / "docs" / "dogfooding" / "phase5-final-report.md"
 GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
@@ -25,6 +27,9 @@ TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
 CODEX_WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "codex-acceptance-demo.md"
+PROOF_PACK = ROOT / "docs" / "proof" / "proof-pack-v0.2.md"
+GEMINI_FIXTURE_PROOF = ROOT / "docs" / "proof" / "gemini-fixture-accepted-run.md"
+CODEX_FIXTURE_PROOF = ROOT / "docs" / "proof" / "codex-fixture-accepted-run.md"
 CODEX_SETUP = ROOT / "docs" / "codex" / "setup.md"
 CODEX_WORKFLOW = ROOT / "docs" / "codex" / "acceptance-workflow.md"
 CODEX_HANDOFF = ROOT / "docs" / "codex" / "live-test-handoff.md"
@@ -215,6 +220,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("examples/sample-runs/accepted-codex-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", text)
+        self.assertIn("docs/proof/codex-fixture-accepted-run.md", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
         self.assertIn("docs/analytics/event-ledger.md", text)
         self.assertIn("docs/configuration/model-registry.md", text)
@@ -269,6 +276,11 @@ class PublicExamplesTests(unittest.TestCase):
         start_here_text = START_HERE.read_text(encoding="utf-8")
         project_map_text = PROJECT_MAP.read_text(encoding="utf-8")
         roadmap_text = ROADMAP_STATUS.read_text(encoding="utf-8")
+        proof_pack_text = PROOF_PACK.read_text(encoding="utf-8")
+        gemini_proof_text = GEMINI_FIXTURE_PROOF.read_text(encoding="utf-8")
+        codex_proof_text = CODEX_FIXTURE_PROOF.read_text(encoding="utf-8")
+        batch6_text = PHASE5_BATCH6_REPORT.read_text(encoding="utf-8")
+        phase5_final_text = PHASE5_FINAL_REPORT.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
         self.assertIn("accepted-codex-tiny-python-fix", sample_text)
@@ -336,6 +348,24 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", readme_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", start_here_text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", project_map_text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", readme_text)
+        self.assertIn("docs/proof/codex-fixture-accepted-run.md", readme_text)
+        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", proof_pack_text)
+        self.assertIn("docs/proof/codex-fixture-accepted-run.md", proof_pack_text)
+        self.assertIn("gemini_oauth / gemini-3-flash-preview", gemini_proof_text)
+        self.assertIn("fixture_repair_proof", gemini_proof_text)
+        self.assertIn("changed_file_policy = passed", gemini_proof_text)
+        self.assertIn("full_test_suite command = absent", gemini_proof_text)
+        self.assertIn("Isolated analytics", gemini_proof_text)
+        self.assertIn("Do not change routing policy from this proof alone", gemini_proof_text)
+        self.assertIn("Codex version", codex_proof_text)
+        self.assertIn("gpt-5.5 xhigh", codex_proof_text)
+        self.assertIn("execution_host = codex", codex_proof_text)
+        self.assertIn("response_source = codex", codex_proof_text)
+        self.assertIn("fixture_repair_proof", codex_proof_text)
+        self.assertIn("changed_file_policy = passed", codex_proof_text)
+        self.assertIn("full_test_suite command = absent", codex_proof_text)
+        self.assertIn("Do not change routing policy from this proof alone", codex_proof_text)
         self.assertIn("--runs-dir examples/sample-runs", guide_text)
         self.assertIn("run_metrics.json", guide_text)
         self.assertIn("run_summary.md", guide_text)
@@ -370,6 +400,13 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/dogfooding/phase5-batch1-report.md", dogfooding_text)
         self.assertIn("docs/dogfooding/phase5-batch2-stage-a-report.md", dogfooding_text)
         self.assertIn("docs/dogfooding/phase5-batch2-stage-b-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-batch3-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-batch4-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-batch5-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-batch6-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-final-report.md", dogfooding_text)
+        self.assertIn("Phase 5 evidence collection is complete", dogfooding_text)
+        self.assertIn("--evidence-scope complete", dogfooding_text)
         self.assertIn("focused profiles block no-op or underreported changed-file claims", dogfooding_text)
         self.assertIn("Do not analyze the whole `runs/` directory", dogfooding_text)
         self.assertIn("routing_feedback_candidates", dogfooding_text)
@@ -378,7 +415,19 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("Dogfood Batch 2", roadmap_text)
         self.assertIn("exact-diff validation blocks no-op and underreported changed-file claims", roadmap_text)
         self.assertIn("docs/dogfooding/phase5-batch2-stage-b-report.md", roadmap_text)
-        self.assertIn("provider-backed or stronger-model Goose runs", roadmap_text)
+        self.assertIn("docs/dogfooding/phase5-final-report.md", roadmap_text)
+        self.assertIn("Phase 5 evidence collection is complete", roadmap_text)
+        self.assertIn("bounded routing-policy experiment planning", roadmap_text)
+        self.assertIn("31 complete runs", phase5_final_text)
+        self.assertIn("29 live Goose runs", phase5_final_text)
+        self.assertIn("2 deterministic controls", phase5_final_text)
+        self.assertIn("Phase 5 evidence collection is complete", phase5_final_text)
+        self.assertIn("routing-policy experiments", phase5_final_text)
+        self.assertIn("runs_total`: `6`", batch6_text)
+        self.assertIn("accepted=5", batch6_text)
+        self.assertIn("review_required=1", batch6_text)
+        self.assertIn("gemini_oauth / gemini-3-flash-preview", batch6_text)
+        self.assertIn("No deterministic controls were used in Batch 6", batch6_text)
         self.assertIn("dogfooding: collect 20-50 Goose acceptance runs", launch_text)
         self.assertIn("analytics: promote routing feedback candidates", launch_text)
         self.assertIn("cost evidence: capture provider token and cost metadata", launch_text)
@@ -489,6 +538,14 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("workbench_quality_gate", examples_text)
         self.assertIn("workbench_analyze_runs", examples_text)
         self.assertIn('response_source="codex"', examples_text)
+        self.assertIn("fixture_repair_proof", docs_text)
+        self.assertIn("fixture_repair_proof", examples_text)
+        self.assertIn("task_test_command", docs_text)
+        self.assertIn("task_test_command", examples_text)
+        self.assertIn("changed_file_policy", docs_text)
+        self.assertIn("changed_file_policy", examples_text)
+        self.assertIn("full_test_suite", docs_text)
+        self.assertIn("full_test_suite", examples_text)
         self.assertIn(
             'task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes."',
             docs_text,

@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from ai_workbench_mcp.contracts import error_envelope, response_envelope
+from ai_workbench_mcp.contracts import SCHEMA_VERSION, error_envelope, response_envelope
 from ai_workbench_mcp.core import (
     model_selection_file_response,
     model_selection_response,
@@ -19,6 +19,16 @@ from ai_workbench_mcp.core import (
     validate_run,
     validation_response,
 )
+from ai_workbench_mcp.tools.pr_gate import (
+    ACCEPTANCE_EVIDENCE_MISSING_CODE,
+    OPERATION as PR_GATE_OPERATION,
+    STANDARD_EVIDENCE,
+)
+from ai_workbench_mcp.tools.pr_gate_comment import COMMENT_MARKER
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_BASELINE = ROOT / "docs" / "contracts" / "v0.2-contract-baseline.md"
 
 
 def read_jsonl(path: Path) -> list[dict[str, object]]:
@@ -57,6 +67,95 @@ class ContractEnvelopeTests(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["errors"][0]["code"], "missing_artifact")
+
+
+class ContractDocumentationTests(unittest.TestCase):
+    def test_v02_contract_baseline_documents_current_public_surfaces(self) -> None:
+        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+
+        required_phrases = [
+            "Status: v0.2 alpha contract baseline, not v1-stable",
+            "Consumers must tolerate additive fields.",
+            "older committed sample runs that omit newer additive fields",
+            "`runs/<run_id>/` remains the local evidence ledger",
+            "validation_report.json",
+            "revision_decision.json",
+            "model_selection.json",
+            "model_output.md",
+            "run_log.jsonl",
+            'overall_status="passed"',
+            "sign_off_ready=true",
+            'final_status="accepted"',
+            "policy_pack",
+            "reason_sources",
+            "reason_codes",
+            "severity=\"blocker\"",
+            "configs/validation_profiles.yaml",
+            "docs_only",
+            "low_risk_bug_fix",
+            "test_fix",
+            "api_contract_change",
+            "security_privacy_sensitive",
+            "run_metrics.json",
+            "run_summary.md",
+            "run_dashboard.html",
+            "routing_feedback_candidates",
+            "cost_tracking",
+            "time_tracking",
+            "pr_comment.md",
+            "pr_decision.json",
+            "evidence_source",
+            "acceptance_run",
+            "fallback_scaffold",
+            "missing",
+            "AI Workbench PR Gate: Accept|Needs Review|Block",
+            COMMENT_MARKER,
+            ACCEPTANCE_EVIDENCE_MISSING_CODE,
+            PR_GATE_OPERATION,
+            "Deliberately Not Stable Yet",
+        ]
+
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+
+        for label, file_name in STANDARD_EVIDENCE:
+            with self.subTest(evidence=label):
+                self.assertIn(label, text)
+                self.assertIn(file_name, text)
+
+    def test_v02_contract_baseline_documents_mcp_envelope(self) -> None:
+        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+
+        self.assertIn(f'"schema_version": {SCHEMA_VERSION}', text)
+        for field in ("operation", "status", "ok", "artifacts", "summary", "errors"):
+            with self.subTest(field=field):
+                self.assertIn(f'"{field}"', text)
+        for operation in (
+            "workbench_open_run",
+            "workbench_select_model",
+            "workbench_record_execution",
+            "workbench_validate_run",
+            "workbench_quality_gate",
+            "workbench_analyze_runs",
+        ):
+            with self.subTest(operation=operation):
+                self.assertIn(operation, text)
+
+    def test_v02_contract_baseline_is_linked_from_primary_docs(self) -> None:
+        docs = [
+            ROOT / "README.md",
+            ROOT / "docs" / "ai" / "START_HERE.md",
+            ROOT / "docs" / "ai" / "PROJECT_MAP.md",
+            ROOT / "docs" / "github" / "pr-gate.md",
+        ]
+
+        for path in docs:
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertIn(
+                    "v0.2-contract-baseline.md",
+                    path.read_text(encoding="utf-8"),
+                )
 
 
 class OperationContractTests(unittest.TestCase):
@@ -411,7 +510,10 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["artifacts"]["run_summary"], str(out_dir / "run_summary.md"))
         self.assertEqual(response["artifacts"]["dashboard"], str(out_dir / "run_dashboard.html"))
         self.assertEqual(written["runs_total"], 1)
+        self.assertEqual(written["evidence_scope"], "all")
+        self.assertEqual(written["excluded_runs_total"], 0)
         self.assertEqual(response["summary"]["runs_total"], 1)
+        self.assertEqual(response["summary"]["evidence_scope"], "all")
         self.assertEqual(response["summary"]["runs_passed"], 1)
         self.assertEqual(response["summary"]["runs_failed"], 0)
         self.assertEqual(response["summary"]["runs_needs_review"], 0)
@@ -420,6 +522,55 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["artifacts"]["events"], str(out_dir / "events.jsonl"))
         self.assertEqual(events[0]["operation"], "workbench_analyze_runs")
         self.assertEqual(events[0]["status"], "completed")
+
+    def test_analyze_runs_direct_call_accepts_complete_evidence_scope(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            runs_dir = root / "runs"
+            run_dir = runs_dir / "tool-smoke"
+            run_dir.mkdir(parents=True)
+            (run_dir / "run_log.jsonl").write_text(
+                json.dumps(
+                    {
+                        "timestamp": "2026-05-12T10:00:00",
+                        "model_tier": "local_coding",
+                        "decision": "model_selected",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (run_dir / "model_selection.json").write_text(
+                json.dumps(
+                    {
+                        "selected_tier": "local_coding",
+                        "task_type": "implementation",
+                        "risk": "low",
+                        "complexity_band": "easy",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            out_dir = root / "reports"
+
+            response = analyze_runs(
+                runs_dir=runs_dir,
+                out_dir=out_dir,
+                evals_dir=root / "evals",
+                evidence_scope="complete",
+            )
+            written = json.loads((out_dir / "run_metrics.json").read_text(encoding="utf-8"))
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(written["evidence_scope"], "complete")
+        self.assertEqual(written["runs_total"], 0)
+        self.assertEqual(written["excluded_runs_total"], 1)
+        self.assertEqual(
+            written["excluded_runs_by_reason"],
+            {"missing_validation_report": 1, "missing_revision_decision": 1},
+        )
+        self.assertEqual(response["summary"]["evidence_scope"], "complete")
+        self.assertEqual(response["summary"]["excluded_runs_total"], 1)
 
     def test_run_analysis_file_response_records_dashboard_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

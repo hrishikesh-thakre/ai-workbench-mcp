@@ -12,6 +12,7 @@ The helper:
 - prints a visible countdown
 - tells you when to start Codex
 - prints the exact result-check command to run after Codex finishes
+- generates a `fixture_repair_proof` acceptance prompt for the intentionally broken tiny Python fixture
 
 It does not:
 
@@ -91,6 +92,11 @@ The checker prints `RESULT: PASS` only when:
 
 - the tool-smoke run has `execution_host="codex"`
 - the acceptance run has `execution_host="codex"` and `response_source="codex"`
+- the acceptance run used `fixture_repair_proof`
+- `task_test_command` passed
+- `changed_file_policy` passed
+- recipe metadata is `workbench-test-fix-acceptance.yaml`
+- no `full_test_suite` command was present
 - deterministic validation passed and is sign-off ready
 - the quality gate wrote `final_status="accepted"`
 - the event ledger contains the expected Workbench tool operations
@@ -98,11 +104,13 @@ The checker prints `RESULT: PASS` only when:
 Analyze only the isolated live-test parent:
 
 ```bash
-python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports
+python tools/run_analyze.py --runs-dir runs/codex-live-20260513-120000 --out-dir runs/codex-live-20260513-120000/_reports --evidence-scope complete
 ```
 
 Check:
 
+- `evidence_scope` is `complete`
+- `excluded_runs_total` records any tool-smoke folder excluded from acceptance metrics
 - `execution_host_counts` includes `codex`
 - `response_source_counts` includes `codex`
 - the Codex acceptance run has a passing `validation_report.json`
