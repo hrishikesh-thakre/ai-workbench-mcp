@@ -19,7 +19,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
 | Goose MCP server | Alpha complete | Six Workbench tools exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
 | Goose recipe MVP | Alpha complete | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
-| Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added |
+| Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added; `docs/contracts/v0.2-contract-baseline.md` records the current non-v1-stable contract baseline |
 | Validation of extracted tests | Passed | Full pytest suite passed during Phase 5 analytics hardening |
 | Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\phase5_analytics_scaffold` passed |
 | Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
@@ -31,7 +31,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Acceptance analytics | Phase 5 complete | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; Phase 5 closed with 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls |
 | User-extensible model registry | Public-readiness hardening | Local ignored registry overrides let adopters bring their own model IDs while preserving committed defaults and selector validation |
 | Minimal event envelopes | Public-readiness hardening | Core MCP operations write best-effort local `events.jsonl` ledgers from final response envelopes |
-| Public CI gate prototype | Public-readiness hardening | GitHub Actions repo self-validation runs install, tests, scaffold validation, and diff hygiene; semantic PR acceptance remains future work |
+| Public CI gate prototype | GitHub-native prototype | GitHub Actions repo self-validation runs install, tests, scaffold validation, PR gate artifact rendering, guarded same-repo sticky PR comments, and diff hygiene; PR gate output distinguishes `acceptance_run` from `fallback_scaffold`; semantic enforcement and Checks API integration remain future work |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
 | PyPI and package plumbing | Registry published | Package build checks, wheel smoke, TestPyPI install, exact-version PyPI install, and MCP Registry publication passed for `0.2.0a0` |
@@ -139,20 +139,21 @@ Tasks:
 - Feed historical evidence back into routing recommendations.
 - Allow adopters to use local ignored model-registry overrides without editing committed defaults.
 - Emit local best-effort operation events for future analytics and CI integration.
-- Add a public CI gate prototype for repo self-validation before broader PR acceptance automation.
+- Add a public CI gate prototype for repo self-validation, artifact rendering, and guarded same-repo PR comments before broader PR acceptance automation.
 - Generate a static single-file evidence dashboard from run analytics for local scanning and demos.
 - Add a local golden-case eval harness for accepted sanitized baselines.
 - Prepare PyPI packaging checks and the recording-ready demo walkthrough.
 - Apply public repository topics and create launch issues `#1`-`#6`.
 - Add explicit execution-host and response-source metadata, with Codex local/IDE as the first second-host proof.
+- Document the v0.2 contract baseline for run evidence, MCP envelopes, analytics/dashboard output, policy metadata, and PR gate artifacts.
 
 Closeout status:
 
 - Phase 5 evidence collection is complete in `docs/dogfooding/phase5-final-report.md`.
 - Historical exact-diff hardening evidence remains in `docs/dogfooding/phase5-batch2-stage-b-report.md`.
 - Final dogfood totals: 31 complete runs, 29 live Goose runs, 2 deterministic controls, 16 accepted outcomes, 15 review-required outcomes, and 0 failed public outcomes.
-- Routing feedback remains advisory. The next phase should run bounded routing-policy experiments without changing default policy from the closeout report alone.
+- Routing feedback remains advisory. The PR gate is a GitHub-native visibility layer, not a semantic enforcement gate. The next phase should run bounded routing-policy experiments without changing default policy from the closeout report alone.
 
 ## Current Next Step
 
-Move from Phase 5 evidence collection into bounded routing-policy experiment planning. Use `docs/dogfooding/phase5-final-report.md` and the Batch 1-6 reports to choose one narrow candidate, such as keeping medium-risk `local_coding` work behind review or testing low-risk focused profiles on the current Goose default when deterministic validation passes. Routing feedback should stay advisory until a policy experiment branch proves the change with fresh isolated evidence. Use `docs/concepts/how-acceptance-works.md` when explaining that MCP connects while Workbench accepts through validation profiles and quality gates. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Use `docs/codex/live-test-handoff.md` and the bounded Codex local/IDE walkthrough in `docs/walkthroughs/codex-acceptance-demo.md` for host/source evidence. Semantic PR acceptance and Codex cloud evidence export should wait for explicit design work. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Close the v0.2 proof-pack PR after final verification, then move from Phase 5 evidence collection into bounded routing-policy experiment planning. Use `docs/dogfooding/phase5-final-report.md` and the Batch 1-6 reports to choose one narrow candidate, such as keeping medium-risk `local_coding` work behind review or testing low-risk focused profiles on the current Goose default when deterministic validation passes. Routing feedback should stay advisory until a policy experiment branch proves the change with fresh isolated evidence. Use `docs/concepts/how-acceptance-works.md` when explaining that MCP connects while Workbench accepts through validation profiles and quality gates. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Use `docs/codex/live-test-handoff.md` and the bounded Codex local/IDE walkthrough in `docs/walkthroughs/codex-acceptance-demo.md` for host/source evidence. The current PR gate renders artifacts and guarded same-repo comments, but semantic enforcement, Checks API integration, and Codex cloud evidence export should wait for explicit design work. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
