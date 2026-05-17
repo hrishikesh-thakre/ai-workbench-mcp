@@ -1,6 +1,6 @@
 # Targeted Evidence Plan: Low-Risk Docs-Only Current-Tier Routing
 
-Status: planning report; no fresh isolated runs were collected in this pass.
+Status: completed plan; the fresh isolated batch is summarized in `docs/dogfooding/targeted-docs-only-current-tier-report.md`.
 
 This report names the first targeted evidence batch after Phase 5 closeout. It is public-safe and aggregate-only. Raw evidence remains in ignored `runs/` folders and should not be committed.
 
@@ -12,9 +12,9 @@ This is a routing-policy experiment input, not a policy change. The result shoul
 
 ## Current Evidence Position
 
-Fresh run count for this pass: 0.
+Fresh run count for this pass: 6.
 
-Actual new runs were not available for this Agent E slice, so this document records the targeted batch plan and the sanitized aggregate Phase 5 baseline.
+The completed follow-up report records six fresh isolated live Goose runs. This plan remains as the batch design and threshold reference.
 
 Historical public aggregate input from Phase 5 docs-only/profile evidence:
 
@@ -47,13 +47,13 @@ Analyze only the isolated parent:
 python tools/run_analyze.py --runs-dir runs/targeted-docs-only-current-tier --out-dir runs/targeted-docs-only-current-tier-analytics --evidence-scope complete
 ```
 
-## Planned Outcome Table
+## Outcome Table
 
-The future report should replace this planning table with fresh counts:
+The completed batch produced:
 
 | Outcome | Fresh count |
 |---|---:|
-| Accepted | 0 |
+| Accepted | 6 |
 | Review required | 0 |
 | Blocked or failed | 0 |
 
@@ -97,7 +97,7 @@ Use the fresh batch only as advisory routing input:
 
 ## Recommendations
 
-- Keep routing feedback advisory until the fresh isolated batch is collected and reviewed.
+- Keep routing feedback advisory until the completed batch is reviewed in `docs/dogfooding/targeted-docs-only-current-tier-report.md`.
 - Do not mutate `model_select.py`, validation profiles, recipes, or quality-gate policy from Phase 5 aggregate evidence alone.
 - Keep deterministic controls out of the primary docs-only current-tier batch; use controls only if a separate policy-failure question needs proof.
 - Preserve raw run evidence locally under ignored `runs/` and commit only the sanitized aggregate follow-up report.
