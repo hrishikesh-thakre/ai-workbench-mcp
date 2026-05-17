@@ -81,7 +81,7 @@ The planned threshold was at least five complete live runs and at least 80% acce
 
 Result: threshold met. The fresh isolated batch has six complete live runs, 100% accepted, and no repeated validation or quality-gate failures.
 
-Recommendation: consider a later policy branch that keeps low-risk `docs_only` work on the current tier when deterministic validation passes exact changed-file policy and the quality gate accepts. Keep the change advisory until that branch is explicitly designed, reviewed, and verified.
+Recommendation: use `docs/routing/docs-only-current-tier-policy-design.md` as the design boundary for a later policy branch that keeps low-risk `docs_only` work on the current tier when deterministic validation passes exact changed-file policy and the quality gate accepts. Keep the change advisory until that branch is explicitly implemented and verified.
 
 ## Boundaries
 
