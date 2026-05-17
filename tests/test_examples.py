@@ -19,6 +19,8 @@ MODEL_REGISTRY_GUIDE = ROOT / "docs" / "configuration" / "model-registry.md"
 DOGFOODING_GUIDE = ROOT / "docs" / "dogfooding" / "phase5-dogfooding.md"
 PHASE5_BATCH6_REPORT = ROOT / "docs" / "dogfooding" / "phase5-batch6-report.md"
 PHASE5_FINAL_REPORT = ROOT / "docs" / "dogfooding" / "phase5-final-report.md"
+TARGETED_DOCS_ONLY_PLAN = ROOT / "docs" / "dogfooding" / "targeted-evidence-docs-only-current-tier-plan.md"
+TARGETED_DOCS_ONLY_REPORT = ROOT / "docs" / "dogfooding" / "targeted-docs-only-current-tier-report.md"
 GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
@@ -281,6 +283,8 @@ class PublicExamplesTests(unittest.TestCase):
         codex_proof_text = CODEX_FIXTURE_PROOF.read_text(encoding="utf-8")
         batch6_text = PHASE5_BATCH6_REPORT.read_text(encoding="utf-8")
         phase5_final_text = PHASE5_FINAL_REPORT.read_text(encoding="utf-8")
+        targeted_plan_text = TARGETED_DOCS_ONLY_PLAN.read_text(encoding="utf-8")
+        targeted_report_text = TARGETED_DOCS_ONLY_REPORT.read_text(encoding="utf-8")
 
         self.assertIn("needs-review-test-fix", sample_text)
         self.assertIn("accepted-codex-tiny-python-fix", sample_text)
@@ -417,12 +421,25 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/dogfooding/phase5-batch2-stage-b-report.md", roadmap_text)
         self.assertIn("docs/dogfooding/phase5-final-report.md", roadmap_text)
         self.assertIn("Phase 5 evidence collection is complete", roadmap_text)
-        self.assertIn("bounded routing-policy experiment planning", roadmap_text)
+        self.assertIn("targeted-docs-only-current-tier-report.md", roadmap_text)
         self.assertIn("31 complete runs", phase5_final_text)
         self.assertIn("29 live Goose runs", phase5_final_text)
         self.assertIn("2 deterministic controls", phase5_final_text)
         self.assertIn("Phase 5 evidence collection is complete", phase5_final_text)
         self.assertIn("routing-policy experiments", phase5_final_text)
+        self.assertIn("Fresh run count for this pass: 6", targeted_plan_text)
+        self.assertIn("runs/targeted-docs-only-current-tier", targeted_report_text)
+        self.assertIn("workbench-docs-only-acceptance.yaml", targeted_report_text)
+        self.assertIn("`docs_only`", targeted_report_text)
+        self.assertIn("`local_coding`", targeted_report_text)
+        self.assertIn("Accepted | 6", targeted_report_text)
+        self.assertIn("Review required | 0", targeted_report_text)
+        self.assertIn("Blocked or failed | 0", targeted_report_text)
+        self.assertIn("`docs_only.accepted`", targeted_report_text)
+        self.assertIn("`quality_gate.accepted`", targeted_report_text)
+        self.assertIn("advisory routing input, not a routing-policy change", targeted_report_text)
+        self.assertIn("Do not commit raw `runs/` evidence", targeted_report_text)
+        self.assertIn("Do not change routing defaults from this report alone", targeted_report_text)
         self.assertIn("runs_total`: `6`", batch6_text)
         self.assertIn("accepted=5", batch6_text)
         self.assertIn("review_required=1", batch6_text)
