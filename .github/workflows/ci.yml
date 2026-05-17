@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   self-validation:
@@ -47,6 +48,12 @@ jobs:
           path: |
             runs/pr_gate/pr_comment.md
             runs/pr_gate/pr_decision.json
+
+      - name: Post PR gate comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python tools/pr_gate_comment.py --repo "${{ github.repository }}" --pr-number "${{ github.event.pull_request.number }}" --comment runs/pr_gate/pr_comment.md --decision runs/pr_gate/pr_decision.json
 
       - name: Build package artifacts
         run: python -m build

@@ -197,7 +197,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("permissions:", workflow)
         self.assertIn("contents: read", workflow)
         self.assertNotIn("issues: write", workflow)
-        self.assertNotIn("pull-requests: write", workflow)
+        self.assertIn("pull-requests: write", workflow)
         self.assertNotIn("gh pr comment", workflow)
         self.assertIn("timeout-minutes: 15", workflow)
         self.assertIn("ubuntu-latest", workflow)
@@ -215,6 +215,16 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("actions/upload-artifact@v4", workflow)
         self.assertIn("runs/pr_gate/pr_comment.md", workflow)
         self.assertIn("runs/pr_gate/pr_decision.json", workflow)
+        self.assertIn("Post PR gate comment", workflow)
+        self.assertIn(
+            "github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+            workflow,
+        )
+        self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
+        self.assertIn(
+            'python tools/pr_gate_comment.py --repo "${{ github.repository }}" --pr-number "${{ github.event.pull_request.number }}" --comment runs/pr_gate/pr_comment.md --decision runs/pr_gate/pr_decision.json',
+            workflow,
+        )
         self.assertIn("python -m build", workflow)
         self.assertIn("python -m twine check dist/*", workflow)
         self.assertIn("python -m pip install --force-reinstall", workflow)

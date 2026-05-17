@@ -6,6 +6,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from ai_workbench_mcp.tools.pr_gate import pr_gate_payload
+from ai_workbench_mcp.tools.pr_gate_comment import (
+    COMMENT_MARKER,
+    body_with_marker,
+    load_comment_body,
+    upsert_pr_gate_comment,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +34,17 @@ def render_gate(run_dir: Path, out_dir: Path) -> tuple[dict[str, object], str]:
         )
     )
     return decision, comment_path.read_text(encoding="utf-8")
+
+
+class FakeGraphQLRunner:
+    def __init__(self, responses: list[dict[str, object]]) -> None:
+        self.responses = list(responses)
+        self.commands: list[list[str]] = []
+
+    def __call__(self, command: list[str], **_kwargs: object) -> SimpleNamespace:
+        self.commands.append(command)
+        response = self.responses.pop(0)
+        return SimpleNamespace(returncode=0, stdout=json.dumps(response), stderr="")
 
 
 class PrGateTests(unittest.TestCase):
@@ -154,6 +171,117 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["outcome"], "block")
         self.assertIn("docs_only.source_file_blocked", decision["reason_codes"])
         self.assertIn("# AI Workbench PR Gate: Block", comment)
+
+    def test_pr_comment_marker_is_added_once(self) -> None:
+        body = body_with_marker("# AI Workbench PR Gate: Block\n")
+        self.assertTrue(body.startswith(COMMENT_MARKER))
+        self.assertEqual(body.count(COMMENT_MARKER), 1)
+
+        marked_again = body_with_marker(body)
+        self.assertEqual(marked_again.count(COMMENT_MARKER), 1)
+
+    def test_pr_comment_body_does_not_embed_decision_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            comment_path = tmp_path / "comment.md"
+            decision_path = tmp_path / "decision.json"
+            comment_path.write_text("# AI Workbench PR Gate: Block\n", encoding="utf-8")
+            write_json(decision_path, {"outcome": "block", "private_marker": "SECRET_DECISION_MARKER"})
+
+            body = load_comment_body(comment_path, decision_path)
+
+        self.assertIn(COMMENT_MARKER, body)
+        self.assertIn("# AI Workbench PR Gate: Block", body)
+        self.assertNotIn("SECRET_DECISION_MARKER", body)
+
+    def test_pr_comment_helper_creates_marker_comment_when_missing(self) -> None:
+        runner = FakeGraphQLRunner(
+            [
+                {
+                    "data": {
+                        "repository": {
+                            "pullRequest": {
+                                "id": "PR_node",
+                                "comments": {"nodes": []},
+                            }
+                        }
+                    }
+                },
+                {
+                    "data": {
+                        "addComment": {
+                            "commentEdge": {
+                                "node": {
+                                    "id": "comment_node",
+                                    "url": "https://github.example/comment",
+                                }
+                            }
+                        }
+                    }
+                },
+            ]
+        )
+
+        result = upsert_pr_gate_comment(
+            repo="owner/repo",
+            pr_number=7,
+            body=body_with_marker("# AI Workbench PR Gate: Block"),
+            runner=runner,
+        )
+
+        self.assertEqual(result["operation"], "workbench_pr_gate_comment")
+        self.assertEqual(result["action"], "created")
+        self.assertEqual(result["comment_id"], "comment_node")
+        self.assertEqual(result["comment_url"], "https://github.example/comment")
+        self.assertIn("addComment", " ".join(runner.commands[1]))
+        self.assertTrue(any(arg == "number=7" for arg in runner.commands[0]))
+        self.assertTrue(any(arg.startswith("body=") and COMMENT_MARKER in arg for arg in runner.commands[1]))
+
+    def test_pr_comment_helper_updates_existing_marker_comment(self) -> None:
+        runner = FakeGraphQLRunner(
+            [
+                {
+                    "data": {
+                        "repository": {
+                            "pullRequest": {
+                                "id": "PR_node",
+                                "comments": {
+                                    "nodes": [
+                                        {
+                                            "id": "old_comment",
+                                            "body": f"{COMMENT_MARKER}\n\nold body",
+                                            "url": "https://github.example/old",
+                                        }
+                                    ]
+                                },
+                            }
+                        }
+                    }
+                },
+                {
+                    "data": {
+                        "updateIssueComment": {
+                            "issueComment": {
+                                "id": "old_comment",
+                                "url": "https://github.example/old",
+                            }
+                        }
+                    }
+                },
+            ]
+        )
+
+        result = upsert_pr_gate_comment(
+            repo="owner/repo",
+            pr_number=7,
+            body=body_with_marker("# AI Workbench PR Gate: Needs Review"),
+            runner=runner,
+        )
+
+        self.assertEqual(result["action"], "updated")
+        self.assertEqual(result["comment_id"], "old_comment")
+        self.assertIn("updateIssueComment", " ".join(runner.commands[1]))
+        self.assertTrue(any(arg == "id=old_comment" for arg in runner.commands[1]))
 
 
 if __name__ == "__main__":
