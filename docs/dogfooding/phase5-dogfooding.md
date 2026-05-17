@@ -123,6 +123,10 @@ Batch 3 is summarized in `docs/dogfooding/phase5-batch3-report.md`. It contains 
 
 Batch 4 is summarized in `docs/dogfooding/phase5-batch4-report.md`. It contains complete-scope exclusion evidence from a tool-smoke folder plus accepted and review-required Goose runs. Analytics used `--evidence-scope complete` and excluded incomplete lifecycle evidence from routing feedback.
 
+## Batch 5 Report
+
+Batch 5 is summarized in `docs/dogfooding/phase5-batch5-report.md`. It contains deterministic validation-failure evidence for underreported changed files and failing focused test commands. Analytics used `--evidence-scope complete` and kept the generated failure reasons visible even though the quality gate routed failed validation to review-required outcomes.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:

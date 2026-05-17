@@ -398,6 +398,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/dogfooding/phase5-batch2-stage-b-report.md", dogfooding_text)
         self.assertIn("docs/dogfooding/phase5-batch3-report.md", dogfooding_text)
         self.assertIn("docs/dogfooding/phase5-batch4-report.md", dogfooding_text)
+        self.assertIn("docs/dogfooding/phase5-batch5-report.md", dogfooding_text)
         self.assertIn("--evidence-scope complete", dogfooding_text)
         self.assertIn("focused profiles block no-op or underreported changed-file claims", dogfooding_text)
         self.assertIn("Do not analyze the whole `runs/` directory", dogfooding_text)
