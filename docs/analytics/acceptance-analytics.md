@@ -100,7 +100,7 @@ Use this data to identify which recipe/profile/tier combinations are producing a
 - `policy`: the thresholds used for the advisory
 - `recommendation`: `no_change`, `prefer_current_tier`, `consider_escalation`, `require_human_review`, or `collect_more_evidence`
 
-The selector does not mutate `selected_tier`. Synthetic samples should normally return `insufficient_evidence` because the default policy requires at least five runs before producing a real advisory.
+The selector does not mutate `selected_tier`. `prefer_current_tier` is limited to implemented bounded policies, currently `docs_only_current_tier_when_accepted` for low-risk, easy docs-only work with enough accepted evidence. Synthetic samples should normally return `insufficient_evidence` because the default policy requires at least five runs before producing a real advisory.
 
 ## Cost Tracking
 

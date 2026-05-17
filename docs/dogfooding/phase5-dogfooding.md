@@ -102,7 +102,7 @@ Use `routing_feedback_candidates` to identify candidate policy changes. Review e
 
 Do not wire candidates into `model_select.py` until enough real runs exist to justify the rule. Synthetic sample runs can verify report shape, but they should not drive routing policy.
 
-In the current advisory loop, `workbench_select_model` may read `routing_feedback_candidates` and persist a `routing_feedback` advisory. That advisory can recommend collecting more evidence, keeping the current tier, escalating, or requiring human review, but it does not change the selected tier.
+In the current advisory loop, `workbench_select_model` may read `routing_feedback_candidates` and persist a `routing_feedback` advisory. That advisory can recommend collecting more evidence, keeping the current tier for implemented bounded policies, escalating, or requiring human review, but it does not change the selected tier.
 
 ## Batch 1 Report
 
