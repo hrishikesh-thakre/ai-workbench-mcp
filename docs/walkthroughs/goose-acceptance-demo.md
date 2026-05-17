@@ -25,6 +25,31 @@ examples/sample-runs/needs-review-test-fix/
 
 Use the optional live Goose path only after Goose already has a provider configured and the local MCP server has been registered. The live path can be useful for a longer walkthrough, but it is not required for the public recording.
 
+## First-Run Path
+
+For a new local user, the shortest safe order is:
+
+1. Install from the checked-out repository with `python -m pip install -e .`.
+2. Register the `ai-workbench-mcp` command in Goose.
+3. Run the two-tool smoke in `examples/goose-tool-smoke/` to prove Goose can call `workbench_open_run` and `workbench_select_model`.
+4. Run one full acceptance recipe after Goose has a provider configured.
+5. Inspect `validation_report.json` and `revision_decision.json` before describing the run outcome.
+
+If the goal is a no-provider first look, stay on the sample-only path and run analytics over `examples/sample-runs/`. If the goal is a live proof against the intentionally broken tiny fixture, use `fixture_repair_proof` from `examples/focused-workflows/` so the demo validates only the fixture repair instead of the whole repository self-test contract.
+
+Use these profile choices in first-run explanations:
+
+| Task | Profile |
+|---|---|
+| Docs-only public Markdown changes | `docs_only` |
+| Low-risk bug fixes with focused regression evidence | `low_risk_bug_fix` |
+| Python package maintenance | `python_package_maintenance` |
+| Repo-target failing test repair | `test_fix` |
+| API or MCP contract changes | `api_contract_change` |
+| Security or privacy-sensitive changes | `security_privacy_sensitive` |
+| Intentionally broken demo fixture proof | `fixture_repair_proof` |
+| General low-risk implementation | `low_risk_coding` |
+
 ## 0:00-0:30: Open With The Boundary
 
 Say:
@@ -101,6 +126,12 @@ This is the same acceptance loop producing a different outcome. Workbench does n
 ```
 
 Use "review-required" when explaining the public outcome bucket, and point to `revision_required` as the exact quality-gate status written by the current sample evidence.
+
+Outcome vocabulary:
+
+- Accepted means deterministic validation passed, the report is sign-off ready, and the quality gate wrote `final_status="accepted"`.
+- Needs-review means Workbench has enough evidence to explain why a person or revision loop is needed, such as the current sample's `final_status="revision_required"`.
+- Blocked or failed means deterministic validation is not sign-off ready. Do not present that run as accepted; inspect the failed command or artifact check instead.
 
 ## 2:45-3:30: Show Analytics And Dashboard
 

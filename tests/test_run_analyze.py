@@ -44,6 +44,27 @@ def write_model_output(run_dir: Path, response_source: str = "goose") -> None:
     )
 
 
+def write_model_call_metadata(run_dir: Path) -> None:
+    write_json(
+        run_dir / "model_call_metadata.json",
+        {
+            "provider": "litellm",
+            "tier": "local_coding",
+            "model": "local-coding-tier",
+            "usage_summary": {
+                "prompt_tokens": 900,
+                "completion_tokens": 400,
+                "total_tokens": 1300,
+                "cached_input_tokens": 100,
+                "uncached_input_tokens": 800,
+            },
+            "estimated_cost_usd": 0.01234567,
+            "pricing_source": "provider_reported",
+            "duration_ms": 2300,
+        },
+    )
+
+
 def write_sample_run(runs_dir: Path) -> Path:
     run_dir = runs_dir / "run1"
     run_dir.mkdir(parents=True)
@@ -157,6 +178,7 @@ def write_revision_required_run(runs_dir: Path) -> Path:
                 }
             ],
             "missing_context_notes": {"needs_review": ["missing failing test output"], "info": []},
+            "reason_codes": ["test_fix.required_test_failed"],
         },
     )
     write_json(
@@ -165,6 +187,7 @@ def write_revision_required_run(runs_dir: Path) -> Path:
             "final_status": "revision_required",
             "loop_type": "blocking_findings",
             "required": True,
+            "reason_codes": ["quality_loop.validation_failed"],
         },
     )
     write_model_output(run_dir)
@@ -447,8 +470,68 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertIn("Failed", dashboard)
         self.assertIn("By Execution Host", dashboard)
         self.assertIn("By Response Source", dashboard)
+        self.assertIn("Agent / Model", dashboard)
+        self.assertIn("Policy", dashboard)
+        self.assertIn("Failure Reasons", dashboard)
+        self.assertIn("Cost / Time", dashboard)
         self.assertIn("workbench-engineering-acceptance.yaml", dashboard)
         self.assertIn("task_metadata.json", dashboard)
+
+    def test_run_analysis_payload_tracks_run_cost_and_time_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            run_dir = write_sample_run(runs_dir)
+            write_model_call_metadata(run_dir)
+            report = json.loads((run_dir / "validation_report.json").read_text(encoding="utf-8"))
+            report["commands_run"] = [
+                {"name": "unit_tests", "status": "passed", "exit_code": 0, "duration_ms": 120},
+                {"name": "lint", "status": "passed", "exit_code": 0, "duration_ms": 55},
+            ]
+            write_json(run_dir / "validation_report.json", report)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            metrics = run_analysis_payload(args)
+            summary = (out_dir / "run_summary.md").read_text(encoding="utf-8")
+            dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
+
+        self.assertEqual(metrics["total_tokens_tracked"], 1300)
+        self.assertEqual(metrics["runs_with_token_data"], 1)
+        self.assertEqual(metrics["total_estimated_cost_usd"], 0.01234567)
+        self.assertEqual(metrics["runs_with_cost_data"], 1)
+        self.assertEqual(metrics["runs_with_cost_data_ids"], ["run1"])
+        self.assertEqual(metrics["cost_tracking"]["runs_with_cost_data_ids"], ["run1"])
+        self.assertEqual(metrics["time_tracking"]["provider_calls_with_time_data"], 1)
+        self.assertEqual(metrics["time_tracking"]["total_provider_duration_ms"], 2300)
+        self.assertEqual(metrics["time_tracking"]["runs_with_provider_time_data"], 1)
+        self.assertEqual(metrics["time_tracking"]["validation_runs_with_time_data"], 1)
+        self.assertEqual(metrics["time_tracking"]["total_validation_duration_ms"], 175)
+        self.assertEqual(metrics["run_cost_time"]["run1"]["provider_calls"], 1)
+        self.assertEqual(metrics["run_cost_time"]["run1"]["providers"], {"litellm": 1})
+        self.assertEqual(metrics["run_cost_time"]["run1"]["models"], {"local-coding-tier": 1})
+        self.assertEqual(metrics["run_cost_time"]["run1"]["tiers"], {"local_coding": 1})
+        self.assertTrue(metrics["run_cost_time"]["run1"]["has_token_data"])
+        self.assertTrue(metrics["run_cost_time"]["run1"]["has_cost_data"])
+        self.assertTrue(metrics["run_cost_time"]["run1"]["has_provider_time_data"])
+        self.assertTrue(metrics["run_cost_time"]["run1"]["has_validation_time_data"])
+        self.assertEqual(metrics["run_cost_time"]["run1"]["total_tokens"], 1300)
+        self.assertEqual(metrics["run_cost_time"]["run1"]["estimated_cost_usd"], 0.01234567)
+        self.assertEqual(metrics["run_cost_time"]["run1"]["provider_duration_ms"], 2300)
+        self.assertEqual(metrics["run_cost_time"]["run1"]["validation_duration_ms"], 175)
+        self.assertIn("## Time Tracking", summary)
+        self.assertIn("| run1 | accepted | goose | goose | litellm | local-coding-tier | run_signoff | accepted | None recorded | 1300 | $0.01234567 | 2.30s | 175ms |", summary)
+        self.assertIn("Cost And Time Evidence", dashboard)
+        self.assertIn("local-coding-tier", dashboard)
+        self.assertIn("$0.01234567", dashboard)
+        self.assertIn("2.30s", dashboard)
+        self.assertIn("175ms", dashboard)
 
     def test_run_analysis_payload_groups_goose_and_codex_hosts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -594,6 +677,8 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         )
         self.assertEqual(metrics["failure_reasons"]["command_failed:full_test_suite"], 1)
         self.assertEqual(metrics["failure_reasons"]["quality_gate:revision_required"], 1)
+        self.assertEqual(metrics["failure_reasons"]["test_fix.required_test_failed"], 1)
+        self.assertEqual(metrics["failure_reasons"]["quality_loop.validation_failed"], 1)
         self.assertEqual(
             metrics["acceptance_breakdown"]["by_recipe"]["workbench-test-fix-acceptance.yaml"],
             {

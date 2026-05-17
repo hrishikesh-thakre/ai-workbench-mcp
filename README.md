@@ -97,6 +97,16 @@ python -m pip install -e .
 
 The published PyPI wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
 
+For a first local run, use this order:
+
+1. Install from the checked-out repository with `python -m pip install -e .`.
+2. Register `ai-workbench-mcp` in Goose.
+3. Run the two-tool smoke to prove Goose can reach the MCP server.
+4. Run one full acceptance recipe with a focused validation profile.
+5. Inspect `validation_report.json` and `revision_decision.json` before calling the run accepted.
+
+If Goose or a provider is not configured yet, use the committed sample evidence under `examples/sample-runs/` and the [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md) first. That path shows the acceptance artifacts without creating private local evidence.
+
 Register the MCP server in Goose:
 
 ```bash
@@ -134,6 +144,21 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params validation_profile=tiny_python_fix \
   --params complexity_score=4
 ```
+
+Choose the validation profile from the task shape:
+
+| Task shape | Recipe | Validation profile |
+|---|---|---|
+| Documentation-only Markdown or example docs | `recipes/workbench-docs-only-acceptance.yaml` | `docs_only` |
+| Low-risk bug fix with a focused regression command | `recipes/workbench-test-fix-acceptance.yaml` | `low_risk_bug_fix` |
+| Bounded package, config, tool, recipe, or test maintenance | `recipes/workbench-python-package-maintenance.yaml` | `python_package_maintenance` |
+| Repo-target failing test repair with a focused test command | `recipes/workbench-test-fix-acceptance.yaml` | `test_fix` |
+| API or MCP contract change | `recipes/workbench-engineering-acceptance.yaml` | `api_contract_change` |
+| Security or privacy-sensitive change | `recipes/workbench-engineering-acceptance.yaml` | `security_privacy_sensitive` |
+| Intentionally broken demo fixture proof | `recipes/workbench-test-fix-acceptance.yaml` | `fixture_repair_proof` |
+| General low-risk implementation with deterministic tests | `recipes/workbench-engineering-acceptance.yaml` | `low_risk_coding` |
+
+See [focused v0.2 workflows](examples/focused-workflows/) for copy-ready commands.
 
 For bounded documentation-only changes, use the focused v0.2 recipe:
 
@@ -208,6 +233,12 @@ runs/goose-tiny-python-fix/
 ```
 
 Do not commit `runs/`. It is the local evidence ledger.
+
+Read outcomes from the evidence, not from the agent's final prose:
+
+- Accepted: `validation_report.json` has `overall_status="passed"` and `sign_off_ready=true`, and `revision_decision.json` has `final_status="accepted"`.
+- Needs-review or revision: validation or quality-gate evidence is incomplete, risky, or failed, and the quality gate records a review or revision status such as `revision_required`.
+- Blocked or failed: deterministic validation fails in a way that is not sign-off ready. Keep the evidence local, inspect the failing check, and do not call the run accepted.
 
 ## Codex Local/IDE
 
@@ -338,11 +369,12 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Goose recipe smoke](examples/goose-recipe-smoke/): exact command for a low-risk Goose acceptance run.
 - [Codex tool smoke](examples/codex-tool-smoke/): two-tool local/IDE MCP smoke using `execution_host="codex"`.
 - [Codex acceptance smoke](examples/codex-acceptance-smoke/): full six-tool local/IDE lifecycle using `response_source="codex"`.
-- [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, package maintenance, test-fix, and low-risk coding workflows.
+- [Focused v0.2 workflows](examples/focused-workflows/): command examples for docs-only, low-risk bug-fix, package maintenance, test-fix, API/contract, security/privacy, and low-risk coding workflows.
 - [How acceptance works](docs/concepts/how-acceptance-works.md): the MCP protocol, Workbench server, validation profile, and quality-gate distinction.
 - [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
 - [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
+- Core policy-pack profiles: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` in `configs/validation_profiles.yaml`.
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md): sanitized live Goose proof summary using `fixture_repair_proof` with isolated analytics.
 - [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): sanitized live Codex local/IDE proof summary using `fixture_repair_proof` with host/source evidence.

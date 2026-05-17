@@ -8,9 +8,11 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 from ai_workbench_mcp.tools.validate_run import (
+    CommandResult,
     load_validation_profile,
     validate_captured_response_format,
     validate_changed_file_policy,
+    validate_policy_required_tests,
     validate_run_payload,
 )
 
@@ -205,6 +207,10 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         checks = {check["name"]: check for check in report["artifact_checks"]}
         self.assertEqual(report["overall_status"], "passed")
         self.assertEqual(checks["changed_file_policy"]["status"], "passed")
+        self.assertEqual(report["reason_codes"], ["docs_only.accepted"])
+        self.assertEqual(report["policy_pack"]["name"], "docs_only")
+        self.assertEqual(report["reason_sources"][0]["status"], "passed")
+        self.assertEqual(report["reason_sources"][0]["source"], "validation_report")
         self.assertIn("Changed-file source: cli_changed_files", checks["changed_file_policy"]["details"])
         self.assertIn("Actual changed-file evidence required: true", checks["changed_file_policy"]["details"])
         self.assertIn("Non-empty changed-file evidence required: true", checks["changed_file_policy"]["details"])
@@ -232,7 +238,34 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(report["overall_status"], "failed")
         self.assertFalse(report["sign_off_ready"])
         self.assertEqual(checks["changed_file_policy"]["status"], "failed")
+        self.assertIn("docs_only.source_file_blocked", report["reason_codes"])
+        source = next(item for item in report["reason_sources"] if item["code"] == "docs_only.source_file_blocked")
+        self.assertEqual(source["source"], "artifact_checks")
+        self.assertEqual(source["name"], "changed_file_policy")
+        self.assertEqual(source["severity"], "blocker")
         self.assertIn("Forbidden changed file: tools/validate_run.py", checks["changed_file_policy"]["details"])
+
+    def test_policy_required_tests_missing_produces_machine_readable_review_reason(self) -> None:
+        profile = load_validation_profile("api_contract_change")
+        commands_run = [
+            CommandResult(
+                name="full_test_suite",
+                command="python -m pytest -q -p no:cacheprovider",
+                cwd=".",
+                required=True,
+                weight=3.0,
+                exit_code=0,
+                status="passed",
+                duration_ms=1,
+            )
+        ]
+
+        check = validate_policy_required_tests(profile, commands_run)
+
+        self.assertIsNotNone(check)
+        self.assertEqual(check.status, "needs_review")
+        self.assertEqual(check.reason_codes, ["api_contract_change.contract_test_missing"])
+        self.assertIn("Missing required test command: contract_tests", check.details)
 
     def test_docs_only_profile_rejects_claimed_files_without_actual_worktree_diff(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

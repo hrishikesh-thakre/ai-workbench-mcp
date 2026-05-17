@@ -451,6 +451,8 @@ class DetermineAutoTriggerTests(unittest.TestCase):
         self.assertEqual(decision["loop_type"], "none")
         self.assertEqual(decision["final_status"], "accepted")
         self.assertFalse(decision["required"])
+        self.assertEqual(decision["reason_codes"], ["quality_gate.accepted"])
+        self.assertEqual(decision["reason_sources"][0]["severity"], "info")
         self.assertFalse(review_prompt_exists)
 
     def test_quality_gate_payload_auto_writes_review_prompt_for_alternate_review(self) -> None:
@@ -477,8 +479,54 @@ class DetermineAutoTriggerTests(unittest.TestCase):
         self.assertEqual(decision["loop_type"], "alternate_model_review")
         self.assertEqual(decision["final_status"], "review_required")
         self.assertEqual(decision["blocking_findings"], ["local_coding used for medium risk."])
+        self.assertEqual(decision["reason_codes"], ["quality_loop.medium_risk_low_capability_review"])
         self.assertTrue(revision_decision_exists)
         self.assertTrue(review_prompt_exists)
+
+    def test_quality_gate_payload_auto_records_validation_failed_reason_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_structured_model_output(run_dir)
+            (run_dir / "validation_report.json").write_text(
+                json.dumps({"overall_status": "failed", "confidence": 0.4}),
+                encoding="utf-8",
+            )
+
+            decision = quality_gate_payload(quality_args(run_dir, risk="low"))
+
+        self.assertEqual(decision["loop_type"], "alternate_model_review")
+        self.assertEqual(decision["final_status"], "review_required")
+        self.assertEqual(decision["reason_codes"], ["quality_loop.validation_failed"])
+        self.assertEqual(decision["reason_sources"][0]["severity"], "review")
+
+    def test_quality_gate_payload_auto_records_api_contract_reason_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_structured_model_output(run_dir)
+            write_passed_validation_report(run_dir)
+            (run_dir / "final_prompt.md").write_text("Update the API contract for the MCP tool response.\n", encoding="utf-8")
+
+            decision = quality_gate_payload(quality_args(run_dir, risk="low"))
+
+        self.assertEqual(decision["loop_type"], "alternate_model_review")
+        self.assertEqual(decision["final_status"], "review_required")
+        self.assertEqual(decision["reason_codes"], ["quality_loop.api_contract_review_required"])
+
+    def test_quality_gate_payload_auto_records_security_privacy_reason_code(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir)
+            write_structured_model_output(run_dir)
+            write_passed_validation_report(run_dir)
+            (run_dir / "model_selection.json").write_text(
+                json.dumps({"prompt": "security_privacy_risk_review"}),
+                encoding="utf-8",
+            )
+
+            decision = quality_gate_payload(quality_args(run_dir, risk="low"))
+
+        self.assertEqual(decision["loop_type"], "alternate_model_review")
+        self.assertEqual(decision["final_status"], "review_required")
+        self.assertEqual(decision["reason_codes"], ["quality_loop.security_privacy_review_required"])
 
     def test_two_candidate_outputs_trigger_pairwise_compare(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

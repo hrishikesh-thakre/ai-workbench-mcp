@@ -3,6 +3,9 @@
 This folder contains sanitized example evidence ledgers. These are committed
 examples, not private local `runs/` history.
 
+Use these samples for a no-provider first run or a public demo recording. They
+show the evidence shape without requiring Goose, Codex, or a live model.
+
 Current samples:
 
 - `accepted-tiny-python-fix/`: v0.1 engineering acceptance lifecycle for a tiny Python fix.
@@ -15,6 +18,12 @@ Run analytics over the committed samples:
 ```bash
 python tools/run_analyze.py --runs-dir examples/sample-runs --out-dir runs/sample-run-analytics
 ```
+
+First inspect individual runs, then inspect analytics:
+
+- Accepted samples have `validation_report.json` with passed, sign-off-ready validation and `revision_decision.json` with `final_status="accepted"`.
+- The needs-review sample shows failed deterministic validation and `final_status="revision_required"`.
+- A blocked or failed local run should stay under ignored `runs/` unless it is intentionally sanitized for a public example.
 
 See `docs/analytics/acceptance-analytics.md` for how to read `run_metrics.json`, `run_summary.md`, routing feedback candidates, and optional cost fields. See `docs/analytics/evidence-dashboard.md` for how to use the generated `run_dashboard.html`.
 

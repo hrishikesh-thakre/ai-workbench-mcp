@@ -65,6 +65,36 @@ def html_attr(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
+def format_duration_ms(duration_ms: object, has_evidence: bool = True) -> str:
+    value = as_int(duration_ms)
+    if not has_evidence or value is None:
+        return "not recorded"
+    if value >= 1000:
+        return f"{value / 1000:.2f}s"
+    return f"{value}ms"
+
+
+def format_usd(amount: object, has_evidence: bool = True) -> str:
+    value = as_float(amount)
+    if not has_evidence or value is None:
+        return "not recorded"
+    rendered = f"{value:.8f}".rstrip("0").rstrip(".")
+    return f"${rendered or '0'}"
+
+
+def selected_model_parts(selection: dict[str, object], cost_time: dict[str, object]) -> tuple[str, str]:
+    selected_model = as_dict(selection.get("selected_model"))
+    provider = selected_model.get("provider") or selection.get("provider")
+    model = selected_model.get("model") or selection.get("model")
+    if not provider:
+        providers = as_dict(cost_time.get("providers"))
+        provider = next(iter(providers), None)
+    if not model:
+        models = as_dict(cost_time.get("models"))
+        model = next(iter(models), None)
+    return (str(provider) if provider else "unknown", str(model) if model else "unknown")
+
+
 def as_float(value: object) -> float | None:
     if isinstance(value, (int, float)):
         return float(value)
@@ -83,6 +113,18 @@ def as_int(value: object) -> int | None:
 
 def as_dict(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
+
+
+def explicit_duration_ms(payload: dict[str, object]) -> int | None:
+    for field_name in ("duration_ms", "elapsed_ms", "latency_ms", "wall_time_ms"):
+        value = as_float(payload.get(field_name))
+        if value is not None and value >= 0:
+            return int(round(value))
+    for field_name in ("duration_seconds", "elapsed_seconds", "latency_seconds", "wall_time_seconds"):
+        value = as_float(payload.get(field_name))
+        if value is not None and value >= 0:
+            return int(round(value * 1000))
+    return None
 
 
 def evidence_scope_for(args: argparse.Namespace) -> str:
@@ -189,21 +231,75 @@ def html_artifact_links(out_dir: Path, run_dir: Path) -> str:
     return " ".join(links) if links else "No standard artifacts found."
 
 
+def html_status_badge(outcome: str) -> str:
+    class_name = {
+        "accepted": "accepted",
+        "review_required": "review",
+        "failed": "failed",
+    }.get(outcome, "other")
+    return f"<span class=\"status-badge {class_name}\">{html_escape(outcome)}</span>"
+
+
+def html_cell_stack(lines: list[tuple[str, object]]) -> str:
+    rendered_lines = []
+    for label, value in lines:
+        rendered_lines.append(
+            "<span>"
+            f"<span class=\"cell-label\">{html_escape(label)}</span>"
+            f"{html_escape(value)}"
+            "</span>"
+        )
+    return "<div class=\"cell-stack\">" + "".join(rendered_lines) + "</div>"
+
+
+def run_failure_reason_text(report: dict[str, object], decision: dict[str, object]) -> str:
+    if accepted_by_validation_and_gate(report, decision):
+        return "None recorded"
+    reasons = failure_reasons(report, decision)
+    if not reasons:
+        return "unknown"
+    rendered = reasons[:4]
+    if len(reasons) > 4:
+        rendered.append(f"+{len(reasons) - 4} more")
+    return ", ".join(rendered)
+
+
+def run_cost_time_lines(cost_time: dict[str, object]) -> list[tuple[str, object]]:
+    return [
+        (
+            "Tokens",
+            f"{as_int(cost_time.get('total_tokens')):,}"
+            if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
+            else "not recorded",
+        ),
+        ("Cost", format_usd(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True)),
+        (
+            "Provider time",
+            format_duration_ms(cost_time.get("provider_duration_ms"), cost_time.get("has_provider_time_data") is True),
+        ),
+        (
+            "Validation time",
+            format_duration_ms(
+                cost_time.get("validation_duration_ms"),
+                cost_time.get("has_validation_time_data") is True,
+            ),
+        ),
+    ]
+
+
 def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
     rows: list[str] = [
         "<table>",
         (
             "<thead><tr>"
-            "<th>Run ID</th><th>Outcome</th><th>Task Type</th><th>Recipe</th>"
-            "<th>Execution Host</th><th>Response Source</th>"
-            "<th>Profile</th><th>Tier</th><th>Risk</th><th>Complexity</th>"
-            "<th>Quality Gate</th><th>Evidence Links</th>"
+            "<th>Run</th><th>Outcome</th><th>Agent / Model</th><th>Policy</th>"
+            "<th>Failure Reasons</th><th>Cost / Time</th><th>Evidence Links</th>"
             "</tr></thead>"
         ),
         "<tbody>",
     ]
     if not runs:
-        rows.append("<tr><td colspan=\"12\">No run folders were scanned.</td></tr>")
+        rows.append("<tr><td colspan=\"7\">No run folders were scanned.</td></tr>")
     for run in runs:
         logs = run.get("logs", [])
         logs = logs if isinstance(logs, list) else []
@@ -211,29 +307,48 @@ def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
         decision = as_dict(run.get("decision"))
         selection = as_dict(run.get("selection"))
         metadata = as_dict(run.get("metadata"))
+        cost_time = as_dict(run.get("cost_time"))
         recipe = recipe_for(metadata, selection, report, logs)
         profile = str(report.get("profile", "unknown"))
         selected_tier = latest_tier(logs, selection)
         risk = str(selection.get("risk", "unknown"))
         complexity = str(selection.get("complexity_band", "unknown"))
+        provider, model = selected_model_parts(selection, cost_time)
+        outcome = public_outcome_bucket(report, decision)
         run_dir = Path(str(run.get("path", "")))
         cells = [
-            html_escape(run.get("run_id", "unknown")),
-            html_escape(public_outcome_bucket(report, decision)),
-            html_escape(run.get("task_type", "unknown")),
-            html_escape(recipe),
-            html_escape(run.get("execution_host", "goose")),
-            html_escape(run.get("response_source", "unknown")),
-            html_escape(profile),
-            html_escape(selected_tier),
-            html_escape(risk),
-            html_escape(complexity),
-            html_escape(quality_gate_outcome(decision)),
+            html_cell_stack(
+                [
+                    ("Run ID", run.get("run_id", "unknown")),
+                    ("Task", run.get("task_type", "unknown")),
+                    ("Recipe", recipe),
+                ]
+            ),
+            html_status_badge(outcome),
+            html_cell_stack(
+                [
+                    ("Host", run.get("execution_host", "goose")),
+                    ("Source", run.get("response_source", "unknown")),
+                    ("Provider", provider),
+                    ("Model", model),
+                    ("Tier", selected_tier),
+                ]
+            ),
+            html_cell_stack(
+                [
+                    ("Profile", profile),
+                    ("Gate", quality_gate_outcome(decision)),
+                    ("Risk", risk),
+                    ("Complexity", complexity),
+                ]
+            ),
+            html_escape(run_failure_reason_text(report, decision)),
+            html_cell_stack(run_cost_time_lines(cost_time)),
+            html_artifact_links(out_dir, run_dir),
         ]
         rows.append(
-            "<tr>"
+            f"<tr data-outcome=\"{html_attr(outcome)}\">"
             + "".join(f"<td>{cell}</td>" for cell in cells)
-            + f"<td>{html_artifact_links(out_dir, run_dir)}</td>"
             + "</tr>"
         )
     rows.extend(["</tbody>", "</table>"])
@@ -283,6 +398,7 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
     dashboard_path = out_dir / "run_dashboard.html"
     outcome_counts = as_dict(metrics.get("outcome_counts"))
     cost_tracking = as_dict(metrics.get("cost_tracking"))
+    time_tracking = as_dict(metrics.get("time_tracking"))
     cost_note = (
         "No provider cost evidence was found. Empty or zero cost fields do not mean execution was free."
         if not cost_tracking.get("runs_with_cost_data")
@@ -300,15 +416,26 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
             "<title>Workbench Evidence Dashboard</title>",
             "<style>",
             (
-                "body{font-family:Arial,sans-serif;margin:0;background:#f8fafc;color:#111827;}"
-                "main{max-width:1180px;margin:0 auto;padding:32px 20px 48px;}"
-                "section{margin-top:28px;}h1{font-size:32px;margin:0 0 8px;}h2{font-size:22px;margin:0 0 12px;}"
-                "h3{font-size:16px;margin:20px 0 8px;}.muted{color:#4b5563;}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}"
-                ".metric{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:14px;}"
-                ".metric strong{display:block;font-size:26px;margin-top:6px;}table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #d1d5db;}"
-                "th,td{padding:8px 10px;border-top:1px solid #e5e7eb;text-align:left;vertical-align:top;font-size:14px;}"
-                "th{background:#f3f4f6;font-size:12px;text-transform:uppercase;letter-spacing:.04em;}a{color:#075985;text-decoration:none;}a:hover{text-decoration:underline;}"
-                ".note{background:#fff;border-left:4px solid #64748b;padding:12px 14px;}"
+                ":root{--bg:#f6f7f9;--surface:#ffffff;--ink:#111827;--muted:#5b6472;--line:#d9dee7;"
+                "--soft:#eef1f5;--accepted:#15803d;--review:#b45309;--failed:#b91c1c;--other:#475569;--link:#075985;}"
+                "*{box-sizing:border-box;}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;"
+                "margin:0;background:var(--bg);color:var(--ink);line-height:1.45;}main{max-width:1320px;margin:0 auto;padding:30px 20px 48px;}"
+                "section{margin-top:28px;}h1{font-size:32px;line-height:1.15;margin:0 0 8px;font-weight:750;}h2{font-size:22px;line-height:1.25;margin:0 0 12px;}"
+                "h3{font-size:15px;margin:20px 0 8px;}.muted{color:var(--muted);max-width:900px;}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}"
+                ".metric{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 14px 13px;min-height:92px;}"
+                ".metric span{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;}.metric strong{display:block;font-size:28px;line-height:1.1;margin-top:10px;}"
+                ".metric.accepted{border-top:4px solid var(--accepted);}.metric.review{border-top:4px solid var(--review);}.metric.failed{border-top:4px solid var(--failed);}"
+                "table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;}"
+                "th,td{padding:10px 12px;border-top:1px solid #e7eaf0;text-align:left;vertical-align:top;font-size:13px;}td{min-width:120px;}"
+                "th{background:var(--soft);font-size:11px;text-transform:uppercase;font-weight:750;color:#374151;}tbody tr:hover{background:#fbfcfd;}"
+                "tr[data-outcome=accepted]{border-left:4px solid var(--accepted);}tr[data-outcome=review_required]{border-left:4px solid var(--review);}tr[data-outcome=failed]{border-left:4px solid var(--failed);}"
+                "a{color:var(--link);text-decoration:none;margin-right:8px;white-space:nowrap;}a:hover{text-decoration:underline;}"
+                ".note{background:var(--surface);border-left:4px solid var(--other);padding:12px 14px;border-radius:0 8px 8px 0;}"
+                ".status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:750;text-transform:capitalize;white-space:nowrap;}"
+                ".status-badge.accepted{background:#dcfce7;color:#166534;}.status-badge.review{background:#fef3c7;color:#92400e;}.status-badge.failed{background:#fee2e2;color:#991b1b;}"
+                ".status-badge.other{background:#e2e8f0;color:#334155;}.cell-stack{display:grid;gap:3px;min-width:180px;}.cell-stack>span{display:block;}"
+                ".cell-label{display:inline-block;min-width:86px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;}"
+                "code{background:#e5e7eb;border-radius:5px;padding:1px 5px;}@media(max-width:720px){main{padding:22px 12px 36px;}h1{font-size:26px;}th,td{font-size:12px;padding:8px;}table{display:block;overflow-x:auto;}}"
             ),
             "</style>",
             "</head>",
@@ -321,14 +448,14 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
                 "This static report links to evidence artifacts but does not embed model outputs or provider logs.</p>"
             ),
             "<section class=\"grid\" aria-label=\"Outcome metrics\">",
-            f"<div class=\"metric\">Evidence Scope<strong>{html_escape(metrics.get('evidence_scope', 'all'))}</strong></div>",
-            f"<div class=\"metric\">Runs Total<strong>{html_escape(metrics.get('runs_total', 0))}</strong></div>",
-            f"<div class=\"metric\">Excluded Runs<strong>{html_escape(metrics.get('excluded_runs_total', 0))}</strong></div>",
-            f"<div class=\"metric\">Accepted<strong>{html_escape(outcome_counts.get('accepted', 0))}</strong></div>",
-            f"<div class=\"metric\">Review Required<strong>{html_escape(outcome_counts.get('review_required', 0))}</strong></div>",
-            f"<div class=\"metric\">Failed<strong>{html_escape(outcome_counts.get('failed', 0))}</strong></div>",
-            f"<div class=\"metric\">Acceptance Rate<strong>{html_escape(metrics.get('acceptance_rate', 0.0))}</strong></div>",
-            f"<div class=\"metric\">Average Confidence<strong>{html_escape(metrics.get('average_confidence', 0.0))}</strong></div>",
+            f"<div class=\"metric\"><span>Evidence Scope</span><strong>{html_escape(metrics.get('evidence_scope', 'all'))}</strong></div>",
+            f"<div class=\"metric\"><span>Runs Total</span><strong>{html_escape(metrics.get('runs_total', 0))}</strong></div>",
+            f"<div class=\"metric\"><span>Excluded Runs</span><strong>{html_escape(metrics.get('excluded_runs_total', 0))}</strong></div>",
+            f"<div class=\"metric accepted\"><span>Accepted</span><strong>{html_escape(outcome_counts.get('accepted', 0))}</strong></div>",
+            f"<div class=\"metric review\"><span>Review Required</span><strong>{html_escape(outcome_counts.get('review_required', 0))}</strong></div>",
+            f"<div class=\"metric failed\"><span>Failed</span><strong>{html_escape(outcome_counts.get('failed', 0))}</strong></div>",
+            f"<div class=\"metric\"><span>Acceptance Rate</span><strong>{html_escape(metrics.get('acceptance_rate', 0.0))}</strong></div>",
+            f"<div class=\"metric\"><span>Average Confidence</span><strong>{html_escape(metrics.get('average_confidence', 0.0))}</strong></div>",
             "</section>",
             "<section>",
             "<h2>Outcome Buckets</h2>",
@@ -350,9 +477,10 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
             html_routing_candidates(metrics.get("routing_feedback_candidates")),
             "</section>",
             "<section>",
-            "<h2>Cost Evidence</h2>",
+            "<h2>Cost And Time Evidence</h2>",
             f"<p class=\"note\">{html_escape(cost_note)}</p>",
             html_mapping_table("Cost Tracking", cost_tracking),
+            html_mapping_table("Time Tracking", time_tracking),
             "</section>",
             "<section>",
             "<h2>Run Evidence</h2>",
@@ -621,6 +749,12 @@ def routing_feedback_candidates(
 
 def failure_reasons(report: dict[str, object], decision: dict[str, object]) -> list[str]:
     reasons: list[str] = []
+    for reason_code in report.get("reason_codes", []) if isinstance(report.get("reason_codes", []), list) else []:
+        if reason_code:
+            reasons.append(str(reason_code))
+    for reason_code in decision.get("reason_codes", []) if isinstance(decision.get("reason_codes", []), list) else []:
+        if reason_code:
+            reasons.append(str(reason_code))
     if report.get("overall_status") not in {"passed", None, ""}:
         reasons.append(f"validation_overall:{report.get('overall_status')}")
     if report and report.get("sign_off_ready") is False:
@@ -658,7 +792,14 @@ def failure_reasons(report: dict[str, object], decision: dict[str, object]) -> l
     if outcome == "missing_decision":
         reasons.append("quality_gate:missing_decision")
 
-    return reasons or ["unknown"]
+    unique_reasons: list[str] = []
+    seen: set[str] = set()
+    for reason in reasons:
+        if reason in seen:
+            continue
+        seen.add(reason)
+        unique_reasons.append(reason)
+    return unique_reasons or ["unknown"]
 
 
 def scan_eval_results(runs_dir: Path) -> list[dict[str, object]]:
@@ -782,6 +923,35 @@ def usage_summary_from_metadata(metadata: dict[str, object]) -> dict[str, object
     return {}
 
 
+def duration_ms_from_metadata(metadata: dict[str, object]) -> int | None:
+    direct_duration_ms = explicit_duration_ms(metadata)
+    if direct_duration_ms is not None:
+        return direct_duration_ms
+
+    attempts = metadata.get("attempts", [])
+    total_duration_ms = 0
+    found_duration = False
+    for attempt in attempts if isinstance(attempts, list) else []:
+        attempt_duration_ms = explicit_duration_ms(as_dict(attempt))
+        if attempt_duration_ms is None:
+            continue
+        total_duration_ms += attempt_duration_ms
+        found_duration = True
+    return total_duration_ms if found_duration else None
+
+
+def validation_duration_ms(report: dict[str, object]) -> int | None:
+    total_duration_ms = 0
+    found_duration = False
+    for command in report.get("commands_run", []) if isinstance(report.get("commands_run", []), list) else []:
+        command_duration_ms = explicit_duration_ms(as_dict(command))
+        if command_duration_ms is None:
+            continue
+        total_duration_ms += command_duration_ms
+        found_duration = True
+    return total_duration_ms if found_duration else None
+
+
 def successful_attempt_model(metadata: dict[str, object]) -> str:
     attempts = metadata.get("attempts", [])
     for attempt in reversed(attempts) if isinstance(attempts, list) else []:
@@ -859,6 +1029,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         decision = read_json(run_dir / "revision_decision.json")
         selection = selection_for(run_dir)
         metadata = task_metadata_for(run_dir)
+        validation_time_ms = validation_duration_ms(report)
         execution_host = execution_host_for(metadata)
         response_source = response_source_for(run_dir)
         runs.append(
@@ -874,6 +1045,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 "response_source": response_source,
                 "task_type": task_type,
                 "status": final_status(report, decision),
+                "validation_duration_ms": validation_time_ms,
                 "eligible_for_golden_case": eligible_for_golden_case(run_dir),
             }
         )
@@ -1198,28 +1370,105 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     pricing_sources_used: Counter[str] = Counter()
     provider_call_counts_by_provider: Counter[str] = Counter()
     provider_call_counts_by_tier: Counter[str] = Counter()
+    provider_calls_with_time_data = 0
+    total_provider_duration_ms = 0
+    provider_duration_ms_by_provider: defaultdict[str, int] = defaultdict(int)
+    provider_duration_ms_by_tier: defaultdict[str, int] = defaultdict(int)
+    raw_run_cost_time: dict[str, dict[str, object]] = {}
 
     for result in model_call_results:
         provider = str(result.get("provider", "unknown"))
         tier = str(result.get("tier", "unknown"))
+        run_id = str(result.get("_run_id", "unknown"))
         provider_call_counts_by_provider[provider] += 1
         provider_call_counts_by_tier[tier] += 1
+        run_cost_time = raw_run_cost_time.setdefault(
+            run_id,
+            {
+                "provider_calls": 0,
+                "providers": Counter(),
+                "models": Counter(),
+                "tiers": Counter(),
+                "total_tokens": 0,
+                "has_token_data": False,
+                "estimated_cost_usd": 0.0,
+                "has_cost_data": False,
+                "provider_duration_ms": 0,
+                "has_provider_time_data": False,
+            },
+        )
+        run_cost_time["provider_calls"] = int(run_cost_time.get("provider_calls", 0)) + 1
+        providers = run_cost_time.get("providers")
+        if isinstance(providers, Counter):
+            providers[provider] += 1
+        model = str(result.get("model") or successful_attempt_model(result) or "unknown")
+        models = run_cost_time.get("models")
+        if isinstance(models, Counter):
+            models[model] += 1
+        tiers = run_cost_time.get("tiers")
+        if isinstance(tiers, Counter):
+            tiers[tier] += 1
 
         usage = usage_summary_from_metadata(result)
         tokens = as_int(usage.get("total_tokens"))
         if tokens is not None:
             total_tokens += tokens
             token_runs += 1
+            run_cost_time["total_tokens"] = int(run_cost_time.get("total_tokens", 0)) + tokens
+            run_cost_time["has_token_data"] = True
 
         estimated_cost, pricing_source = estimate_cost_from_metadata(result, runtime)
         if estimated_cost is not None:
             total_estimated_cost_usd += estimated_cost
             cost_runs += 1
-            priced_run_ids.append(str(result.get("_path", result.get("_run_id", "unknown"))))
+            priced_run_ids.append(run_id)
             estimated_cost_by_provider[provider] += estimated_cost
             estimated_cost_by_selected_tier[tier] += estimated_cost
+            run_cost_time["estimated_cost_usd"] = float(run_cost_time.get("estimated_cost_usd", 0.0)) + estimated_cost
+            run_cost_time["has_cost_data"] = True
             if pricing_source:
                 pricing_sources_used[pricing_source] += 1
+
+        provider_duration_ms = duration_ms_from_metadata(result)
+        if provider_duration_ms is not None:
+            provider_calls_with_time_data += 1
+            total_provider_duration_ms += provider_duration_ms
+            provider_duration_ms_by_provider[provider] += provider_duration_ms
+            provider_duration_ms_by_tier[tier] += provider_duration_ms
+            run_cost_time["provider_duration_ms"] = int(run_cost_time.get("provider_duration_ms", 0)) + provider_duration_ms
+            run_cost_time["has_provider_time_data"] = True
+
+    total_validation_duration_ms = 0
+    validation_runs_with_time_data = 0
+    run_cost_time_by_run: dict[str, dict[str, object]] = {}
+    for run in runs:
+        run_id = str(run.get("run_id", "unknown"))
+        source = raw_run_cost_time.get(run_id, {})
+        validation_time_ms = as_int(run.get("validation_duration_ms"))
+        has_validation_time_data = validation_time_ms is not None
+        if validation_time_ms is not None:
+            total_validation_duration_ms += validation_time_ms
+            validation_runs_with_time_data += 1
+
+        providers = source.get("providers")
+        models = source.get("models")
+        tiers = source.get("tiers")
+        normalized_cost_time = {
+            "provider_calls": int(source.get("provider_calls", 0)),
+            "providers": dict(providers) if isinstance(providers, Counter) else {},
+            "models": dict(models) if isinstance(models, Counter) else {},
+            "tiers": dict(tiers) if isinstance(tiers, Counter) else {},
+            "has_token_data": bool(source.get("has_token_data", False)),
+            "total_tokens": int(source.get("total_tokens", 0)),
+            "has_cost_data": bool(source.get("has_cost_data", False)),
+            "estimated_cost_usd": round(float(source.get("estimated_cost_usd", 0.0)), 8),
+            "has_provider_time_data": bool(source.get("has_provider_time_data", False)),
+            "provider_duration_ms": int(source.get("provider_duration_ms", 0)),
+            "has_validation_time_data": has_validation_time_data,
+            "validation_duration_ms": validation_time_ms if validation_time_ms is not None else 0,
+        }
+        run["cost_time"] = normalized_cost_time
+        run_cost_time_by_run[run_id] = normalized_cost_time
 
     metrics = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -1358,6 +1607,32 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "provider_calls_total": len(model_call_results),
         "provider_call_counts_by_provider": dict(provider_call_counts_by_provider),
         "provider_call_counts_by_tier": dict(provider_call_counts_by_tier),
+        "time_tracking": {
+            "provider_calls_with_time_data": provider_calls_with_time_data,
+            "total_provider_duration_ms": total_provider_duration_ms,
+            "average_provider_duration_ms_per_timed_call": (
+                round(total_provider_duration_ms / max(1, provider_calls_with_time_data))
+                if provider_calls_with_time_data
+                else 0
+            ),
+            "runs_with_provider_time_data": len(
+                [
+                    run_id
+                    for run_id, summary in run_cost_time_by_run.items()
+                    if summary.get("has_provider_time_data") is True
+                ]
+            ),
+            "provider_duration_ms_by_provider": dict(provider_duration_ms_by_provider),
+            "provider_duration_ms_by_selected_tier": dict(provider_duration_ms_by_tier),
+            "validation_runs_with_time_data": validation_runs_with_time_data,
+            "total_validation_duration_ms": total_validation_duration_ms,
+            "average_validation_duration_ms_per_timed_run": (
+                round(total_validation_duration_ms / max(1, validation_runs_with_time_data))
+                if validation_runs_with_time_data
+                else 0
+            ),
+        },
+        "run_cost_time": run_cost_time_by_run,
         "runs_eligible_for_golden_cases": [
             str(run["run_id"]) for run in runs if run["eligible_for_golden_case"]
         ],
@@ -1422,6 +1697,14 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             "provider_calls_total": len(model_call_results),
             "provider_call_counts_by_provider": dict(provider_call_counts_by_provider),
             "provider_call_counts_by_tier": dict(provider_call_counts_by_tier),
+            "provider_calls_with_time_data": provider_calls_with_time_data,
+            "runs_with_provider_time_data": len(
+                [
+                    run_id
+                    for run_id, summary in run_cost_time_by_run.items()
+                    if summary.get("has_provider_time_data") is True
+                ]
+            ),
         },
         "model_eval_kpis": {
             "model_eval_runs_total": len(model_eval_results),
@@ -1567,6 +1850,16 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Estimated cost by provider: {metrics['estimated_cost_usd_by_provider']}",
         f"- Estimated cost by selected tier: {metrics['estimated_cost_usd_by_selected_tier']}",
         "",
+        "## Time Tracking",
+        "",
+        f"- Provider calls with time data: {metrics['time_tracking']['provider_calls_with_time_data']}",
+        f"- Total provider duration (ms): {metrics['time_tracking']['total_provider_duration_ms']}",
+        f"- Average provider duration per timed call (ms): {metrics['time_tracking']['average_provider_duration_ms_per_timed_call']}",
+        f"- Runs with provider time data: {metrics['time_tracking']['runs_with_provider_time_data']}",
+        f"- Validation runs with time data: {metrics['time_tracking']['validation_runs_with_time_data']}",
+        f"- Total validation duration (ms): {metrics['time_tracking']['total_validation_duration_ms']}",
+        f"- Average validation duration per timed run (ms): {metrics['time_tracking']['average_validation_duration_ms_per_timed_run']}",
+        "",
         "## Routing Evidence",
         "",
         f"- Selected tier by risk: {metrics['selected_tier_by_risk']}",
@@ -1625,6 +1918,27 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Prompt normalizer latest cases tracked: {metrics['prompt_normalizer_latest_cases_total']}",
         f"- Prompt normalizer latest verdicts by case: {metrics['prompt_normalizer_latest_verdicts']}",
         f"- Prompt normalizer latest default-path actions: {metrics['prompt_normalizer_latest_default_path_actions']}",
+        "",
+        "## Run Details",
+        "",
+        "| Run ID | Outcome | Host | Source | Provider | Model | Profile | Gate | Failure Reasons | Tokens | Estimated Cost | Provider Time | Validation Time |",
+        "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|",
+    ])
+    for run in runs:
+        report = as_dict(run.get("report"))
+        decision = as_dict(run.get("decision"))
+        selection = as_dict(run.get("selection"))
+        cost_time = as_dict(run.get("cost_time"))
+        provider, model = selected_model_parts(selection, cost_time)
+        token_text = (
+            str(as_int(cost_time.get("total_tokens")))
+            if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
+            else "not recorded"
+        )
+        lines.append(
+            f"| {run['run_id']} | {public_outcome_bucket(report, decision)} | {run.get('execution_host', 'goose')} | {run.get('response_source', 'unknown')} | {provider} | {model} | {report.get('profile', 'unknown')} | {quality_gate_outcome(decision)} | {run_failure_reason_text(report, decision)} | {token_text} | {format_usd(cost_time.get('estimated_cost_usd'), cost_time.get('has_cost_data') is True)} | {format_duration_ms(cost_time.get('provider_duration_ms'), cost_time.get('has_provider_time_data') is True)} | {format_duration_ms(cost_time.get('validation_duration_ms'), cost_time.get('has_validation_time_data') is True)} |"
+        )
+    lines.extend([
         "",
         "## Runs",
         "",

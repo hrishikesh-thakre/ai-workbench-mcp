@@ -103,6 +103,82 @@ def enabled_section(config: dict[str, object], section_name: str) -> bool:
     return not isinstance(section, dict) or section.get("enabled", True) is not False
 
 
+def quality_reason_severity(final_status: str) -> str:
+    if final_status == "accepted":
+        return "info"
+    if final_status == "revision_required":
+        return "blocker"
+    return "review"
+
+
+def quality_reason_code(loop_type: str, reason: str, final_status: str, blocking_findings: list[str]) -> str:
+    if final_status == "accepted":
+        if loop_type == "alternate_model_review" and reason == "Review output evaluated.":
+            return "quality_loop.review_accepted"
+        if loop_type == "same_model_retry":
+            return "quality_loop.revision_promoted"
+        return "quality_gate.accepted"
+
+    if loop_type == "pairwise_compare":
+        return "quality_loop.pairwise_compare_required"
+
+    if loop_type == "same_model_retry":
+        lowered = reason.lower()
+        if "no captured response" in lowered:
+            return "quality_loop.same_model_retry.response_missing"
+        if "missing required sections" in lowered:
+            return "quality_loop.same_model_retry.required_sections_missing"
+        if "second-pass validation did not pass" in lowered:
+            return "quality_loop.same_model_retry.validation_failed"
+        return "quality_loop.same_model_retry.required"
+
+    if loop_type == "alternate_model_review":
+        lowered = reason.lower()
+        if reason == "Review output evaluated." and blocking_findings:
+            return "quality_loop.review_blocking_findings"
+        if "validation failed" in lowered:
+            return "quality_loop.validation_failed"
+        if "missing-context" in lowered:
+            return "quality_loop.missing_context_needs_review"
+        if "high-risk" in lowered:
+            return "quality_loop.high_risk_review_required"
+        if "security/privacy" in lowered:
+            return "quality_loop.security_privacy_review_required"
+        if "architecture" in lowered:
+            return "quality_loop.architecture_review_required"
+        if "api or contract" in lowered:
+            return "quality_loop.api_contract_review_required"
+        if "medium-risk low-capability" in lowered:
+            return "quality_loop.medium_risk_low_capability_review"
+        return "quality_loop.alternate_model_review_required"
+
+    if loop_type == "none":
+        return "quality_loop.disabled" if "disabled" in reason.lower() else "quality_gate.accepted"
+
+    return f"quality_loop.{loop_type}.required"
+
+
+def quality_reason_sources(
+    loop_type: str,
+    reason: str,
+    final_status: str,
+    blocking_findings: list[str],
+    non_blocking_findings: list[str],
+) -> list[dict[str, object]]:
+    code = quality_reason_code(loop_type, reason, final_status, blocking_findings)
+    return [
+        {
+            "code": code,
+            "status": final_status,
+            "severity": quality_reason_severity(final_status),
+            "source": "quality_loop",
+            "name": loop_type,
+            "summary": reason,
+            "details": [*blocking_findings, *non_blocking_findings],
+        }
+    ]
+
+
 def candidate_output_paths(run_dir: Path) -> list[Path]:
     names = [
         "model_output.md",
@@ -250,6 +326,13 @@ def base_decision(
     blocking_findings: list[str],
     non_blocking_findings: list[str],
 ) -> dict[str, object]:
+    reason_sources = quality_reason_sources(
+        loop_type=loop_type,
+        reason=reason,
+        final_status=final_status,
+        blocking_findings=blocking_findings,
+        non_blocking_findings=non_blocking_findings,
+    )
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "loop_type": loop_type,
@@ -270,6 +353,8 @@ def base_decision(
         },
         "blocking_findings": blocking_findings,
         "non_blocking_findings": non_blocking_findings,
+        "reason_sources": reason_sources,
+        "reason_codes": [str(source.get("code")) for source in reason_sources],
     }
 
 

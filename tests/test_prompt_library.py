@@ -45,6 +45,7 @@ NON_PROMPT_IDENTIFIERS = {
     "alternate_model_review",
     "checks_needs_review",
     "evaluate_review",
+    "medium_risk_low_capability_review",
     "missing_context_has_needs_review",
     "missing_context_needs_review",
     "missing_context_review",
