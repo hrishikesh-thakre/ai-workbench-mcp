@@ -196,6 +196,9 @@ class PublicHygieneTests(unittest.TestCase):
 
         self.assertIn("permissions:", workflow)
         self.assertIn("contents: read", workflow)
+        self.assertNotIn("issues: write", workflow)
+        self.assertNotIn("pull-requests: write", workflow)
+        self.assertNotIn("gh pr comment", workflow)
         self.assertIn("timeout-minutes: 15", workflow)
         self.assertIn("ubuntu-latest", workflow)
         self.assertIn('python-version: "3.11"', workflow)
@@ -205,6 +208,13 @@ class PublicHygieneTests(unittest.TestCase):
             "python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
             workflow,
         )
+        self.assertIn(
+            "python tools/pr_gate.py --run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+            workflow,
+        )
+        self.assertIn("actions/upload-artifact@v4", workflow)
+        self.assertIn("runs/pr_gate/pr_comment.md", workflow)
+        self.assertIn("runs/pr_gate/pr_decision.json", workflow)
         self.assertIn("python -m build", workflow)
         self.assertIn("python -m twine check dist/*", workflow)
         self.assertIn("python -m pip install --force-reinstall", workflow)

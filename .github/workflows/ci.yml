@@ -37,6 +37,17 @@ jobs:
       - name: Run scaffold validation
         run: python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
 
+      - name: Render PR gate artifact
+        run: python tools/pr_gate.py --run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
+
+      - name: Upload PR gate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workbench-pr-gate
+          path: |
+            runs/pr_gate/pr_comment.md
+            runs/pr_gate/pr_decision.json
+
       - name: Build package artifacts
         run: python -m build
 
