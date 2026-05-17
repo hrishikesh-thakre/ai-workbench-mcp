@@ -127,6 +127,14 @@ Batch 4 is summarized in `docs/dogfooding/phase5-batch4-report.md`. It contains 
 
 Batch 5 is summarized in `docs/dogfooding/phase5-batch5-report.md`. It contains deterministic validation-failure evidence for underreported changed files and failing focused test commands. Analytics used `--evidence-scope complete` and kept the generated failure reasons visible even though the quality gate routed failed validation to review-required outcomes.
 
+## Batch 6 Report
+
+Batch 6 is summarized in `docs/dogfooding/phase5-batch6-report.md`. It contains six complete live Goose runs across docs-only, low-risk coding, Python package maintenance, fixture repair, and seeded test-fix profiles. Analytics used `--evidence-scope complete`, counted all six complete runs, and reported five accepted outcomes plus one medium-risk review-required outcome.
+
+## Final Closeout
+
+Phase 5 is closed out in `docs/dogfooding/phase5-final-report.md`. The final evidence set contains 31 complete runs: 29 live Goose runs and 2 deterministic controls. Phase 5 evidence collection is complete, and the next work should be bounded routing-policy experiments rather than more general evidence collection.
+
 ## Sanitized Samples
 
 Only promote a dogfood run into `examples/sample-runs/` when it teaches a public behavior. Before committing a sample, remove:
