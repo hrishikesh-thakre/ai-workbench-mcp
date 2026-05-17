@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from ai_workbench_mcp.contracts import error_envelope, response_envelope
+from ai_workbench_mcp.contracts import SCHEMA_VERSION, error_envelope, response_envelope
 from ai_workbench_mcp.core import (
     model_selection_file_response,
     model_selection_response,
@@ -19,6 +19,16 @@ from ai_workbench_mcp.core import (
     validate_run,
     validation_response,
 )
+from ai_workbench_mcp.tools.pr_gate import (
+    ACCEPTANCE_EVIDENCE_MISSING_CODE,
+    OPERATION as PR_GATE_OPERATION,
+    STANDARD_EVIDENCE,
+)
+from ai_workbench_mcp.tools.pr_gate_comment import COMMENT_MARKER
+
+
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT_BASELINE = ROOT / "docs" / "contracts" / "v0.2-contract-baseline.md"
 
 
 def read_jsonl(path: Path) -> list[dict[str, object]]:
@@ -57,6 +67,95 @@ class ContractEnvelopeTests(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["errors"][0]["code"], "missing_artifact")
+
+
+class ContractDocumentationTests(unittest.TestCase):
+    def test_v02_contract_baseline_documents_current_public_surfaces(self) -> None:
+        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+
+        required_phrases = [
+            "Status: v0.2 alpha contract baseline, not v1-stable",
+            "Consumers must tolerate additive fields.",
+            "older committed sample runs that omit newer additive fields",
+            "`runs/<run_id>/` remains the local evidence ledger",
+            "validation_report.json",
+            "revision_decision.json",
+            "model_selection.json",
+            "model_output.md",
+            "run_log.jsonl",
+            'overall_status="passed"',
+            "sign_off_ready=true",
+            'final_status="accepted"',
+            "policy_pack",
+            "reason_sources",
+            "reason_codes",
+            "severity=\"blocker\"",
+            "configs/validation_profiles.yaml",
+            "docs_only",
+            "low_risk_bug_fix",
+            "test_fix",
+            "api_contract_change",
+            "security_privacy_sensitive",
+            "run_metrics.json",
+            "run_summary.md",
+            "run_dashboard.html",
+            "routing_feedback_candidates",
+            "cost_tracking",
+            "time_tracking",
+            "pr_comment.md",
+            "pr_decision.json",
+            "evidence_source",
+            "acceptance_run",
+            "fallback_scaffold",
+            "missing",
+            "AI Workbench PR Gate: Accept|Needs Review|Block",
+            COMMENT_MARKER,
+            ACCEPTANCE_EVIDENCE_MISSING_CODE,
+            PR_GATE_OPERATION,
+            "Deliberately Not Stable Yet",
+        ]
+
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+
+        for label, file_name in STANDARD_EVIDENCE:
+            with self.subTest(evidence=label):
+                self.assertIn(label, text)
+                self.assertIn(file_name, text)
+
+    def test_v02_contract_baseline_documents_mcp_envelope(self) -> None:
+        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+
+        self.assertIn(f'"schema_version": {SCHEMA_VERSION}', text)
+        for field in ("operation", "status", "ok", "artifacts", "summary", "errors"):
+            with self.subTest(field=field):
+                self.assertIn(f'"{field}"', text)
+        for operation in (
+            "workbench_open_run",
+            "workbench_select_model",
+            "workbench_record_execution",
+            "workbench_validate_run",
+            "workbench_quality_gate",
+            "workbench_analyze_runs",
+        ):
+            with self.subTest(operation=operation):
+                self.assertIn(operation, text)
+
+    def test_v02_contract_baseline_is_linked_from_primary_docs(self) -> None:
+        docs = [
+            ROOT / "README.md",
+            ROOT / "docs" / "ai" / "START_HERE.md",
+            ROOT / "docs" / "ai" / "PROJECT_MAP.md",
+            ROOT / "docs" / "github" / "pr-gate.md",
+        ]
+
+        for path in docs:
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertIn(
+                    "v0.2-contract-baseline.md",
+                    path.read_text(encoding="utf-8"),
+                )
 
 
 class OperationContractTests(unittest.TestCase):

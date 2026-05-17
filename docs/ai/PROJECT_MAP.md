@@ -59,6 +59,7 @@ runs/<run_id>/
 | `docs/concepts/how-acceptance-works.md` | Concept guide explaining that MCP connects while Workbench validation profiles and quality gates decide acceptance |
 | `docs/analytics/event-ledger.md` | Local event ledger guide for best-effort operation telemetry |
 | `docs/analytics/evidence-dashboard.md` | Static local dashboard guide for `run_dashboard.html` |
+| `docs/contracts/v0.2-contract-baseline.md` | Current non-v1-stable contract baseline for run evidence, MCP envelopes, analytics, policies, and PR gate artifacts |
 | `docs/codex/` | Codex local/IDE setup, acceptance workflow, live-test handoff, AGENTS.md snippet, and cloud limitations |
 | `docs/evals/golden-case-harness.md` | Golden-case eval harness guide |
 | `docs/publishing/pypi.md` | PyPI publishing prep and current wheel boundary |

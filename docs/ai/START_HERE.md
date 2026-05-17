@@ -126,6 +126,7 @@ Evidence boundary:
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
 - Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
+- Read `docs/contracts/v0.2-contract-baseline.md` before building downstream host, analytics, policy, or PR gate integrations against current schemas.
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
 - Read `docs/concepts/how-acceptance-works.md` before explaining what MCP connects versus what Workbench accepts.

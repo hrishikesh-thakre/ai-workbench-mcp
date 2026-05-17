@@ -19,6 +19,8 @@ For pull requests opened from this repository, CI also posts or updates a single
 
 Fork pull requests still render and upload the artifacts, but skip comment posting because the workflow is intentionally guarded.
 
+The current PR decision/comment fields are recorded in the [v0.2 contract baseline](../contracts/v0.2-contract-baseline.md). They are stable enough for this alpha integration, but not v1-stable.
+
 ## What It Proves
 
 - The package installs with development dependencies.
