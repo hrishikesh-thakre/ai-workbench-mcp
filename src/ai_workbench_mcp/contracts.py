@@ -10,6 +10,52 @@ from typing import Any
 SCHEMA_VERSION = 1
 JsonObject = dict[str, Any]
 
+V03_COMPLETE_RUN_ARTIFACTS = (
+    "task_metadata.json",
+    "final_prompt.md",
+    "model_selection.json",
+    "model_output.md",
+    "validation_report.json",
+    "revision_decision.json",
+    "run_log.jsonl",
+)
+V03_ACCEPTANCE_REQUIRED_ARTIFACTS = (
+    "validation_report.json",
+    "revision_decision.json",
+)
+V03_PR_GATE_EVIDENCE = (
+    ("validation_report", "validation_report.json"),
+    ("revision_decision", "revision_decision.json"),
+    ("model_output", "model_output.md"),
+    ("run_log", "run_log.jsonl"),
+)
+V03_PR_GATE_OUTCOMES = ("accept", "needs_review", "block")
+V03_PR_GATE_EVIDENCE_SOURCES = ("acceptance_run", "fallback_scaffold", "missing")
+V03_POLICY_PACK_NAMES = (
+    "docs_only",
+    "low_risk_bug_fix",
+    "test_fix",
+    "api_contract_change",
+    "security_privacy_sensitive",
+)
+V03_POLICY_PACK_REQUIRED_FIELDS = (
+    "name",
+    "version",
+    "source",
+    "allowed_files",
+    "required_tests",
+    "required_evidence",
+    "review_triggers",
+    "blocker_rules",
+    "reason_codes",
+)
+V03_POLICY_PACK_REASON_CODE_KEYS = (
+    "accepted",
+    "required_test_missing",
+    "required_test_failed",
+    "required_tests_passed",
+)
+
 
 @dataclass(frozen=True)
 class WorkbenchResponse:

@@ -23,6 +23,17 @@ EXPECTED_TOOLS = {
 }
 
 
+def run_async_smoke_or_skip_platform_denial(coro: object) -> None:
+    try:
+        asyncio.run(coro)
+    except PermissionError as exc:
+        if sys.platform == "win32" and getattr(exc, "winerror", None) == 5:
+            raise unittest.SkipTest(
+                "Windows denied MCP stdio named-pipe creation in this environment."
+            ) from exc
+        raise
+
+
 def payload_from_tool_result(result: Any) -> dict[str, Any]:
     structured = getattr(result, "structuredContent", None) or getattr(result, "structured_content", None)
     if isinstance(structured, dict):
@@ -54,7 +65,7 @@ class McpRuntimeSmokeTests(unittest.TestCase):
                     listed = await session.list_tools()
                     self.assertEqual({tool.name for tool in listed.tools}, EXPECTED_TOOLS)
 
-        asyncio.run(run_smoke())
+        run_async_smoke_or_skip_platform_denial(run_smoke())
 
     def test_stdio_server_lists_and_calls_workbench_tools(self) -> None:
         async def run_smoke() -> None:
@@ -178,7 +189,7 @@ class McpRuntimeSmokeTests(unittest.TestCase):
                         self.assertTrue(analyzed["ok"])
                         self.assertEqual(analyzed["summary"]["runs_total"], 1)
 
-        asyncio.run(run_smoke())
+        run_async_smoke_or_skip_platform_denial(run_smoke())
 
 
 if __name__ == "__main__":

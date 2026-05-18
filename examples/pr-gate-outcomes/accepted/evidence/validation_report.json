@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "run_id": "pr-gate-demo-accepted",
+  "project": "ai_workbench_mcp",
+  "profile": "docs_only",
+  "generated_at": "2026-05-18T00:01:00Z",
+  "commands_run": [
+    {
+      "name": "example_docs_tests",
+      "command": "python -m pytest tests/test_examples.py -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 180
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [
+    {
+      "name": "artifact_presence",
+      "status": "passed",
+      "summary": "Required Workbench evidence artifacts are present.",
+      "details": [
+        "Found validation_report.json.",
+        "Found revision_decision.json.",
+        "Found model_output.md.",
+        "Found run_log.jsonl."
+      ],
+      "reason_codes": [
+        "artifact_presence.passed"
+      ]
+    },
+    {
+      "name": "changed_file_policy",
+      "status": "passed",
+      "summary": "Only documentation and example evidence files changed.",
+      "details": [
+        "Changed files matched the docs-only policy surface."
+      ],
+      "reason_codes": [
+        "docs_only.changed_files_allowed"
+      ]
+    }
+  ],
+  "review_checks": [],
+  "missing_context_notes": {
+    "needs_review": [],
+    "info": []
+  },
+  "overall_status": "passed",
+  "sign_off_ready": true,
+  "confidence": 1.0,
+  "summary": {
+    "commands_passed": 1,
+    "commands_failed": 0,
+    "checks_passed": 2,
+    "checks_needs_review": 0,
+    "checks_failed": 0
+  },
+  "policy_pack": {
+    "name": "docs_only",
+    "version": "v0.2"
+  },
+  "reason_codes": [
+    "docs_only.accepted"
+  ],
+  "reason_sources": [
+    {
+      "code": "docs_only.accepted",
+      "status": "passed",
+      "severity": "info",
+      "source": "validation_report",
+      "name": "docs_only",
+      "summary": "Docs-only validation passed and no review triggers fired.",
+      "details": [
+        "Required command passed.",
+        "Changed-file policy passed."
+      ]
+    }
+  ]
+}

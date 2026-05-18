@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run_id": "pr-gate-demo-needs-review",
+  "project": "ai_workbench_mcp",
+  "task_type": "api_contract_change",
+  "risk": "medium",
+  "recipe": "workbench-engineering-acceptance.yaml",
+  "prompt": "code_review_patch_risk_audit",
+  "execution_host": "goose",
+  "created_at": "2026-05-18T00:00:00Z",
+  "summary": "Synthetic API contract PR evidence used to demonstrate a needs-review PR gate outcome."
+}

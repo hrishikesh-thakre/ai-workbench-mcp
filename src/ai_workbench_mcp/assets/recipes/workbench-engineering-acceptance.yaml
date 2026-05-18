@@ -1,0 +1,117 @@
+version: "1.0.0"
+title: "Workbench Engineering Acceptance"
+description: "Run a Goose engineering task through AI Workbench model selection, deterministic validation, quality gate, and run analysis."
+
+parameters:
+  - key: project
+    input_type: string
+    requirement: optional
+    description: "Project key from configs/projects.yaml."
+    default: "ai_workbench_mcp"
+  - key: run_dir
+    input_type: string
+    requirement: user_prompt
+    description: "Evidence directory for this run, for example runs/20260512_my_task."
+  - key: task
+    input_type: string
+    requirement: user_prompt
+    description: "Engineering task Goose should perform."
+  - key: task_type
+    input_type: select
+    requirement: optional
+    description: "Workbench routing task type."
+    default: "implement"
+    options:
+      - "implement"
+      - "review"
+      - "investigate"
+      - "test"
+  - key: risk
+    input_type: select
+    requirement: optional
+    description: "Risk level for routing and quality-gate policy."
+    default: "medium"
+    options:
+      - "low"
+      - "medium"
+      - "high"
+  - key: validation_strength
+    input_type: select
+    requirement: optional
+    description: "Expected strength of deterministic validation coverage."
+    default: "medium"
+    options:
+      - "weak"
+      - "medium"
+      - "strong"
+  - key: validation_profile
+    input_type: string
+    requirement: optional
+    description: "Validation profile from configs/validation_profiles.yaml."
+    default: "run_signoff"
+  - key: routing_feedback_path
+    input_type: string
+    requirement: optional
+    description: "Optional analytics report used for advisory routing feedback."
+    default: "runs/_reports/run_metrics.json"
+  - key: prompt
+    input_type: string
+    requirement: optional
+    description: "Approved prompt name used for routing metadata."
+    default: "implement_request_change_request"
+  - key: complexity_score
+    input_type: number
+    requirement: optional
+    description: "Optional 1-25 complexity score for model routing."
+    default: "13"
+
+extensions:
+  - type: builtin
+    name: developer
+    description: "Goose developer tools for shell commands, file reads, and edits."
+  - type: stdio
+    name: "AI Workbench MCP"
+    cmd: "ai-workbench-mcp"
+    args: []
+    timeout: 300
+    bundled: false
+    description: "AI Workbench routing, validation, quality gate, and run analytics."
+    available_tools:
+      - "workbench_open_run"
+      - "workbench_select_model"
+      - "workbench_record_execution"
+      - "workbench_validate_run"
+      - "workbench_quality_gate"
+      - "workbench_analyze_runs"
+
+instructions: |
+  You are running an AI Workbench acceptance workflow through Goose.
+
+  Use the AI Workbench MCP tools as the source of truth for routing, validation, quality gate decisions, and analytics. Do not claim the run is accepted unless deterministic validation and the quality gate both support that conclusion.
+
+  Workflow:
+  1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-engineering-acceptance.yaml".
+  2. Call workbench_select_model with project="{{ project }}", task_type="{{ task_type }}", risk="{{ risk }}", validation_strength="{{ validation_strength }}", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-engineering-acceptance.yaml", validation_profile="{{ validation_profile }}", routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
+  3. Perform the requested engineering task: {{ task }}
+  4. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
+  5. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
+     If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
+  6. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. Focused change profiles require non-empty changed files that exactly match current worktree diff evidence.
+  7. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
+  8. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
+  9. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
+
+prompt: |
+  Task: {{ task }}
+
+  Run directory: {{ run_dir }}
+  Project: {{ project }}
+  Task type: {{ task_type }}
+  Risk: {{ risk }}
+  Validation profile: {{ validation_profile }}
+
+  Start by opening the Workbench run, then select the model tier with Workbench. Complete the engineering work, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
+
+activities:
+  - "Run an accepted engineering workflow for: {{ task }}"
+  - "Validate and quality-gate the evidence in {{ run_dir }}"

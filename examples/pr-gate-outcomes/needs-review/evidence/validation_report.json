@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "run_id": "pr-gate-demo-needs-review",
+  "project": "ai_workbench_mcp",
+  "profile": "api_contract_change",
+  "generated_at": "2026-05-18T00:01:00Z",
+  "commands_run": [
+    {
+      "name": "contract_shape_tests",
+      "command": "python -m pytest tests/test_contracts.py -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 220
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [
+    {
+      "name": "artifact_presence",
+      "status": "passed",
+      "summary": "Required Workbench evidence artifacts are present.",
+      "details": [
+        "Found validation_report.json.",
+        "Found revision_decision.json.",
+        "Found model_output.md.",
+        "Found run_log.jsonl."
+      ],
+      "reason_codes": [
+        "artifact_presence.passed"
+      ]
+    }
+  ],
+  "review_checks": [
+    {
+      "name": "contract_owner_approval",
+      "status": "needs_review",
+      "summary": "API contract changes require maintainer review before merge.",
+      "details": [
+        "The deterministic contract check passed.",
+        "Policy still requires a human contract-owner review."
+      ],
+      "reason_codes": [
+        "api_contract_change.review_required"
+      ]
+    }
+  ],
+  "missing_context_notes": {
+    "needs_review": [
+      "Record contract-owner approval before treating this PR as accepted."
+    ],
+    "info": []
+  },
+  "overall_status": "needs_review",
+  "sign_off_ready": false,
+  "confidence": 0.7,
+  "summary": {
+    "commands_passed": 1,
+    "commands_failed": 0,
+    "checks_passed": 1,
+    "checks_needs_review": 1,
+    "checks_failed": 0
+  },
+  "policy_pack": {
+    "name": "api_contract_change",
+    "version": "v0.2"
+  },
+  "reason_codes": [
+    "api_contract_change.review_required"
+  ],
+  "reason_sources": [
+    {
+      "code": "api_contract_change.review_required",
+      "status": "needs_review",
+      "severity": "review",
+      "source": "validation_report",
+      "name": "contract_owner_approval",
+      "summary": "API contract changes require maintainer review before merge.",
+      "details": [
+        "No blocker-severity finding was recorded.",
+        "Human review is still required by policy."
+      ]
+    }
+  ]
+}

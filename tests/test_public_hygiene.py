@@ -12,6 +12,7 @@ GITIGNORE = ROOT / ".gitignore"
 CI_WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
 MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
 PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
+V03_RELEASE_NOTE = ROOT / "docs" / "releases" / "v0.3-semantic-pr-acceptance-alpha.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 ACCEPTANCE_CONCEPT = ROOT / "docs" / "concepts" / "how-acceptance-works.md"
@@ -178,6 +179,20 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertEqual(metadata["name"], EXPECTED_MCP_SERVER_NAME)
         self.assertIn(expected_marker, readme_text)
         self.assertEqual(readme_text.count("mcp-name:"), 1)
+
+    def test_v03_milestone_note_does_not_claim_published_package(self) -> None:
+        metadata = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
+        pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+        readme_text = README.read_text(encoding="utf-8")
+        release_text = V03_RELEASE_NOTE.read_text(encoding="utf-8")
+
+        self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
+        self.assertEqual(metadata["version"], "0.2.0a0")
+        self.assertEqual(metadata["packages"][0]["version"], "0.2.0a0")
+        self.assertIn("Milestone note, not a published package release.", release_text)
+        self.assertIn("Published Python package: `ai-workbench-mcp==0.2.0a0`", release_text)
+        self.assertIn("No v0.3 PyPI release is claimed by this note.", release_text)
+        self.assertIn("latest published package remains `ai-workbench-mcp==0.2.0a0`", readme_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")

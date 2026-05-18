@@ -12,6 +12,7 @@ import time
 
 from .config_loader import load_simple_yaml
 from .context_scout import WORKBENCH_ROOT, load_project_config, resolve_cli_path
+from .policy_packs import resolve_policy_pack_reference
 from .response_format import extract_preferred_response_text, missing_required_sections
 
 
@@ -103,6 +104,8 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
     if not isinstance(profile_data, dict):
         raise ValueError(f"Validation profile must be a mapping: {profile_name}")
 
+    policy_pack = resolve_policy_pack_reference(profile_name, profile_data)
+
     return ValidationProfile(
         name=profile_name,
         description=str(profile_data.get("description", "")),
@@ -117,9 +120,7 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
         task_test_command=profile_data.get("task_test_command", {})
         if isinstance(profile_data.get("task_test_command", {}), dict)
         else {},
-        policy_pack=profile_data.get("policy_pack", {})
-        if isinstance(profile_data.get("policy_pack", {}), dict)
-        else {},
+        policy_pack=policy_pack,
     )
 
 
@@ -1207,15 +1208,19 @@ def build_validation_report(
         artifact_checks=artifact_checks,
         review_checks=review_checks,
     )
+    policy_pack_summary = {
+        "name": str(profile.policy_pack.get("name", profile.name)),
+        "version": str(profile.policy_pack.get("version", "v0.2")),
+    }
+    policy_pack_source = profile.policy_pack.get("source")
+    if isinstance(policy_pack_source, str) and policy_pack_source.strip():
+        policy_pack_summary["source"] = policy_pack_source.strip()
 
     return {
         "run_id": run_id,
         "project": project_key,
         "profile": profile.name,
-        "policy_pack": {
-            "name": str(profile.policy_pack.get("name", profile.name)),
-            "version": str(profile.policy_pack.get("version", "v0.2")),
-        },
+        "policy_pack": policy_pack_summary,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "commands_run": [asdict(result) for result in commands_run],
         "commands_not_run": commands_not_run,

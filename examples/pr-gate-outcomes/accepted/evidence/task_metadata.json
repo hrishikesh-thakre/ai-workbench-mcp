@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "run_id": "pr-gate-demo-accepted",
+  "project": "ai_workbench_mcp",
+  "task_type": "docs_only",
+  "risk": "low",
+  "recipe": "workbench-docs-only-acceptance.yaml",
+  "prompt": "documentation_accuracy_audit",
+  "execution_host": "goose",
+  "created_at": "2026-05-18T00:00:00Z",
+  "summary": "Synthetic docs-only PR evidence used to demonstrate an accepted PR gate outcome."
+}

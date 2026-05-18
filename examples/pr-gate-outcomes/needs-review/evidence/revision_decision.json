@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-18T00:02:00Z",
+  "loop_type": "human_review",
+  "required": true,
+  "reason": "Policy requires contract-owner review before merge.",
+  "next_action": "Record contract-owner approval, then regenerate the PR gate artifact.",
+  "accepted_pass": 0,
+  "final_status": "review_required",
+  "authoritative_model_output": "model_output.md",
+  "authoritative_validation_report": "validation_report.json",
+  "blocking_findings": [],
+  "non_blocking_findings": [
+    "Contract-owner review is required by policy."
+  ],
+  "reason_codes": [
+    "quality_gate.review_required"
+  ],
+  "reason_sources": [
+    {
+      "code": "quality_gate.review_required",
+      "status": "review_required",
+      "severity": "review",
+      "source": "revision_decision",
+      "name": "quality_gate",
+      "summary": "Policy requires contract-owner review before merge.",
+      "details": [
+        "Deterministic validation did not fail.",
+        "Manual approval has not been recorded."
+      ]
+    }
+  ]
+}

@@ -23,6 +23,7 @@ Documentation = "https://github.com/hrishikesh-thakre/ai-workbench-mcp#readme"
 
 [project.scripts]
 ai-workbench-mcp = "ai_workbench_mcp.server:main"
+ai-workbench-bootstrap-assets = "ai_workbench_mcp.tools.bootstrap_assets:main"
 
 [project.optional-dependencies]
 dev = ["pytest"]
@@ -31,6 +32,9 @@ publish = ["build", "twine"]
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["ai_workbench_mcp*"]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.package-data]
 ai_workbench_mcp = ["py.typed"]

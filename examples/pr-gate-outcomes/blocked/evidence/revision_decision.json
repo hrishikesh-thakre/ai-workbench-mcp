@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-18T00:02:00Z",
+  "loop_type": "policy_blocker",
+  "required": true,
+  "reason": "Docs-only policy was violated by source-code changes.",
+  "next_action": "Move source-code edits to an implementation profile or remove them, rerun validation, and regenerate the PR gate artifact.",
+  "accepted_pass": 0,
+  "final_status": "review_required",
+  "authoritative_model_output": "model_output.md",
+  "authoritative_validation_report": "validation_report.json",
+  "blocking_findings": [
+    "Source file changed in docs-only policy."
+  ],
+  "non_blocking_findings": [],
+  "reason_codes": [
+    "quality_gate.blocker_present"
+  ],
+  "reason_sources": [
+    {
+      "code": "quality_gate.blocker_present",
+      "status": "review_required",
+      "severity": "blocker",
+      "source": "revision_decision",
+      "name": "quality_gate",
+      "summary": "Source file changed in docs-only policy.",
+      "details": [
+        "Blocker-severity evidence prevents a needs-review PR gate outcome."
+      ]
+    }
+  ]
+}

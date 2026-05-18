@@ -23,6 +23,7 @@ STANDARD_EVIDENCE = (
 )
 ACCEPTANCE_EVIDENCE_MISSING_CODE = "pr_gate.acceptance_evidence_missing"
 ACCEPTANCE_EVIDENCE_MISSING_REASON = "No complete Workbench acceptance evidence found for this PR."
+SCAFFOLD_PROFILES = {"scaffold"}
 
 
 @dataclass(frozen=True)
@@ -206,6 +207,16 @@ def has_blocker_reason_source(*payloads: dict[str, object]) -> bool:
     return any(str(source.get("severity")) == "blocker" for source in reason_sources_from(*payloads))
 
 
+def first_blocker_reason_summary(*payloads: dict[str, object]) -> str | None:
+    for source in reason_sources_from(*payloads):
+        if str(source.get("severity")) != "blocker":
+            continue
+        summary = source.get("summary")
+        if isinstance(summary, str) and summary.strip():
+            return summary.strip()
+    return None
+
+
 def first_reason_summary(*payloads: dict[str, object]) -> str | None:
     for source in reason_sources_from(*payloads):
         summary = source.get("summary")
@@ -238,6 +249,44 @@ def default_next_action(outcome: str) -> str:
     return "Produce complete Workbench validation and quality-gate evidence, resolve blockers, then regenerate the PR gate artifact."
 
 
+def is_scaffold_only_evidence(report: dict[str, object], evidence_source: str) -> bool:
+    if evidence_source == "fallback_scaffold":
+        return True
+    profile = str(report.get("profile") or "").strip().lower()
+    return profile in SCAFFOLD_PROFILES
+
+
+def acceptance_evidence_missing_decision(
+    *,
+    run_dir: Path,
+    evidence_source: str,
+    source_run_dir: str,
+    report: dict[str, object],
+    evidence: list[dict[str, object]],
+    decision: dict[str, object] | None = None,
+) -> dict[str, object]:
+    decision_payload = decision or {}
+    reason_codes = append_reason_code(reason_codes_from(report, decision_payload), ACCEPTANCE_EVIDENCE_MISSING_CODE)
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "operation": OPERATION,
+        "outcome": "block",
+        "ok": True,
+        "run_id": str(report.get("run_id") or decision_payload.get("run_id") or run_dir.name or "unknown"),
+        "evidence_source": evidence_source,
+        "source_run_dir": source_run_dir,
+        "validation_status": str(report.get("overall_status", "unknown")),
+        "quality_gate_status": str(decision_payload.get("final_status", "unknown")),
+        "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
+        "reason_codes": reason_codes,
+        "evidence": evidence,
+        "required_next_action": (
+            "Provide a complete Workbench acceptance run with validation_report.json and "
+            "revision_decision.json, then regenerate the PR gate artifact."
+        ),
+    }
+
+
 def decision_from_evidence(
     run_dir: Path,
     *,
@@ -258,7 +307,17 @@ def decision_from_evidence(
     validation_status = str(report.get("overall_status", "unknown"))
     quality_gate_status = str(decision.get("final_status", "unknown"))
     reason_codes = reason_codes_from(report, decision)
+    source_label = source_run_dir or safe_source_label(run_dir)
 
+    if validation_read.error is None and is_scaffold_only_evidence(report, evidence_source):
+        return acceptance_evidence_missing_decision(
+            run_dir=run_dir,
+            evidence_source=evidence_source,
+            source_run_dir=source_label,
+            report=report,
+            decision=decision,
+            evidence=evidence,
+        )
     if blocking_problems:
         outcome = "block"
         reason = " ".join(blocking_problems)
@@ -268,9 +327,16 @@ def decision_from_evidence(
         reason = first_reason_summary(decision, report) or "Validation passed and the quality gate accepted the run."
         next_action = str(decision.get("next_action") or default_next_action(outcome))
     elif validation_status == "failed" or quality_gate_status == "revision_required" or has_blocker_reason_source(report, decision):
+        blocker_reason = first_blocker_reason_summary(report, decision)
         outcome = "block"
         reason = (
-            str(decision.get("reason") or "").strip()
+            (
+                blocker_reason
+                if validation_status != "failed" and quality_gate_status != "revision_required"
+                else None
+            )
+            or str(decision.get("reason") or "").strip()
+            or blocker_reason
             or first_reason_summary(report, decision)
             or failed_command_reason(report)
             or "Workbench evidence contains blocker findings."
@@ -296,7 +362,7 @@ def decision_from_evidence(
         "ok": True,
         "run_id": str(report.get("run_id") or decision.get("run_id") or run_dir.name),
         "evidence_source": evidence_source,
-        "source_run_dir": source_run_dir or safe_source_label(run_dir),
+        "source_run_dir": source_label,
         "validation_status": validation_status,
         "quality_gate_status": quality_gate_status,
         "reason": reason,
@@ -310,44 +376,47 @@ def fallback_decision_from_evidence(selection: EvidenceSelection) -> dict[str, o
     validation_read = read_json_artifact(selection.run_dir, "validation_report", "validation_report.json")
     report = validation_read.payload
     evidence = [evidence_entry(selection.run_dir, label, file_name) for label, file_name in STANDARD_EVIDENCE]
-    validation_status = str(report.get("overall_status", "unknown"))
-    reason_codes = append_reason_code(reason_codes_from(report), ACCEPTANCE_EVIDENCE_MISSING_CODE)
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "operation": OPERATION,
-        "outcome": "block",
-        "ok": True,
-        "run_id": str(report.get("run_id") or selection.run_dir.name or "unknown"),
-        "evidence_source": selection.evidence_source,
-        "source_run_dir": selection.source_run_dir,
-        "validation_status": validation_status,
-        "quality_gate_status": "unknown",
-        "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
-        "reason_codes": reason_codes,
-        "evidence": evidence,
-        "required_next_action": (
-            "Provide a complete Workbench acceptance run with validation_report.json and "
-            "revision_decision.json, then regenerate the PR gate artifact."
-        ),
-    }
+    return acceptance_evidence_missing_decision(
+        run_dir=selection.run_dir,
+        evidence_source=selection.evidence_source,
+        source_run_dir=selection.source_run_dir,
+        report=report,
+        evidence=evidence,
+    )
 
 
 def markdown_escape(value: object) -> str:
     return str(value).replace("|", "\\|")
 
 
+def evidence_present_value(evidence: list[object], label: str) -> str:
+    for entry in evidence:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("label") == label:
+            return "yes" if entry.get("present") is True else "no"
+    return "no"
+
+
 def render_comment(decision: dict[str, object]) -> str:
     outcome = str(decision.get("outcome", "block"))
     reason_codes = [str(code) for code in list_from(decision.get("reason_codes"))]
     evidence = [entry for entry in list_from(decision.get("evidence")) if isinstance(entry, dict)]
+    validation_present = evidence_present_value(evidence, "validation_report")
+    revision_present = evidence_present_value(evidence, "revision_decision")
     lines = [
         f"# AI Workbench PR Gate: {display_outcome(outcome)}",
+        "",
+        f"Decision: {display_outcome(outcome)}",
+        f"Why: {decision.get('reason', 'unknown')}",
+        f"Required next action: {decision.get('required_next_action', default_next_action(outcome))}",
+        f"Evidence present: validation_report {validation_present}, revision_decision {revision_present}",
+        "",
+        "## Details",
         "",
         f"**Run ID:** `{decision.get('run_id', 'unknown')}`",
         f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
         f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
-        f"**Reason:** {decision.get('reason', 'unknown')}",
-        f"**Required next action:** {decision.get('required_next_action', default_next_action(outcome))}",
         "",
         "## Status",
         "",

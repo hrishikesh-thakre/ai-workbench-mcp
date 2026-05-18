@@ -1,0 +1,17 @@
+projects:
+  ai_workbench_mcp:
+    root: .
+    description: AI Workbench MCP trust-layer extraction.
+    docs:
+      start_here: docs/ai/START_HERE.md
+      project_map: docs/ai/PROJECT_MAP.md
+      decisions: docs/ai/DECISIONS.md
+      roadmap: docs/ai/ROADMAP_STATUS.md
+    prompts_dir: prompts/approved
+    tools_dir: tools
+    configs_dir: configs
+    runs_dir: runs
+    evals_dir: evals
+    default_context_profile: default_docs_first
+    default_validation_profile: scaffold
+    default_prompt: implement_request_change_request

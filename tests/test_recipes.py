@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 from ai_workbench_mcp.tools.config_loader import load_simple_yaml
+from ai_workbench_mcp.tools.policy_packs import PRODUCT_POLICY_PACK_NAMES, load_policy_pack_catalog
 
 RECIPES_DIR = ROOT / "recipes"
 RECIPE_PATH = ROOT / "recipes" / "workbench-engineering-acceptance.yaml"
@@ -13,6 +14,7 @@ DOCS_ONLY_RECIPE_PATH = ROOT / "recipes" / "workbench-docs-only-acceptance.yaml"
 PYTHON_PACKAGE_RECIPE_PATH = ROOT / "recipes" / "workbench-python-package-maintenance.yaml"
 TEST_FIX_RECIPE_PATH = ROOT / "recipes" / "workbench-test-fix-acceptance.yaml"
 VALIDATION_PROFILES_PATH = ROOT / "configs" / "validation_profiles.yaml"
+POLICY_PACKS_PATH = ROOT / "configs" / "policy_packs.yaml"
 FULL_ACCEPTANCE_TOOLS = [
     "workbench_open_run",
     "workbench_select_model",
@@ -33,6 +35,10 @@ def validation_profiles() -> dict[str, object]:
     if not isinstance(profiles, dict):
         raise AssertionError("configs/validation_profiles.yaml must define a profiles mapping")
     return profiles
+
+
+def policy_pack_catalog() -> dict[str, dict[str, object]]:
+    return load_policy_pack_catalog(POLICY_PACKS_PATH)
 
 
 def recipe_parameter_default(text: str, key: str) -> str | None:
@@ -265,14 +271,18 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
 
     def test_core_policy_packs_define_machine_readable_metadata(self) -> None:
         profiles = validation_profiles()
-        core_profiles = {
-            "docs_only",
-            "low_risk_bug_fix",
-            "test_fix",
-            "api_contract_change",
-            "security_privacy_sensitive",
-        }
+        catalog = policy_pack_catalog()
+        core_profiles = set(PRODUCT_POLICY_PACK_NAMES)
 
+        self.assertEqual(set(catalog), core_profiles)
+        self.assertEqual(
+            {
+                profile_name
+                for profile_name, profile_data in profiles.items()
+                if isinstance(profile_data, dict) and "policy_pack" in profile_data
+            },
+            core_profiles,
+        )
         for profile_name in core_profiles:
             profile_data = profiles[profile_name]
             commands = {
@@ -282,12 +292,17 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
             }
             if profile_data.get("task_test_command"):
                 commands.add("task_test_command")
-            policy_pack = profile_data.get("policy_pack")
+            policy_pack_ref = profile_data.get("policy_pack")
+            policy_pack = catalog[profile_name]
 
             with self.subTest(profile=profile_name):
-                self.assertIsInstance(policy_pack, dict)
+                self.assertIsInstance(policy_pack_ref, dict)
+                self.assertEqual(policy_pack_ref.get("name"), profile_name)
+                self.assertNotIn("allowed_files", policy_pack_ref)
+
                 self.assertEqual(policy_pack.get("name"), profile_name)
                 self.assertEqual(policy_pack.get("version"), "v0.2")
+                self.assertEqual(policy_pack.get("source"), "configs/policy_packs.yaml")
 
                 for key in (
                     "allowed_files",
@@ -305,6 +320,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("accepted", reason_codes)
                 self.assertIn("required_test_missing", reason_codes)
                 self.assertIn("required_test_failed", reason_codes)
+                self.assertIn("required_tests_passed", reason_codes)
 
                 self.assertEqual(
                     policy_pack.get("required_evidence"),

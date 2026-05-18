@@ -1,0 +1,37 @@
+quality_loop:
+  enabled: true
+
+  same_model_retry:
+    enabled: true
+    max_attempts: 1
+    triggers:
+      - required_section_missing
+      - output_incomplete
+      - model_output_status_needs_review
+
+  alternate_model_review:
+    enabled: true
+    reviewer_tier: frontier
+    triggers:
+      - risk_high
+      - security_privacy_task
+      - architecture_task
+      - api_contract_change
+      - validation_failed
+      - missing_context_needs_review
+      - cheap_model_medium_risk
+      - local_model_medium_risk
+
+  pairwise_compare:
+    enabled: true
+    evaluator_tier: frontier
+    triggers:
+      - two_candidate_outputs
+      - conflicting_reviews
+
+  human_review:
+    triggers:
+      - destructive_action
+      - secret_handling
+      - deploy_or_rollback
+      - unresolved_blocking_review

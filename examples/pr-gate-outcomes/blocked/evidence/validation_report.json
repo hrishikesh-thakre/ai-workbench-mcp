@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "run_id": "pr-gate-demo-blocked",
+  "project": "ai_workbench_mcp",
+  "profile": "docs_only",
+  "generated_at": "2026-05-18T00:01:00Z",
+  "commands_run": [
+    {
+      "name": "example_docs_tests",
+      "command": "python -m pytest tests/test_examples.py -q -p no:cacheprovider",
+      "cwd": ".",
+      "required": true,
+      "weight": 1.0,
+      "exit_code": 0,
+      "status": "passed",
+      "duration_ms": 190
+    }
+  ],
+  "commands_not_run": [],
+  "artifact_checks": [
+    {
+      "name": "changed_file_policy",
+      "status": "failed",
+      "summary": "Source file changed in docs-only policy.",
+      "details": [
+        "The docs-only policy allows documentation and example evidence files.",
+        "A source-code file was present in the changed-file evidence."
+      ],
+      "reason_codes": [
+        "docs_only.source_file_blocked"
+      ]
+    }
+  ],
+  "review_checks": [],
+  "missing_context_notes": {
+    "needs_review": [
+      "Use an implementation profile for source-code changes or remove the source edit."
+    ],
+    "info": []
+  },
+  "overall_status": "needs_review",
+  "sign_off_ready": false,
+  "confidence": 0.2,
+  "summary": {
+    "commands_passed": 1,
+    "commands_failed": 0,
+    "checks_passed": 0,
+    "checks_needs_review": 0,
+    "checks_failed": 1
+  },
+  "policy_pack": {
+    "name": "docs_only",
+    "version": "v0.2"
+  },
+  "reason_codes": [
+    "docs_only.source_file_blocked"
+  ],
+  "reason_sources": [
+    {
+      "code": "docs_only.source_file_blocked",
+      "status": "failed",
+      "severity": "blocker",
+      "source": "validation_report",
+      "name": "changed_file_policy",
+      "summary": "Source file changed in docs-only policy.",
+      "details": [
+        "The selected policy profile was docs_only.",
+        "The changed-file evidence included a source-code file."
+      ]
+    }
+  ]
+}

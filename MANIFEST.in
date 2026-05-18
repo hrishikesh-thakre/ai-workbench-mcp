@@ -1,0 +1,3 @@
+recursive-include src/ai_workbench_mcp/assets/configs *.yaml
+recursive-include src/ai_workbench_mcp/assets/prompts *.md
+recursive-include src/ai_workbench_mcp/assets/recipes *.yaml
