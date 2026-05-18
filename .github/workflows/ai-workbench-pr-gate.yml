@@ -9,7 +9,7 @@ on:
         description: "pip package spec for the PR gate renderer."
         required: false
         type: string
-        default: "ai-workbench-mcp==0.2.0a0"
+        default: "ai-workbench-mcp==0.3.0a0"
       workbench_run_dir:
         description: "Path to a Workbench run directory containing validation_report.json and revision_decision.json."
         required: false
@@ -33,7 +33,7 @@ on:
         description: "pip package spec for the PR gate renderer."
         required: false
         type: string
-        default: "ai-workbench-mcp==0.2.0a0"
+        default: "ai-workbench-mcp==0.3.0a0"
       workbench_run_dir:
         description: "Path to a Workbench run directory containing validation_report.json and revision_decision.json."
         required: false
@@ -59,7 +59,7 @@ permissions:
   contents: read
 
 env:
-  AI_WORKBENCH_MCP_PACKAGE: ${{ inputs.ai_workbench_mcp_package || vars.AI_WORKBENCH_MCP_PACKAGE || 'ai-workbench-mcp==0.2.0a0' }}
+  AI_WORKBENCH_MCP_PACKAGE: ${{ inputs.ai_workbench_mcp_package || vars.AI_WORKBENCH_MCP_PACKAGE || 'ai-workbench-mcp==0.3.0a0' }}
   WORKBENCH_RUN_DIR: ${{ inputs.workbench_run_dir || vars.WORKBENCH_RUN_DIR || '' }}
   WORKBENCH_RUNS_DIR: ${{ inputs.workbench_runs_dir || vars.WORKBENCH_RUNS_DIR || '' }}
   WORKBENCH_RUN_ID: ${{ inputs.workbench_run_id || vars.WORKBENCH_RUN_ID || '' }}

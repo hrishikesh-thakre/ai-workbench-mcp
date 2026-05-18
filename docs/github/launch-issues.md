@@ -2,7 +2,7 @@
 
 These launch issue seeds are public GitHub issues. This page is now a historical launch backlog plus current v0.3 status, not a fresh list of work to start from scratch.
 
-The current product focus is the v0.3 Semantic PR Acceptance Alpha: real Workbench evidence for PR acceptance, five first-class policy packs, a copy-paste GitHub workflow, bootstrap assets, and sanitized PR gate outcome demos. The latest published package remains `ai-workbench-mcp==0.2.0a0`; do not imply a v0.3 package release is already published.
+The current product focus is the v0.3 Semantic PR Acceptance Alpha: real Workbench evidence for PR acceptance, five first-class policy packs, a copy-paste GitHub workflow, bootstrap assets, external-repo setup docs, an external sample repo proof plan, and sanitized PR gate outcome demos. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI; MCP Registry publication remains pending until registry authentication is refreshed.
 
 | Issue | Public link | Current disposition |
 |---|---|---|

@@ -208,7 +208,7 @@ class ContractDocumentationTests(unittest.TestCase):
             "GitHub Workflow Template Boundary",
             ".github/workflows/ai-workbench-pr-gate.yml",
             "Package And Bootstrap Boundary",
-            "ai-workbench-mcp==0.2.0a0",
+            "ai-workbench-mcp==0.3.0a0",
             "ai-workbench-bootstrap-assets",
             "Deliberately Not Stable Yet",
         ]

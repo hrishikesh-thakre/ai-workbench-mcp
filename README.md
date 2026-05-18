@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is the v0.3 Semantic PR Acceptance Alpha. The latest published package remains `ai-workbench-mcp==0.2.0a0`; do not treat v0.3 as a published PyPI release until a versioned release note says so.
+Current repo work is the v0.3 Semantic PR Acceptance Alpha release branch. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry metadata validates for `0.3.0a0`, but registry publication still requires a refreshed registry login.
 
 ## Before
 
@@ -93,25 +93,25 @@ For a PR gate to report `accept`, the referenced run must include deterministic 
 - `needs_review`: validation or the quality gate requires review and no blocker-severity reason is present.
 - `block`: required evidence is missing or unreadable, validation failed, revision is required, blocker-severity evidence is present, or only scaffold fallback evidence exists.
 
-Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`. The copy-paste GitHub Actions template in [docs/github/pr-gate-workflow-template.md](docs/github/pr-gate-workflow-template.md) renders PR comments and JSON decisions from Workbench evidence; it does not run Goose, replace the evidence artifacts, or turn CI status into acceptance.
+Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`. The copy-paste GitHub Actions template in [docs/github/pr-gate-workflow-template.md](docs/github/pr-gate-workflow-template.md) renders PR comments and JSON decisions from Workbench evidence; it does not run Goose, replace the evidence artifacts, or turn CI status into acceptance. For the short external-repository path, use [Use AI Workbench PR Gate in your repo in 10 minutes](docs/github/external-repo-setup.md). For a true separate-repo proof target, use the [external sample repository proof plan](docs/github/external-sample-repo-plan.md).
 
 ## 5-Minute Quickstart
 
-Install the published MCP server package:
+Install the published v0.3 package:
 
 ```bash
-python -m pip install ai-workbench-mcp==0.2.0a0
+python -m pip install ai-workbench-mcp==0.3.0a0
 ```
 
-For the full Goose recipe workflow in this checked-out repository, install from the repository root:
+For source development in this checked-out repository, install editable:
 
 ```bash
 python -m pip install -e .
 ```
 
-The published PyPI wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
+The prepared `0.3.0a0` source build includes bootstrappable configs, prompts, and recipes through `ai-workbench-bootstrap-assets`. Historical `0.2.0a0` wheels are code/server only. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the package boundary and release checklist.
 
-The source tree also contains bootstrap assets for the next package boundary, including `ai-workbench-bootstrap-assets` and package resources for configs, prompts, and recipes. Those assets are present in the repo; they do not mean a v0.3 package has been published.
+Bootstrap assets do not include private `runs/` evidence, committed proof fixtures, provider setup, examples, or evals.
 
 For a first local run, use this order:
 
@@ -413,6 +413,8 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
 - [PR gate renderer guide](docs/github/pr-gate.md): local artifact rendering and sticky-comment safety notes.
 - [Copy-paste PR gate workflow template](docs/github/pr-gate-workflow-template.md): reusable GitHub Actions workflow that renders `accept`, `needs_review`, or `block` from Workbench evidence.
+- [External repo setup guide](docs/github/external-repo-setup.md): one-page setup path for adding the PR gate to another repository.
+- [External sample repo proof plan](docs/github/external-sample-repo-plan.md): plan for proving the workflow in a separate toy repository.
 - [PR gate outcome demos](docs/proof/pr-gate-outcome-demos.md): sanitized evidence fixtures for all three PR gate outcomes.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 - [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
@@ -446,8 +448,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, and sanitized PR gate outcome demos.
-- Next: final PR gate contract docs, release/version decision, Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
+- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, an external sample repo proof plan, and sanitized PR gate outcome demos.
+- Next: complete `0.3.0a0` TestPyPI/PyPI/MCP Registry verification, then continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics

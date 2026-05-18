@@ -100,11 +100,17 @@ class PublicHygieneTests(unittest.TestCase):
             ],
         )
 
-    def test_operating_docs_are_aligned_to_v02_release_candidate_state(self) -> None:
+    def test_operating_docs_are_aligned_to_release_branch_state(self) -> None:
+        expected_status_by_path = {
+            ROOT / "docs" / "ai" / "START_HERE.md": "Status: v0.3 semantic PR acceptance alpha release branch",
+            ROOT / "docs" / "ai" / "DECISIONS.md": "Status: v0.2 alpha release candidate",
+            ROOT / "docs" / "ai" / "PROJECT_MAP.md": "Status: v0.2 alpha release candidate",
+            ROOT / "docs" / "ai" / "ROADMAP_STATUS.md": "Status: v0.3 semantic PR acceptance alpha release branch",
+        }
         for path in OPERATING_DOCS:
             with self.subTest(path=path.relative_to(ROOT)):
                 text = path.read_text(encoding="utf-8")
-                self.assertIn("Status: v0.2 alpha release candidate", text)
+                self.assertIn(expected_status_by_path[path], text)
                 self.assertNotIn("Status: v0.1 alpha baseline", text)
 
         roadmap = (ROOT / "docs" / "ai" / "ROADMAP_STATUS.md").read_text(encoding="utf-8")
@@ -115,18 +121,20 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertNotIn("Phase 4: v0.2 Recipe And Policy Packs (Next)", roadmap)
         self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)
 
-    def test_package_version_matches_v02_alpha_release_docs(self) -> None:
+    def test_package_version_matches_v03_release_branch_docs(self) -> None:
         pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
-        release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
+        v02_release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
+        v03_release_note = V03_RELEASE_NOTE.read_text(encoding="utf-8")
 
         self.assertEqual(pyproject["build-system"]["build-backend"], "setuptools.build_meta")
         self.assertIn("setuptools>=68", pyproject["build-system"]["requires"])
-        self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
+        self.assertEqual(pyproject["project"]["version"], "0.3.0a0")
         self.assertEqual(pyproject["project"]["license"], "Apache-2.0")
         self.assertEqual(pyproject["project"]["optional-dependencies"]["publish"], ["build", "twine"])
         self.assertEqual(pyproject["tool"]["setuptools"]["packages"]["find"]["where"], ["src"])
         self.assertEqual(pyproject["tool"]["setuptools"]["package-data"]["ai_workbench_mcp"], ["py.typed"])
-        self.assertIn("Python package version: `0.2.0a0`", release_note)
+        self.assertIn("Python package version: `0.2.0a0`", v02_release_note)
+        self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", v03_release_note)
         self.assertEqual(
             pyproject["project"]["urls"],
             {
@@ -186,13 +194,13 @@ class PublicHygieneTests(unittest.TestCase):
         readme_text = README.read_text(encoding="utf-8")
         release_text = V03_RELEASE_NOTE.read_text(encoding="utf-8")
 
-        self.assertEqual(pyproject["project"]["version"], "0.2.0a0")
-        self.assertEqual(metadata["version"], "0.2.0a0")
-        self.assertEqual(metadata["packages"][0]["version"], "0.2.0a0")
-        self.assertIn("Milestone note, not a published package release.", release_text)
-        self.assertIn("Published Python package: `ai-workbench-mcp==0.2.0a0`", release_text)
-        self.assertIn("No v0.3 PyPI release is claimed by this note.", release_text)
-        self.assertIn("latest published package remains `ai-workbench-mcp==0.2.0a0`", readme_text)
+        self.assertEqual(pyproject["project"]["version"], "0.3.0a0")
+        self.assertEqual(metadata["version"], "0.3.0a0")
+        self.assertEqual(metadata["packages"][0]["version"], "0.3.0a0")
+        self.assertIn("Release note with package upload proof.", release_text)
+        self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", release_text)
+        self.assertIn("No MCP Registry publication is claimed by this note.", release_text)
+        self.assertIn("`ai-workbench-mcp==0.3.0a0` is published and exact-version install verified", readme_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
@@ -257,14 +265,16 @@ class PublicHygieneTests(unittest.TestCase):
         launch_issues_text = (ROOT / "docs" / "github" / "launch-issues.md").read_text(encoding="utf-8")
 
         self.assertIn("dist/", gitignore_text)
-        self.assertIn("published to PyPI as `ai-workbench-mcp==0.2.0a0`", pypi_text)
+        self.assertIn("Published package version: `ai-workbench-mcp==0.3.0a0`", pypi_text)
+        self.assertIn("latest historical verified publication before this release was `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("code/server only", pypi_text)
         self.assertIn("checked-out repository", pypi_text)
         self.assertIn("python -m build", pypi_text)
         self.assertIn("python -m twine check dist/*", pypi_text)
         self.assertIn("python -m pip install --force-reinstall", pypi_text)
         self.assertIn("Fresh virtual environment smoke", pypi_text)
-        self.assertIn("assert shutil.which('ai-workbench-mcp')", pypi_text)
+        self.assertIn("scripts/'ai-workbench-mcp.exe'", pypi_text)
+        self.assertIn("scripts/'ai-workbench-bootstrap-assets.exe'", pypi_text)
         self.assertIn("Do not run `ai-workbench-mcp` directly as a smoke command.", pypi_text)
         self.assertIn("external_launch_execution_prep.md", pypi_text)
         self.assertIn("python -m pip install -e \".[dev,publish]\"", pypi_text)
@@ -274,13 +284,19 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("explicit approval", pypi_text)
         self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
+        self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.3.0a0`", pypi_text)
+        self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.3.0a0/", pypi_text)
         self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
+        self.assertIn("PyPI release completed for `ai-workbench-mcp==0.3.0a0`", pypi_text)
+        self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.3.0a0/", pypi_text)
         self.assertIn("PyPI release completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
-        self.assertIn('"ai-workbench-mcp==0.2.0a0"', pypi_text)
-        self.assertIn("python -m pip install ai-workbench-mcp==0.2.0a0", pypi_text)
+        self.assertIn('"ai-workbench-mcp==0.3.0a0"', pypi_text)
+        self.assertIn("python -m pip install ai-workbench-mcp==0.3.0a0", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
+        self.assertIn("publication is blocked by an expired Registry JWT token", pypi_text)
+        self.assertIn("mcp-publisher validate server.json", pypi_text)
         self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", pypi_text)
         self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0`.", pypi_text)
         self.assertNotIn("MCP Registry submission remains pending.", pypi_text)

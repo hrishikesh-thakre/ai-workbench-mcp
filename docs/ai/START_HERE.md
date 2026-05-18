@@ -1,8 +1,8 @@
 # START_HERE
 
 Owner: AI Workbench MCP
-Status: v0.2 alpha release candidate
-Active milestone: v0.3 Semantic PR Acceptance Alpha. The latest published package remains `0.2.0a0` until a future release is explicitly published.
+Status: v0.3 semantic PR acceptance alpha release branch
+Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry metadata validates for `0.3.0a0`, but registry publication still requires a refreshed registry login.
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -42,7 +42,7 @@ Codex local/IDE remains the first second-host proof through the same MCP server 
 
 ## 3. Current State
 
-This is a v0.2 alpha-shaped package with active v0.3 PR acceptance work in the repo, not a completed stable release.
+This is a v0.3 alpha-shaped release branch with semantic PR acceptance work in the repo, not a completed stable release.
 
 Copied core:
 
@@ -129,7 +129,7 @@ Evidence boundary:
 - Read `docs/codex/setup.md`, `docs/codex/acceptance-workflow.md`, `docs/codex/agents-snippet.md`, and `docs/codex/cloud-limitations.md` before presenting Codex support.
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
-- Read `docs/github/pr-gate.md` and `docs/github/pr-gate-workflow-template.md` before using the PR gate renderer or copy-paste GitHub workflow.
+- Read `docs/github/pr-gate.md`, `docs/github/pr-gate-workflow-template.md`, and `docs/github/external-repo-setup.md` before using the PR gate renderer or copy-paste GitHub workflow in another repository.
 - Read `docs/contracts/v0.2-contract-baseline.md` before building downstream host, analytics, policy, or PR gate integrations against current schemas.
 - Read `docs/publishing/pypi.md` before attempting package publication.
 - Read `docs/proof/pr-gate-outcome-demos.md` before presenting the `accept`, `needs_review`, and `block` PR gate outcomes.
@@ -162,6 +162,8 @@ The current product pass is not more general dogfooding, more recipes, GEPA, ext
 - block scaffold-only fallback evidence with clear next action
 - keep five first-class policy packs clear and usable
 - provide a copy-paste GitHub workflow template
+- provide a one-page external repository setup guide
+- plan a real external sample repository proof without committing private `runs/` evidence
 - publish sanitized outcome demos without committing private `runs/` evidence
 - keep routing feedback advisory
 
@@ -180,6 +182,8 @@ Use:
 - `docs/github/launch-issues.md` for public alpha issue seeds.
 - `docs/publishing/pypi.md` for package publishing prep.
 - `docs/github/pr-gate-workflow-template.md` for the copy-paste PR gate GitHub Actions workflow.
+- `docs/github/external-repo-setup.md` for the 10-minute external repository setup path.
+- `docs/github/external-sample-repo-plan.md` for the separate toy-repository proof plan.
 - `docs/proof/pr-gate-outcome-demos.md` for sanitized v0.3 PR gate outcome fixtures.
 - `docs/walkthroughs/goose-acceptance-demo.md` for the recording-ready demo walkthrough.
 - `docs/walkthroughs/codex-acceptance-demo.md` for the Codex local/IDE proof walkthrough.

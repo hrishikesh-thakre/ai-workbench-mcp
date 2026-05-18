@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-workbench-mcp"
-version = "0.2.0a0"
+version = "0.3.0a0"
 description = "Goose-first acceptance, validation, routing, and audit layer for agentic work."
 readme = "README.md"
 requires-python = ">=3.11"

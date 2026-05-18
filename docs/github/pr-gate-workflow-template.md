@@ -10,7 +10,7 @@ The template renders PR-facing AI Workbench artifacts in any repository that can
 
 ## What The Template Does
 
-- Installs `ai-workbench-mcp==0.2.0a0` by default.
+- Installs `ai-workbench-mcp==0.3.0a0` by default.
 - Looks for a real Workbench run directory when one is provided.
 - Renders `runs/pr_gate/pr_comment.md` and `runs/pr_gate/pr_decision.json`.
 - Uploads those files as the `workbench-pr-gate` artifact.
@@ -30,7 +30,7 @@ The workflow supports the same evidence selection surface as the existing PR gat
 | `workbench_runs_dir` / `WORKBENCH_RUNS_DIR` | Parent folder containing run folders. Use with `workbench_run_id`. |
 | `workbench_run_id` / `WORKBENCH_RUN_ID` | Run folder name under `workbench_runs_dir`. |
 | `workbench_fallback_run_dir` / `WORKBENCH_FALLBACK_RUN_DIR` | Optional scaffold evidence folder used only when no real run directory exists. Defaults to `runs/ai_workbench_missing_evidence`. |
-| `ai_workbench_mcp_package` / `AI_WORKBENCH_MCP_PACKAGE` | pip package spec. Defaults to `ai-workbench-mcp==0.2.0a0`. |
+| `ai_workbench_mcp_package` / `AI_WORKBENCH_MCP_PACKAGE` | pip package spec. Defaults to `ai-workbench-mcp==0.3.0a0`. |
 
 You can set inputs through `workflow_dispatch` or `workflow_call`. For normal pull requests, set repository variables or edit the workflow after copying it into the target repository.
 

@@ -51,7 +51,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         ):
             self.assertIn(f"  {env_name}:", workflow)
 
-        self.assertIn("ai-workbench-mcp==0.2.0a0", workflow)
+        self.assertIn("ai-workbench-mcp==0.3.0a0", workflow)
 
     def test_render_job_uses_read_only_permissions_and_packaged_renderer(self) -> None:
         workflow = read_workflow()
