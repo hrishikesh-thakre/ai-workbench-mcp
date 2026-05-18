@@ -392,7 +392,38 @@ class ModelSelectorRoutingTests(unittest.TestCase):
         self.assertEqual(payload["routing_feedback"]["status"], "insufficient_evidence")
         self.assertEqual(payload["routing_feedback"]["candidate"]["related_candidate_keys"], [key])
 
-    def test_high_acceptance_routing_feedback_prefers_current_tier(self) -> None:
+    def test_docs_only_current_tier_policy_prefers_current_tier_without_mutating_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                risk="low",
+                complexity_band="easy",
+                accepted=6,
+            )
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="low",
+                complexity_score=8,
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload_without_local(args)
+
+        self.assertEqual(payload["selected_tier"], "local_coding")
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "prefer_current_tier")
+        self.assertIn("docs_only_current_tier_when_accepted", payload["routing_feedback"]["reason"])
+        self.assertEqual(payload["routing_feedback"]["candidate_key"], key)
+
+    def test_high_acceptance_non_policy_feedback_does_not_prefer_current_tier(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             feedback_path = tmp_path / "run_metrics.json"
@@ -412,8 +443,97 @@ class ModelSelectorRoutingTests(unittest.TestCase):
             payload = select_model_payload_without_local(args)
 
         self.assertEqual(payload["routing_feedback"]["status"], "advisory")
-        self.assertEqual(payload["routing_feedback"]["recommendation"], "prefer_current_tier")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "no_change")
+        self.assertIn("no bounded advisory policy", payload["routing_feedback"]["reason"])
         self.assertEqual(payload["routing_feedback"]["candidate_key"], key)
+
+    def test_docs_only_policy_rejects_medium_risk_bucket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                risk="medium",
+                complexity_band="easy",
+                accepted=6,
+            )
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="medium",
+                complexity_score=8,
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload_without_local(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "no_change")
+        self.assertEqual(payload["routing_feedback"]["candidate_key"], key)
+
+    def test_docs_only_policy_rejects_non_easy_complexity_bucket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "run_metrics.json"
+            key, candidate = candidate_payload(
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                risk="low",
+                complexity_band="moderate",
+                accepted=6,
+            )
+            write_feedback(feedback_path, {key: candidate})
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="low",
+                complexity_score=13,
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload_without_local(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "advisory")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "no_change")
+        self.assertEqual(payload["routing_feedback"]["candidate_key"], key)
+
+    def test_fallback_scaffold_payload_never_counts_as_routing_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            feedback_path = tmp_path / "pr_decision.json"
+            feedback_path.write_text(
+                json.dumps(
+                    {
+                        "evidence_source": "fallback_scaffold",
+                        "outcome": "block",
+                        "reason_codes": ["pr_gate.acceptance_evidence_missing"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output_path = tmp_path / "run1" / "model_selection.json"
+            args = selector_args(
+                risk="low",
+                complexity_score=8,
+                recipe="workbench-docs-only-acceptance.yaml",
+                validation_profile="docs_only",
+                routing_feedback_path=str(feedback_path),
+            )
+            args.project = "ai_workbench_mcp"
+            args.out = str(output_path)
+
+            payload = select_model_payload_without_local(args)
+
+        self.assertEqual(payload["routing_feedback"]["status"], "source_invalid")
+        self.assertEqual(payload["routing_feedback"]["recommendation"], "no_change")
 
     def test_high_review_routing_feedback_suggests_escalation_for_non_frontier(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

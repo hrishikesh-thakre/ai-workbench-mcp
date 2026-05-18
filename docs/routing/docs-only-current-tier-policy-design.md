@@ -1,8 +1,8 @@
 # Docs-Only Current-Tier Policy Design
 
-Status: design only; no routing defaults changed in this pass.
+Status: implemented as advisory selector behavior; routing defaults are unchanged.
 
-This document defines the smallest routing-policy candidate supported by the targeted docs-only evidence batch. It is intentionally narrow so a later implementation pass can be reviewed without deciding scope again.
+This document defines the smallest routing-policy candidate supported by the targeted docs-only evidence batch. It is intentionally narrow so implementation can be reviewed without broadening scope again.
 
 ## Candidate Policy
 
@@ -29,16 +29,16 @@ Minimum eligible acceptance evidence:
 - The `docs_only` changed-file policy passed with non-empty exact changed-file evidence.
 - No blocker or review reason code appears in validation or quality-gate artifacts.
 
-## Proposed Behavior
+## Implemented Behavior
 
-The first implementation should keep the behavior advisory:
+The implementation keeps the behavior advisory:
 
 - do not change selector default rules
 - do not auto-promote or auto-demote model tiers
 - do not bypass deterministic validation or the quality gate
-- return or document `prefer_current_tier` only when the route bucket has enough accepted evidence under the configured routing-feedback thresholds
+- return `prefer_current_tier` only when the route bucket has enough accepted evidence under the configured routing-feedback thresholds and matches this exact bounded policy
 
-In current v0.2 terms, this means a matching `routing_feedback_candidates` entry with at least `min_runs=5` and `acceptance_rate>=0.8` may support `prefer_current_tier`, while `selected_tier` remains deterministic from `configs/model_selector.yaml`.
+In current v0.2 terms, this means a matching `routing_feedback_candidates` entry with at least `min_runs=5` and `acceptance_rate>=0.8` may support `prefer_current_tier` only for `docs_only|local_coding|low|easy`, while `selected_tier` remains deterministic from `configs/model_selector.yaml`.
 
 ## Blockers
 
@@ -55,9 +55,9 @@ The policy candidate must not apply when any of these are true:
 - evidence source is PR-gate fallback scaffold evidence
 - evidence source is a deterministic control or committed synthetic sample
 
-## Test Fixture Expectations
+## Test Fixture Coverage
 
-A future implementation pass should add focused tests for:
+Focused selector tests cover:
 
 - accepted `docs_only|local_coding|low|easy` feedback returns advisory `prefer_current_tier`
 - the same candidate does not mutate `selected_tier`

@@ -70,6 +70,8 @@ TASK_TYPE_LABELS = {
 
 MODEL_REGISTRY_PATH = WORKBENCH_ROOT / "configs" / "model_registry.yaml"
 LOCAL_MODEL_REGISTRY_PATH = WORKBENCH_ROOT / "configs" / "model_registry.local.yaml"
+DOCS_ONLY_CURRENT_TIER_POLICY = "docs_only_current_tier_when_accepted"
+DOCS_ONLY_ACCEPTANCE_RECIPE = "workbench-docs-only-acceptance.yaml"
 
 
 def complexity_band(score: int | None) -> str | None:
@@ -763,13 +765,32 @@ def advisory_recommendation(
             "Historical feedback shows high review or failure pressure for this route bucket.",
         )
     if acceptance_rate >= policy.strong_acceptance_rate:
+        if docs_only_current_tier_policy_applies(candidate=candidate, selected_tier=selected_tier):
+            return (
+                "prefer_current_tier",
+                (
+                    f"{DOCS_ONLY_CURRENT_TIER_POLICY} supports the current tier for low-risk, "
+                    "easy docs-only work."
+                ),
+            )
         return (
-            "prefer_current_tier",
-            "Historical feedback supports the current tier for this route bucket.",
+            "no_change",
+            "Historical feedback is strong, but no bounded advisory policy applies to this route bucket.",
         )
     return (
         "no_change",
         "Historical feedback is sufficient but does not cross an advisory threshold.",
+    )
+
+
+def docs_only_current_tier_policy_applies(*, candidate: dict[str, object], selected_tier: str) -> bool:
+    return (
+        selected_tier == "local_coding"
+        and candidate.get("recipe") == DOCS_ONLY_ACCEPTANCE_RECIPE
+        and candidate.get("validation_profile") == "docs_only"
+        and candidate.get("selected_tier") == "local_coding"
+        and candidate.get("risk") == "low"
+        and candidate.get("complexity_band") == "easy"
     )
 
 
