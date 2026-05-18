@@ -291,6 +291,8 @@ The harness writes `model_eval_metadata.json` and `score_report.json` under one 
 
 `workbench_select_model` can optionally read `routing_feedback_candidates` from a previous analytics report. The feedback is advisory only: it records whether historical evidence supports the current tier, suggests escalation, or asks for more evidence, but it never changes `selected_tier`.
 
+The implemented `prefer_current_tier` path is intentionally narrow: `docs_only_current_tier_when_accepted` applies only to low-risk, easy docs-only work that already selects `local_coding` and has enough accepted Workbench evidence. Other high-acceptance buckets stay advisory as `no_change` until a bounded policy is implemented for them.
+
 Focused recipes pass `runs/_reports/run_metrics.json` as the default feedback source. Missing, invalid, or low-volume feedback is non-fatal and is recorded in `model_selection.json` under `routing_feedback`.
 
 ## Bring Your Own Models
@@ -422,7 +424,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Next: bounded routing-policy experiments, GitHub-native PR acceptance gate, first-class policy metadata, cost/time evidence, and stable contract packaging.
+- Current: GitHub-native CI gate prototype with guarded sticky PR comments, fallback scaffold evidence labeling, and the first bounded docs-only advisory routing policy.
+- Next: additional bounded routing-policy experiments, semantic PR acceptance enforcement, Checks API integration, first-class policy metadata, cost/time evidence, and stable contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics
