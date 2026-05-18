@@ -236,7 +236,7 @@ class PublicHygieneTests(unittest.TestCase):
             workflow,
         )
         self.assertNotIn("python tools/pr_gate.py --run-dir runs/ci_scaffold", workflow)
-        self.assertIn("actions/upload-artifact@v4", workflow)
+        self.assertIn("actions/upload-artifact@v6", workflow)
         self.assertIn("runs/pr_gate/pr_comment.md", workflow)
         self.assertIn("runs/pr_gate/pr_decision.json", workflow)
         self.assertIn("Post PR gate comment", workflow)

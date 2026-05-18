@@ -86,7 +86,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         workflow = read_workflow()
         render = job_block(workflow, "render-pr-gate")
 
-        self.assertIn("actions/upload-artifact@v4", render)
+        self.assertIn("actions/upload-artifact@v6", render)
         self.assertIn("name: workbench-pr-gate", render)
         self.assertIn("if-no-files-found: error", render)
         self.assertIn("runs/pr_gate/pr_comment.md", render)
@@ -101,8 +101,8 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             comment,
         )
         self.assertIn("permissions:\n      contents: read\n      pull-requests: write", comment)
-        self.assertIn("actions/checkout@v4", comment)
-        self.assertIn("actions/download-artifact@v4", comment)
+        self.assertIn("actions/checkout@v5", comment)
+        self.assertIn("actions/download-artifact@v7", comment)
         self.assertIn("name: workbench-pr-gate", comment)
         self.assertIn("GH_TOKEN: ${{ github.token }}", comment)
         self.assertIn("python -m ai_workbench_mcp.tools.pr_gate_comment", comment)

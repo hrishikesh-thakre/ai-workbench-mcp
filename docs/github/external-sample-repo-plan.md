@@ -224,6 +224,7 @@ Recorded proof links:
 | Dispatch needs review | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039447479` |
 | Dispatch block | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039474439` |
 | Dispatch scaffold fallback block | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039499619` |
+| Node 24 action update smoke | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26043403995` |
 
 The durable artifact copies are committed under:
 
@@ -238,7 +239,9 @@ https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/pull/1
 ```
 
 The PR had exactly one `<!-- ai-workbench-pr-gate -->` sticky comment after the
-second run, and the comment contained the `Accept` outcome.
+second run, and the comment contained the `Accept` outcome. The trigger-only PR
+was closed unmerged after durable proof records were committed, and its branch
+was deleted.
 
 ## Repeat Notes
 
