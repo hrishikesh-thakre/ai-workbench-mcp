@@ -101,6 +101,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             comment,
         )
         self.assertIn("permissions:\n      contents: read\n      pull-requests: write", comment)
+        self.assertIn("actions/checkout@v4", comment)
         self.assertIn("actions/download-artifact@v4", comment)
         self.assertIn("name: workbench-pr-gate", comment)
         self.assertIn("GH_TOKEN: ${{ github.token }}", comment)
@@ -109,7 +110,6 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertIn('--pr-number "${{ github.event.pull_request.number }}"', comment)
         self.assertIn("--comment runs/pr_gate/pr_comment.md", comment)
         self.assertIn("--decision runs/pr_gate/pr_decision.json", comment)
-        self.assertNotIn("actions/checkout", comment)
 
     def test_fork_pull_requests_are_artifact_only(self) -> None:
         workflow = read_workflow()
