@@ -2,7 +2,7 @@
 
 Published package version: `ai-workbench-mcp==0.3.0a0`.
 
-The `0.3.0a0` package is published and exact-version install verified on TestPyPI and PyPI as of 2026-05-18. MCP Registry metadata validates for `0.3.0a0`, but registry publication is still blocked by an expired registry token and requires a refreshed login. The latest historical verified publication before this release was `ai-workbench-mcp==0.2.0a0`.
+The `0.3.0a0` package is published and exact-version install verified on TestPyPI and PyPI as of 2026-05-18. MCP Registry publication for `0.3.0a0` completed on 2026-05-18. The latest historical verified publication before this release was `ai-workbench-mcp==0.2.0a0`.
 
 This guide records the package boundary and release checklist. Recheck the project name and version on PyPI immediately before any future upload because PyPI versions are immutable.
 
@@ -171,7 +171,7 @@ python -m pip install ai-workbench-mcp==0.3.0a0
 
 ## MCP Registry Prep
 
-Status for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0`: `server.json` validates with the official `mcp-publisher` CLI, but publication is blocked by an expired Registry JWT token. Refresh registry login before rerunning publish.
+Status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0` on 2026-05-18.
 
 Historical status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.2.0a0` on 2026-05-16.
 
@@ -181,8 +181,8 @@ Registry API lookup:
 https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp
 ```
 
-The MCP Registry metadata is prepared in `server.json`. The public proof note for the historical `0.2.0a0` publication is `docs/publishing/mcp-registry-proof.md`.
+The MCP Registry metadata is prepared in `server.json`. The public proof note is `docs/publishing/mcp-registry-proof.md`.
 
 Registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
 
-Do not rerun `mcp-publisher publish` for `0.2.0a0`. The `0.3.0a0` registry update has passed `mcp-publisher validate server.json`; publication requires a refreshed registry login, explicit approval, and then `mcp-publisher publish server.json`. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.
+Do not rerun `mcp-publisher publish` for `0.2.0a0` or `0.3.0a0`. Future registry updates require a version bump, a published package version, `mcp-publisher validate server.json`, explicit approval, and `mcp-publisher publish server.json`. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.

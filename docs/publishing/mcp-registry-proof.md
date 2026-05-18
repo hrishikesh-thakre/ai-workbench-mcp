@@ -1,8 +1,8 @@
 # MCP Registry Proof
 
-Status: registry publication recorded as complete  
-Version: `0.2.0a0`  
-Date verified in repo docs: 2026-05-16
+Status: registry publication recorded as complete
+Current version: `0.3.0a0`
+Date verified in repo docs: 2026-05-18
 
 ## Registry Identity
 
@@ -11,7 +11,7 @@ Date verified in repo docs: 2026-05-16
 | Server name | `io.github.hrishikesh-thakre/ai-workbench-mcp` |
 | Title | `AI Workbench MCP` |
 | Package | `ai-workbench-mcp` |
-| Package version | `0.2.0a0` |
+| Package version | `0.3.0a0` |
 | Transport | `stdio` |
 | Repository | `https://github.com/hrishikesh-thakre/ai-workbench-mcp` |
 | License | `Apache-2.0` |
@@ -52,16 +52,26 @@ workbench_analyze_runs
 Published PyPI install:
 
 ```bash
-python -m pip install ai-workbench-mcp==0.2.0a0
+python -m pip install ai-workbench-mcp==0.3.0a0
 ```
 
-This installs the server code and `ai-workbench-mcp` stdio console script.
+This installs the server code, the `ai-workbench-mcp` stdio console script, and
+the `ai-workbench-bootstrap-assets` helper.
 
-Full Goose recipe workflows still require a checked-out repository because configs, prompts, recipes, examples, evals, and validation profiles are repo assets.
+Installed-package users can bootstrap default configs, prompts, and recipes.
+Full demo fixtures, examples, evals, and private run evidence remain outside the
+published wheel.
+
+## Version History
+
+| Version | Registry status | Verified |
+|---|---|---|
+| `0.2.0a0` | active, not latest | 2026-05-16 |
+| `0.3.0a0` | active, latest | 2026-05-18 |
 
 ## Maintenance Rule
 
-Do not rerun registry publication for `0.2.0a0`.
+Do not rerun registry publication for `0.2.0a0` or `0.3.0a0`.
 
 Future registry updates require:
 

@@ -2,7 +2,7 @@
 
 Owner: AI Workbench MCP
 Status: v0.3 semantic PR acceptance alpha release branch
-Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry metadata validates for `0.3.0a0`, but registry publication still requires a refreshed registry login.
+Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
 Created: 2026-05-12
 
 ## 1. Project One-Liner

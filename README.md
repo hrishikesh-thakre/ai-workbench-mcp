@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is the v0.3 Semantic PR Acceptance Alpha release branch. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry metadata validates for `0.3.0a0`, but registry publication still requires a refreshed registry login.
+Current repo work is the v0.3 Semantic PR Acceptance Alpha release branch. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
 
 ## Before
 
@@ -449,7 +449,7 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
 - Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, an external sample repo proof plan, and sanitized PR gate outcome demos.
-- Next: complete `0.3.0a0` TestPyPI/PyPI/MCP Registry verification, then continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
+- Next: use the published `0.3.0a0` package for the external sample repository proof, then continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics

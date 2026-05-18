@@ -199,7 +199,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertEqual(metadata["packages"][0]["version"], "0.3.0a0")
         self.assertIn("Release note with package upload proof.", release_text)
         self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", release_text)
-        self.assertIn("No MCP Registry publication is claimed by this note.", release_text)
+        self.assertIn("MCP Registry publication completed for `0.3.0a0`", release_text)
         self.assertIn("`ai-workbench-mcp==0.3.0a0` is published and exact-version install verified", readme_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
@@ -295,10 +295,10 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn('"ai-workbench-mcp==0.3.0a0"', pypi_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.3.0a0", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
-        self.assertIn("publication is blocked by an expired Registry JWT token", pypi_text)
+        self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0`", pypi_text)
         self.assertIn("mcp-publisher validate server.json", pypi_text)
         self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", pypi_text)
-        self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0`.", pypi_text)
+        self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0` or `0.3.0a0`.", pypi_text)
         self.assertNotIn("MCP Registry submission remains pending.", pypi_text)
         self.assertNotIn("has not been published to PyPI yet", pypi_text)
         self.assertNotIn("Real PyPI remains pending.", pypi_text)
