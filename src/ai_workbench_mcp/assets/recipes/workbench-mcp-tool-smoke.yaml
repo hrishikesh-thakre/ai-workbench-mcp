@@ -1,0 +1,64 @@
+version: "1.0.0"
+title: "Workbench MCP Tool Smoke"
+description: "Minimal Goose smoke for verifying that AI Workbench MCP tools are reachable before running the full acceptance recipe."
+
+parameters:
+  - key: project
+    input_type: string
+    requirement: optional
+    description: "Project key from configs/projects.yaml."
+    default: "ai_workbench_mcp"
+  - key: run_dir
+    input_type: string
+    requirement: user_prompt
+    description: "Evidence directory for this smoke run."
+  - key: task
+    input_type: string
+    requirement: optional
+    description: "Short smoke-test task text."
+    default: "Local Goose MCP tool smoke. Do not edit tracked files."
+  - key: risk
+    input_type: select
+    requirement: optional
+    description: "Risk level for the smoke run."
+    default: "low"
+    options:
+      - "low"
+      - "medium"
+      - "high"
+  - key: complexity_score
+    input_type: number
+    requirement: optional
+    description: "Optional 1-25 complexity score for model routing."
+    default: "4"
+
+extensions:
+  - type: stdio
+    name: "AI Workbench MCP"
+    cmd: "ai-workbench-mcp"
+    args: []
+    timeout: 300
+    bundled: false
+    description: "AI Workbench routing and evidence tools."
+    available_tools:
+      - "workbench_open_run"
+      - "workbench_select_model"
+
+instructions: |
+  You are running a minimal AI Workbench MCP tool smoke.
+
+  Call exactly these two tools, then stop:
+  1. workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", risk="{{ risk }}", prompt="implement_request_change_request", and recipe="workbench-mcp-tool-smoke.yaml".
+  2. workbench_select_model with project="{{ project }}", task_type="implement", risk="{{ risk }}", validation_strength="medium", prompt="implement_request_change_request", complexity_score={{ complexity_score }}, and out="{{ run_dir }}/model_selection.json".
+
+  Do not edit tracked files. Do not run validation. Do not run the quality gate. Summarize only the two returned Workbench envelope statuses.
+
+prompt: |
+  Run the minimal Workbench MCP tool smoke.
+
+  Run directory: {{ run_dir }}
+  Project: {{ project }}
+  Risk: {{ risk }}
+
+activities:
+  - "Verify Goose can call workbench_open_run and workbench_select_model."

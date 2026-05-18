@@ -1,0 +1,69 @@
+models:
+  deterministic_tool:
+    provider: local
+    model: direct_command
+    use_for:
+      - validation
+      - diff inspection
+      - file discovery
+
+  local_scout:
+    provider: ollama
+    model: qwen2.5-coder:7b
+    use_for:
+      - file ranking
+      - summarization
+      - context compression
+
+  local_coding:
+    provider: goose
+    model: "unsloth/gemma-4-E4B-it-GGUF:Q4_K_M"
+    fallback_models:
+      - "unsloth/gemma-4-E2B-it-GGUF:Q4_K_M"
+    use_for:
+      - exploratory coding drafts
+      - utility functions
+      - simple algorithms
+      - low-risk test generation
+
+  cheap_cloud:
+    provider: litellm
+    model: gemini/gemini-3-flash-preview
+    fallback_models:
+      - deepseek/deepseek-v4-flash
+    use_for:
+      - simple implementation
+      - test generation
+      - documentation cleanup
+
+  mid_cloud:
+    provider: litellm
+    model: deepseek/deepseek-v4-flash
+    fallback_models:
+      - gemini/gemini-3-flash-preview
+    use_for:
+      - class and module design
+      - nontrivial business logic
+      - strict instruction following
+      - characterization test generation
+
+  frontier:
+    provider: litellm
+    model: openai/gpt-5.5
+    fallback_models:
+      - deepseek/deepseek-reasoner
+    parameters:
+      reasoning_effort: xhigh
+    use_for:
+      - architecture review
+      - security privacy review
+      - high risk reasoning
+      - final review
+
+  human_review:
+    provider: human
+    model: manual_signoff
+    use_for:
+      - approval gates
+      - irreversible actions
+      - unresolved high consequence risk

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-18T00:02:00Z",
+  "loop_type": "none",
+  "required": false,
+  "reason": "Validation passed and the quality gate accepted the documentation-only run.",
+  "next_action": "No Workbench action required before merge.",
+  "accepted_pass": 1,
+  "final_status": "accepted",
+  "authoritative_model_output": "model_output.md",
+  "authoritative_validation_report": "validation_report.json",
+  "blocking_findings": [],
+  "non_blocking_findings": [],
+  "reason_codes": [
+    "quality_gate.accepted"
+  ],
+  "reason_sources": [
+    {
+      "code": "quality_gate.accepted",
+      "status": "accepted",
+      "severity": "info",
+      "source": "revision_decision",
+      "name": "quality_gate",
+      "summary": "Validation passed and the quality gate accepted the documentation-only run.",
+      "details": [
+        "No quality-loop triggers were detected."
+      ]
+    }
+  ]
+}

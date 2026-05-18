@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "operation": "workbench_pr_gate",
+  "outcome": "block",
+  "ok": true,
+  "run_id": "pr-gate-demo-blocked",
+  "evidence_source": "acceptance_run",
+  "source_run_dir": "examples/pr-gate-outcomes/blocked/evidence",
+  "validation_status": "needs_review",
+  "quality_gate_status": "review_required",
+  "reason": "Source file changed in docs-only policy.",
+  "reason_codes": [
+    "docs_only.source_file_blocked",
+    "quality_gate.blocker_present"
+  ],
+  "evidence": [
+    {
+      "label": "validation_report",
+      "path": "validation_report.json",
+      "present": true
+    },
+    {
+      "label": "revision_decision",
+      "path": "revision_decision.json",
+      "present": true
+    },
+    {
+      "label": "model_output",
+      "path": "model_output.md",
+      "present": true
+    },
+    {
+      "label": "run_log",
+      "path": "run_log.jsonl",
+      "present": true
+    }
+  ],
+  "required_next_action": "Move source-code edits to an implementation profile or remove them, rerun validation, and regenerate the PR gate artifact."
+}

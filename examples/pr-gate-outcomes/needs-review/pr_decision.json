@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "operation": "workbench_pr_gate",
+  "outcome": "needs_review",
+  "ok": true,
+  "run_id": "pr-gate-demo-needs-review",
+  "evidence_source": "acceptance_run",
+  "source_run_dir": "examples/pr-gate-outcomes/needs-review/evidence",
+  "validation_status": "needs_review",
+  "quality_gate_status": "review_required",
+  "reason": "Policy requires contract-owner review before merge.",
+  "reason_codes": [
+    "api_contract_change.review_required",
+    "quality_gate.review_required"
+  ],
+  "evidence": [
+    {
+      "label": "validation_report",
+      "path": "validation_report.json",
+      "present": true
+    },
+    {
+      "label": "revision_decision",
+      "path": "revision_decision.json",
+      "present": true
+    },
+    {
+      "label": "model_output",
+      "path": "model_output.md",
+      "present": true
+    },
+    {
+      "label": "run_log",
+      "path": "run_log.jsonl",
+      "present": true
+    }
+  ],
+  "required_next_action": "Record contract-owner approval, then regenerate the PR gate artifact."
+}

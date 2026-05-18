@@ -19,6 +19,14 @@ ACCEPTED_SAMPLE = ROOT / "examples" / "sample-runs" / "accepted-tiny-python-fix"
 NEEDS_REVIEW_SAMPLE = ROOT / "examples" / "sample-runs" / "needs-review-test-fix"
 
 
+def comment_outcome_label(outcome: str) -> str:
+    return {
+        "accept": "Accept",
+        "needs_review": "Needs Review",
+        "block": "Block",
+    }.get(outcome, outcome)
+
+
 def write_json(path: Path, payload: dict[str, object]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -55,6 +63,15 @@ class FakeGraphQLRunner:
 
 
 class PrGateTests(unittest.TestCase):
+    def assert_scan_first_section(self, comment: str, decision: dict[str, object]) -> None:
+        lines = comment.splitlines()
+        self.assertGreaterEqual(len(lines), 6)
+        self.assertEqual(lines[0], f"# AI Workbench PR Gate: {comment_outcome_label(str(decision['outcome']))}")
+        self.assertEqual(lines[2], f"Decision: {comment_outcome_label(str(decision['outcome']))}")
+        self.assertTrue(lines[3].startswith("Why: "))
+        self.assertTrue(lines[4].startswith("Required next action: "))
+        self.assertTrue(lines[5].startswith("Evidence present: validation_report "))
+
     def test_accepted_sample_evidence_maps_to_accept(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             decision, comment = render_gate(ACCEPTED_SAMPLE, Path(tmpdir))
@@ -67,7 +84,11 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["source_run_dir"], "examples/sample-runs/accepted-tiny-python-fix")
         self.assertEqual(decision["validation_status"], "passed")
         self.assertEqual(decision["quality_gate_status"], "accepted")
+        self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Accept", comment)
+        self.assertIn("Decision: Accept", comment)
+        self.assertIn("Why: Validation passed and the quality gate accepted the run.", comment)
+        self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
         self.assertIn("**Evidence source:** `acceptance_run`", comment)
         self.assertIn("validation_report.json", comment)
         self.assertIn("revision_decision.json", comment)
@@ -83,7 +104,24 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["outcome"], "accept")
         self.assertEqual(decision["evidence_source"], "acceptance_run")
         self.assertEqual(decision["source_run_dir"], "examples/sample-runs/accepted-tiny-python-fix")
+        self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Accept", comment)
+
+    def test_missing_validation_report_maps_to_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            shutil.copytree(ACCEPTED_SAMPLE, run_dir)
+            (run_dir / "validation_report.json").unlink()
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["validation_status"], "unknown")
+        self.assertEqual(decision["quality_gate_status"], "accepted")
+        self.assertIn("Missing required Workbench evidence: validation_report.json.", decision["reason"])
+        self.assert_scan_first_section(comment, decision)
+        self.assertIn("Evidence present: validation_report no, revision_decision yes", comment)
 
     def test_missing_revision_decision_maps_to_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -99,7 +137,24 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["quality_gate_status"], "unknown")
         self.assertIn("Missing required Workbench evidence: revision_decision.json.", decision["reason"])
         self.assertIn("# AI Workbench PR Gate: Block", comment)
+        self.assertIn("Evidence present: validation_report yes, revision_decision no", comment)
         self.assertIn("| revision_decision | `revision_decision.json` | no |", comment)
+
+    def test_invalid_json_evidence_maps_to_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            shutil.copytree(ACCEPTED_SAMPLE, run_dir)
+            (run_dir / "validation_report.json").write_text("{not json", encoding="utf-8")
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["validation_status"], "unknown")
+        self.assertEqual(decision["quality_gate_status"], "accepted")
+        self.assertIn("Unreadable Workbench evidence: validation_report.json", decision["reason"])
+        self.assert_scan_first_section(comment, decision)
+        self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
 
     def test_fallback_scaffold_blocks_with_acceptance_evidence_missing_reason(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -125,10 +180,56 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["quality_gate_status"], "unknown")
         self.assertEqual(decision["reason"], "No complete Workbench acceptance evidence found for this PR.")
         self.assertEqual(decision["reason_codes"], ["validation.accepted", "pr_gate.acceptance_evidence_missing"])
+        self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Block", comment)
+        self.assertIn("Decision: Block", comment)
+        self.assertIn("Evidence present: validation_report yes, revision_decision no", comment)
         self.assertIn("No complete Workbench acceptance evidence found for this PR.", comment)
         self.assertIn("`pr_gate.acceptance_evidence_missing`", comment)
         self.assertNotIn("SECRET_RAW_MODEL_MARKER", comment)
+
+    def test_explicit_scaffold_profile_blocks_even_with_accepted_quality_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "ci_scaffold",
+                    "profile": "scaffold",
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                    "reason_codes": ["validation.accepted"],
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "final_status": "accepted",
+                    "reason": "No quality loop triggers detected.",
+                    "next_action": "none",
+                    "reason_codes": ["quality_gate.accepted"],
+                },
+            )
+            (run_dir / "model_output.md").write_text("SECRET_RAW_MODEL_MARKER\n", encoding="utf-8")
+            (run_dir / "provider.log").write_text("SECRET_PROVIDER_LOG_MARKER\n", encoding="utf-8")
+            (run_dir / "run_log.jsonl").write_text("{}\n", encoding="utf-8")
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["evidence_source"], "acceptance_run")
+        self.assertEqual(decision["validation_status"], "passed")
+        self.assertEqual(decision["quality_gate_status"], "accepted")
+        self.assertEqual(
+            decision["reason_codes"],
+            ["validation.accepted", "quality_gate.accepted", "pr_gate.acceptance_evidence_missing"],
+        )
+        self.assertIn("`pr_gate.acceptance_evidence_missing`", comment)
+        self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
+        self.assertNotIn("SECRET_RAW_MODEL_MARKER", comment)
+        self.assertNotIn("SECRET_PROVIDER_LOG_MARKER", comment)
 
     def test_failed_validation_or_revision_required_maps_to_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -138,6 +239,7 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["validation_status"], "failed")
         self.assertEqual(decision["quality_gate_status"], "revision_required")
         self.assertIn("Deterministic validation failed", decision["reason"])
+        self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Block", comment)
 
     def test_review_required_without_blocker_reason_maps_to_needs_review(self) -> None:
@@ -184,7 +286,11 @@ class PrGateTests(unittest.TestCase):
 
         self.assertEqual(decision["outcome"], "needs_review")
         self.assertEqual(decision["reason_codes"], ["validation.needs_review", "quality.review_required"])
+        self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Needs Review", comment)
+        self.assertIn("Decision: Needs Review", comment)
+        self.assertIn("Why: Policy requires review.", comment)
+        self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
         self.assertIn("`validation.needs_review`", comment)
         self.assertIn("`quality.review_required`", comment)
         self.assertNotIn("SECRET_RAW_MODEL_MARKER", comment)
@@ -222,6 +328,7 @@ class PrGateTests(unittest.TestCase):
             decision, comment = render_gate(run_dir, tmp_path / "out")
 
         self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["reason"], "Source file changed in docs-only policy.")
         self.assertIn("docs_only.source_file_blocked", decision["reason_codes"])
         self.assertIn("# AI Workbench PR Gate: Block", comment)
 

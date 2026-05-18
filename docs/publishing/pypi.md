@@ -6,9 +6,37 @@ This guide records the package boundary and release checklist. Recheck the proje
 
 ## Current Package Boundary
 
-The current wheel is code/server only. It installs the `ai_workbench_mcp` package and the `ai-workbench-mcp` console script.
+The currently published `0.2.0a0` wheel is code/server only. It installs the `ai_workbench_mcp` package and the `ai-workbench-mcp` console script.
 
-Full Goose recipe workflows still require a checked-out repository because the default `configs/`, `prompts/`, `recipes/`, `examples/`, `evals/`, and validation profiles are repo assets. A future package-resource pass can move selected defaults into the wheel.
+The source tree now includes a package-resource pass for the next build. New source builds include bootstrappable defaults under `ai_workbench_mcp/assets/`:
+
+- `configs/`, including `policy_packs.yaml`, `validation_profiles.yaml`, project defaults, model selection defaults, routing feedback policy, and quality-loop defaults.
+- `prompts/approved/`, including the public approved prompt catalog.
+- `recipes/`, including the Goose acceptance and smoke recipes.
+
+The wheel does not include `examples/`, `evals/`, committed sample evidence, local `runs/`, or provider setup. Full Goose recipe workflows can still be run from a checked-out repository, but installed-package users can now materialize the default repo-style assets when they do not have a checkout:
+
+```powershell
+python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir .
+```
+
+The console-script equivalent is:
+
+```powershell
+ai-workbench-bootstrap-assets --target-dir .
+```
+
+The bootstrap command writes `configs/`, `prompts/`, and `recipes/` under the target directory. Existing files are left untouched unless `--force` is supplied:
+
+```powershell
+python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir . --force
+```
+
+To inspect the packaged asset plan without writing files:
+
+```powershell
+python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir . --dry-run
+```
 
 ## Local Build Check
 
@@ -41,6 +69,7 @@ Smoke the wheel:
 ```powershell
 python -m pip install --force-reinstall (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
+python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir $env:TEMP\ai-workbench-mcp-assets-smoke --groups configs --force
 ```
 
 Fresh virtual environment smoke:
@@ -51,6 +80,8 @@ python -m venv $env:TEMP\ai-workbench-mcp-wheel-smoke
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import shutil; assert shutil.which('ai-workbench-mcp')"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import shutil; assert shutil.which('ai-workbench-bootstrap-assets')"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m ai_workbench_mcp.tools.bootstrap_assets --target-dir "$env:TEMP\ai-workbench-mcp-wheel-assets" --groups configs --force
 ```
 
 Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP server entrypoint, not a normal help-printing CLI.

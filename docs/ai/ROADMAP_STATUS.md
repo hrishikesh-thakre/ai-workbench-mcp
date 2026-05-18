@@ -2,6 +2,7 @@
 
 Owner: AI Workbench MCP
 Status: v0.2 alpha release candidate
+Active milestone: v0.3 Semantic PR Acceptance Alpha
 Created: 2026-05-12
 
 ## Purpose
@@ -31,7 +32,12 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Acceptance analytics | Phase 5 complete | `workbench_analyze_runs` summarizes accepted, review-required, and failed runs; Phase 5 closed with 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls |
 | User-extensible model registry | Public-readiness hardening | Local ignored registry overrides let adopters bring their own model IDs while preserving committed defaults and selector validation |
 | Minimal event envelopes | Public-readiness hardening | Core MCP operations write best-effort local `events.jsonl` ledgers from final response envelopes |
-| Public CI gate prototype | GitHub-native prototype | GitHub Actions repo self-validation runs install, tests, scaffold validation, PR gate artifact rendering, guarded same-repo sticky PR comments, and diff hygiene; PR gate output distinguishes `acceptance_run` from `fallback_scaffold`; semantic enforcement and Checks API integration remain future work |
+| Public CI gate prototype | Historical prototype | GitHub Actions repo self-validation runs install, tests, scaffold validation, PR gate artifact rendering, guarded same-repo sticky PR comments, and diff hygiene; this remains visibility evidence rather than semantic acceptance |
+| v0.3 Semantic PR Acceptance Alpha | Current alpha | PR gate consumes real Workbench evidence, reports exactly one of `accept`, `needs_review`, or `block`, and blocks scaffold-only fallback evidence with required next action |
+| v0.3 first-class policy packs | Current alpha | Five core policy packs live in `configs/policy_packs.yaml` and are loaded into validation profiles: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` |
+| v0.3 copy-paste PR workflow | Current alpha | `.github/workflows/ai-workbench-pr-gate.yml` documents a reusable GitHub workflow that renders PR gate artifacts and same-repository sticky comments from Workbench evidence |
+| v0.3 package bootstrap assets | Current alpha | Source tree includes bootstrap assets and `ai-workbench-bootstrap-assets` for configs, prompts, and recipes; latest published PyPI package remains `0.2.0a0` |
+| v0.3 PR gate outcome demos | Current alpha | Sanitized fixtures under `examples/pr-gate-outcomes/` and proof docs show `accept`, `needs_review`, and `block` decisions without committing private `runs/` evidence |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
 | PyPI and package plumbing | Registry published | Package build checks, wheel smoke, TestPyPI install, exact-version PyPI install, and MCP Registry publication passed for `0.2.0a0` |
@@ -42,7 +48,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Dogfood Batch 2 | Evidence collected | Stage A and Stage B produced eight isolated Goose/Gemma-backed runs; Stage B confirmed exact-diff validation blocks no-op and underreported changed-file claims |
 | Targeted docs-only routing evidence | Evidence collected | Six isolated low-risk `docs_only` Goose runs stayed on `local_coding`, passed deterministic validation, and were accepted by the quality gate; report is aggregate-only in `docs/dogfooding/targeted-docs-only-current-tier-report.md` |
 | Docs-only current-tier advisory policy | Implemented | Selector feedback now returns `prefer_current_tier` only for the bounded low-risk, easy `docs_only` bucket with enough accepted evidence; defaults and selected tiers remain unchanged |
-| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, public launch issues `#1`-`#6`, and the Phase 5 closeout report document the move from evidence collection to bounded routing-policy experiments |
+| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, launch issues `#1`-`#6` are open with public links, and v0.3 docs document the move from evidence collection to semantic PR acceptance |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -154,10 +160,37 @@ Closeout status:
 - Phase 5 evidence collection is complete in `docs/dogfooding/phase5-final-report.md`.
 - Historical exact-diff hardening evidence remains in `docs/dogfooding/phase5-batch2-stage-b-report.md`.
 - Final dogfood totals: 31 complete runs, 29 live Goose runs, 2 deterministic controls, 16 accepted outcomes, 15 review-required outcomes, and 0 failed public outcomes.
-- Routing feedback remains advisory. The PR gate is a GitHub-native visibility layer, not a semantic enforcement gate. The next phase should run bounded routing-policy experiments without changing default policy from the closeout report alone.
+- Routing feedback remains advisory. At Phase 5 closeout, the PR gate was a GitHub-native visibility layer; v0.3 now owns the semantic PR acceptance alpha without changing default routing policy from the closeout report alone.
 - The first targeted routing evidence batch is complete in `docs/dogfooding/targeted-docs-only-current-tier-report.md`: six low-risk `docs_only` Goose runs on `local_coding`, all accepted, with no review-required or failed outcomes.
 - The first bounded policy branch is implemented from `docs/routing/docs-only-current-tier-policy-design.md`; it remains advisory and limited to low-risk, easy, accepted `docs_only` work.
 
+## Phase 6: v0.3 Semantic PR Acceptance Alpha (Current)
+
+Goal:
+
+Make GitHub PR acceptance real from Workbench evidence while keeping Goose first and Workbench runtime-agnostic.
+
+Tasks:
+
+- Consume explicit Workbench run evidence for PR gate decisions.
+- Report exactly one of `accept`, `needs_review`, or `block`.
+- Show validation and quality-gate status separately.
+- Report whether `validation_report.json` and `revision_decision.json` are present.
+- Block scaffold-only fallback evidence with `pr_gate.acceptance_evidence_missing`.
+- Keep the five first-class policy packs clear and usable through `configs/policy_packs.yaml`.
+- Provide a copy-paste GitHub Actions workflow template for target repositories.
+- Provide bootstrap assets for configs, prompts, and recipes without claiming a v0.3 package release.
+- Commit sanitized PR gate outcome demos for public proof.
+
+Out of scope:
+
+- GEPA or extra host integrations.
+- GitHub Checks API enforcement.
+- Fork-comment strategy changes.
+- Provider plumbing or provider cost enforcement.
+- Codex cloud evidence export.
+- Removing deterministic validation or quality-gate requirements.
+
 ## Current Next Step
 
-Review and merge the docs-only current-tier advisory policy branch, then choose the next bounded routing-policy experiment from fresh isolated evidence. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback advisory until another branch is justified. Do not broaden the result to medium-risk work, code changes, `test_fix`, security/privacy-sensitive changes, semantic PR enforcement, Checks API integration, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Policy packs stay in `configs/validation_profiles.yaml` for v0.2; revisit a first-class policy-pack directory when the profile schema needs metadata beyond command and artifact checks.
+Finish the v0.3 semantic PR acceptance alpha documentation and contract pass. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback advisory. Do not broaden this milestone to GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the published package story explicit: `0.2.0a0` is the latest published PyPI package, while v0.3 bootstrap assets and workflow templates are repo assets until a future release ships.

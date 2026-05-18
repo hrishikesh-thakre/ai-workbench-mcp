@@ -105,6 +105,8 @@ Initial tools:
 
 Status: Accepted
 
+Historical scope: this records the v0.2 package shape. v0.3 adds a first-class policy-pack catalog while preserving validation profile names and recipe references.
+
 Decision:
 
 - For v0.2, focused policy packs are named profiles inside `configs/validation_profiles.yaml`.
@@ -149,3 +151,49 @@ Implications:
 - Add host/source analytics so accepted rates can be compared across Goose, Codex, CI, and future hosts.
 - Target Codex local/IDE before Codex cloud.
 - Treat Codex cloud evidence persistence, export, PR linking, and network access as a separate design pass.
+
+## 9. v0.3 PR Acceptance Uses Workbench Evidence
+
+Status: Accepted
+
+Decision:
+
+- The v0.3 PR gate consumes Workbench run evidence for a pull request instead of treating CI status or scaffold validation as semantic acceptance.
+- A PR gate decision is exactly one of `accept`, `needs_review`, or `block`.
+- `accept` requires deterministic validation evidence and a quality-gate decision, especially `validation_report.json` and `revision_decision.json`.
+- Scaffold-only fallback evidence is visibility evidence only and must block with `pr_gate.acceptance_evidence_missing`.
+- Sticky PR comments and uploaded artifacts are presentation surfaces. They are not substitutes for the underlying evidence artifacts.
+
+Why:
+
+- The public merge-time story should match the core Workbench rule: do not call work accepted without deterministic validation and quality-gate acceptance.
+- GitHub needs a fast PR-facing summary, but green CI alone cannot prove the agent task was accepted.
+
+Implications:
+
+- Same-repository PRs can receive one marker-based sticky comment when workflow permissions allow it.
+- Fork PRs can still render and upload artifacts while skipping comment posting.
+- GitHub Checks API integration, enforcement policy, fork-comment strategy changes, GEPA, provider plumbing, extra host integrations, and Codex cloud export remain out of scope for this alpha.
+- The current published package remains `0.2.0a0`; v0.3 is not a published PyPI release until a future version is explicitly shipped.
+
+## 10. v0.3 Policy Packs Are First-Class Catalog Assets
+
+Status: Accepted
+
+Decision:
+
+- The five core policy packs are first-class entries in `configs/policy_packs.yaml`: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`.
+- Validation profiles keep their existing names and continue to be the recipe-facing selection surface.
+- The policy-pack loader enriches validation profiles with catalog metadata for allowed files, required tests, required evidence, review triggers, blocker rules, and reason codes.
+- Package/bootstrap assets should carry configs, prompts, and recipes forward for source builds and future package releases without implying that a v0.3 package has already been published.
+
+Why:
+
+- PR comments and downstream surfaces need machine-readable policy metadata to explain decisions without parsing prose.
+- Existing recipes and examples already refer to validation profile names, so preserving those names avoids churn.
+
+Implications:
+
+- Sign-off profiles remain command-backed.
+- Unknown or additive policy metadata should be displayed or tolerated by consumers rather than rejected.
+- First-class policy metadata does not weaken the acceptance rule: validation and quality-gate evidence still decide whether a run is accepted.

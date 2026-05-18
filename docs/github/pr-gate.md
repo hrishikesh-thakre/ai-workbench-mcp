@@ -1,54 +1,40 @@
-# PR Gate Prototype
+# Semantic PR Acceptance Gate
 
-This repository uses GitHub Actions as a repo self-validation gate and now renders a Workbench PR gate summary. It is still a CI gate prototype: the workflow proves repo hygiene, emits PR-facing artifacts, and posts one guarded sticky PR comment for same-repository pull requests, but it does not enforce semantic acceptance yet.
+The v0.3 PR gate is a GitHub-facing presentation of Workbench acceptance
+evidence. It renders a deterministic PR decision from a Workbench run folder and
+reports exactly one outcome:
 
-The PR gate now distinguishes full Workbench acceptance evidence from scaffold CI evidence. Full acceptance evidence means a run folder with deterministic validation and quality-gate artifacts, especially `validation_report.json` and `revision_decision.json`. Scaffold evidence proves the repository self-validation path ran, but it is not enough to accept PR work.
+- `accept`
+- `needs_review`
+- `block`
 
-The Markdown artifact remains the source of truth for the PR-facing surface:
+It does not accept a PR from green CI alone. It can report `accept` only when the
+referenced run has deterministic validation evidence and a quality-gate decision,
+especially `validation_report.json` and `revision_decision.json`.
 
-```text
-runs/pr_gate/pr_comment.md
-runs/pr_gate/pr_decision.json
-```
+The current machine-readable contract is recorded in the
+[v0.3 contract baseline](../contracts/v0.3-contract-baseline.md). The
+[v0.2 contract baseline](../contracts/v0.2-contract-baseline.md) remains the
+compatibility reference for older committed sample runs.
 
-For pull requests opened from this repository, CI also posts or updates a single sticky comment marked with:
+## What It Decides
 
-```text
-<!-- ai-workbench-pr-gate -->
-```
+The renderer maps Workbench evidence to:
 
-Fork pull requests still render and upload the artifacts, but skip comment posting because the workflow is intentionally guarded.
+- `accept`: validation passed, `sign_off_ready=true`, and the quality gate
+  accepted the run.
+- `needs_review`: validation or the quality gate requires review and no
+  blocker-severity reason source exists.
+- `block`: required evidence is missing or unreadable, validation failed,
+  revision is required, blocker-severity evidence exists, the state is unknown,
+  or only scaffold fallback evidence exists.
 
-The current PR decision/comment fields are recorded in the [v0.2 contract baseline](../contracts/v0.2-contract-baseline.md). They are stable enough for this alpha integration, but not v1-stable.
+Scaffold-only evidence is visibility evidence, not semantic acceptance evidence.
+It always blocks with `pr_gate.acceptance_evidence_missing`.
 
-## What It Proves
+## Evidence Inputs
 
-- The package installs with development dependencies.
-- The full test suite passes.
-- The Workbench scaffold validation profile passes.
-- The diff has no whitespace errors reported by `git diff --check`.
-- Workbench can render a PR-facing acceptance summary from a prepared evidence folder.
-- The workflow can upload the PR gate Markdown and JSON artifacts.
-- Same-repository pull requests get a single updated PR gate comment rather than duplicate comments.
-- The comment states when only scaffold CI evidence is available.
-
-## What It Does Not Prove
-
-- It does not run live Goose.
-- It does not verify provider setup.
-- It does not call the GitHub Checks API.
-- It does not post comments for fork pull requests.
-- It does not treat green CI as semantic acceptance.
-- It does not replace deterministic validation and quality-gate evidence for an actual run.
-- It does not embed raw model output, provider logs, or private run contents in the PR comment.
-
-The scaffold validation folder used by CI normally renders `Block` with `pr_gate.acceptance_evidence_missing` because it is fallback evidence, not a full Workbench acceptance lifecycle. That is intentional. Green CI alone is not accepted agent work.
-
-Semantic PR acceptance comes later through real Workbench evidence folders, validation profiles, quality-gate decisions, and an enforcement policy. The current comment is a GitHub-native visibility layer for the existing artifact renderer.
-
-## Local PR Gate Artifact
-
-Render a local PR gate artifact from an explicit Workbench acceptance run:
+Render from one explicit Workbench run:
 
 ```bash
 python tools/pr_gate.py \
@@ -57,7 +43,7 @@ python tools/pr_gate.py \
   --json-out runs/pr_gate/pr_decision.json
 ```
 
-You can also resolve a run by parent folder and run id:
+Resolve a run by parent folder and run id:
 
 ```bash
 python tools/pr_gate.py \
@@ -67,7 +53,7 @@ python tools/pr_gate.py \
   --json-out runs/pr_gate/pr_decision.json
 ```
 
-Render the CI-style fallback message from scaffold evidence:
+Render a blocking fallback when no full acceptance run is available:
 
 ```bash
 python tools/pr_gate.py \
@@ -76,9 +62,65 @@ python tools/pr_gate.py \
   --json-out runs/pr_gate/pr_decision.json
 ```
 
-Use `--fail-on-block` only when you want the renderer to become an enforcing command. Without that flag, the command exits successfully after writing a deterministic `accept`, `needs_review`, or `block` artifact.
+Use `--fail-on-block` only when you want the renderer to become an enforcing
+command. Without that flag, the command exits successfully after writing a
+deterministic artifact.
 
-To mirror the sticky comment behavior locally with the GitHub CLI authenticated:
+## Outputs
+
+The renderer writes:
+
+```text
+runs/pr_gate/pr_comment.md
+runs/pr_gate/pr_decision.json
+```
+
+`pr_decision.json` includes the outcome, run id, evidence source, validation
+status, quality-gate status, reason, reason codes, required next action, and an
+evidence table showing whether these artifacts are present:
+
+```text
+validation_report.json
+revision_decision.json
+model_output.md
+run_log.jsonl
+```
+
+Only `validation_report.json` and `revision_decision.json` are required to make
+the acceptance decision. `model_output.md` and `run_log.jsonl` remain useful
+evidence but are not embedded in the PR comment.
+
+## PR Comment Surface
+
+The Markdown comment is designed to answer the merge-facing questions quickly:
+
+```text
+# AI Workbench PR Gate: Accept|Needs Review|Block
+
+Decision: Accept|Needs Review|Block
+Why: <reason>
+Required next action: <required_next_action>
+Evidence present: validation_report yes|no, revision_decision yes|no
+```
+
+The comment then shows run metadata, validation and quality-gate status, evidence
+presence, and reason codes. It does not embed raw model output, provider logs, or
+private run contents.
+
+For pull requests opened from the same repository, the comment helper posts or
+updates a single sticky comment marked with:
+
+```text
+<!-- ai-workbench-pr-gate -->
+```
+
+Fork pull requests can still render and upload artifacts, but the template skips
+comment posting.
+
+## Sticky Comment Helper
+
+To mirror same-repository sticky comment behavior locally with the GitHub CLI
+authenticated:
 
 ```bash
 python tools/pr_gate_comment.py \
@@ -88,11 +130,39 @@ python tools/pr_gate_comment.py \
   --decision runs/pr_gate/pr_decision.json
 ```
 
-The comment helper uses GraphQL through `gh api graphql`, updates the existing marker comment when present, and creates one only when no marker comment exists.
+The helper uses GraphQL through `gh api graphql`, updates the existing marker
+comment when present, and creates one only when no marker comment exists. The
+comment is a presentation surface only; it does not replace the underlying
+Workbench evidence artifacts.
+
+## Workflow Template
+
+The reusable copy-paste workflow lives at:
+
+```text
+.github/workflows/ai-workbench-pr-gate.yml
+```
+
+Read [the workflow template guide](pr-gate-workflow-template.md) before copying
+it into a target repository.
+
+The template:
+
+- installs `ai-workbench-mcp==0.2.0a0` by default
+- accepts `workbench_run_dir`, or `workbench_runs_dir` plus `workbench_run_id`
+- falls back to a blocking missing/scaffold result when no real run directory is
+  available
+- uploads `pr_comment.md` and `pr_decision.json` as the `workbench-pr-gate`
+  artifact
+- posts one same-repository marker comment when workflow permissions allow it
+
+The template does not run Goose, create a Workbench run, call the GitHub Checks
+API, define merge enforcement policy, or turn CI status into acceptance.
 
 ## Local Mirror
 
-Before pushing a PR, contributors can run the same checks locally:
+Before pushing a PR, contributors can run the visibility checks and fallback
+artifact path locally:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -102,4 +172,11 @@ python tools/pr_gate.py --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/p
 git diff --check
 ```
 
-The generated `runs/ci_scaffold` and `runs/pr_gate` directories are local artifacts and stay ignored.
+This is the repository's historical CI gate prototype path. It is still a repo self-validation gate for package and hygiene checks plus fallback artifact rendering, but it blocks when only scaffold evidence is available. Older docs said "Semantic PR acceptance comes later"; in v0.3, semantic PR acceptance is the alpha surface, while this local mirror still does not run live Goose.
+
+The generated `runs/ci_scaffold` and `runs/pr_gate` directories are local
+artifacts and stay ignored.
+
+For semantic PR acceptance, point the renderer or workflow template at the
+actual Workbench run produced for the PR. Inspect `validation_report.json`,
+`revision_decision.json`, and `pr_decision.json` before calling the PR accepted.

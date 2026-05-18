@@ -12,6 +12,8 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
+Current repo work is the v0.3 Semantic PR Acceptance Alpha. The latest published package remains `ai-workbench-mcp==0.2.0a0`; do not treat v0.3 as a published PyPI release until a versioned release note says so.
+
 ## Before
 
 The agent says: "Done."
@@ -81,6 +83,18 @@ The validation profile runs deterministic checks such as tests, build or lint co
 
 The agent performs. Workbench accepts. MCP connects them.
 
+## GitHub PR Acceptance Alpha
+
+The v0.3 alpha makes the PR-facing surface consume real Workbench evidence instead of treating green CI as acceptance.
+
+For a PR gate to report `accept`, the referenced run must include deterministic validation and quality-gate artifacts, especially `validation_report.json` and `revision_decision.json`. The PR gate reports exactly one of:
+
+- `accept`: validation passed, sign-off is ready, and the quality gate accepted the run.
+- `needs_review`: validation or the quality gate requires review and no blocker-severity reason is present.
+- `block`: required evidence is missing or unreadable, validation failed, revision is required, blocker-severity evidence is present, or only scaffold fallback evidence exists.
+
+Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`. The copy-paste GitHub Actions template in [docs/github/pr-gate-workflow-template.md](docs/github/pr-gate-workflow-template.md) renders PR comments and JSON decisions from Workbench evidence; it does not run Goose, replace the evidence artifacts, or turn CI status into acceptance.
+
 ## 5-Minute Quickstart
 
 Install the published MCP server package:
@@ -96,6 +110,8 @@ python -m pip install -e .
 ```
 
 The published PyPI wheel is code/server only; full Goose recipe workflows require this checked-out repo because configs, prompts, recipes, examples, evals, and validation profiles are repo assets. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the packaging boundary and release checklist.
+
+The source tree also contains bootstrap assets for the next package boundary, including `ai-workbench-bootstrap-assets` and package resources for configs, prompts, and recipes. Those assets are present in the repo; they do not mean a v0.3 package has been published.
 
 For a first local run, use this order:
 
@@ -159,6 +175,8 @@ Choose the validation profile from the task shape:
 | General low-risk implementation with deterministic tests | `recipes/workbench-engineering-acceptance.yaml` | `low_risk_coding` |
 
 See [focused v0.2 workflows](examples/focused-workflows/) for copy-ready commands.
+
+The five first-class v0.3 policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml` and is loaded into validation profiles so PR gate comments can explain accepted, review-required, and blocked outcomes without parsing prose.
 
 For bounded documentation-only changes, use the focused v0.2 recipe:
 
@@ -266,6 +284,8 @@ It shows:
 - a 3-5 minute demo script
 
 The proof pack uses committed sanitized sample evidence under `examples/sample-runs/`. Raw local `runs/` evidence stays ignored.
+
+The v0.3 PR gate outcome demos are in [docs/proof/pr-gate-outcome-demos.md](docs/proof/pr-gate-outcome-demos.md) with sanitized fixtures under [examples/pr-gate-outcomes/](examples/pr-gate-outcomes/). They show `accept`, `needs_review`, and `block` decisions generated from Workbench evidence, not from private local run history.
 
 ## Sample Analytics Demo
 
@@ -376,7 +396,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Docs-only acceptance recipe](recipes/workbench-docs-only-acceptance.yaml): focused documentation-only workflow using the `docs_only` validation profile.
 - [Python package maintenance recipe](recipes/workbench-python-package-maintenance.yaml): focused package workflow using the `python_package_maintenance` validation profile.
 - [Test-fix acceptance recipe](recipes/workbench-test-fix-acceptance.yaml): focused failing-test repair workflow using the `test_fix` validation profile.
-- Core policy-pack profiles: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` in `configs/validation_profiles.yaml`.
+- Core policy packs: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` in `configs/policy_packs.yaml`, applied through `configs/validation_profiles.yaml`.
 - `low_risk_coding` validation profile: bounded implementation profile for the engineering acceptance recipe.
 - [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md): sanitized live Goose proof summary using `fixture_repair_proof` with isolated analytics.
 - [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): sanitized live Codex local/IDE proof summary using `fixture_repair_proof` with host/source evidence.
@@ -391,7 +411,9 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [Golden-case harness guide](docs/evals/golden-case-harness.md): how to score sanitized accepted evidence baselines locally.
 - [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md): completed dogfooding protocol, evidence hygiene rules, and the path to bounded routing-policy experiments.
 - [Model registry configuration](docs/configuration/model-registry.md): how to bring your own model tiers with a local ignored override.
-- [CI gate prototype](docs/github/pr-gate.md): what the repo self-validation workflow proves and why semantic PR acceptance comes later.
+- [PR gate renderer guide](docs/github/pr-gate.md): local artifact rendering and sticky-comment safety notes.
+- [Copy-paste PR gate workflow template](docs/github/pr-gate-workflow-template.md): reusable GitHub Actions workflow that renders `accept`, `needs_review`, or `block` from Workbench evidence.
+- [PR gate outcome demos](docs/proof/pr-gate-outcome-demos.md): sanitized evidence fixtures for all three PR gate outcomes.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 - [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
 - [Repository topics](docs/github/repository-topics.md): recommended GitHub topics and setup commands.
@@ -424,8 +446,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: GitHub-native CI gate prototype with guarded sticky PR comments, fallback scaffold evidence labeling, and the first bounded docs-only advisory routing policy.
-- Next: additional bounded routing-policy experiments, semantic PR acceptance enforcement, Checks API integration, first-class policy metadata, cost/time evidence, and stable contract packaging.
+- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, and sanitized PR gate outcome demos.
+- Next: final PR gate contract docs, release/version decision, Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics

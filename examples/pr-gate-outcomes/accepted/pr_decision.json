@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "operation": "workbench_pr_gate",
+  "outcome": "accept",
+  "ok": true,
+  "run_id": "pr-gate-demo-accepted",
+  "evidence_source": "acceptance_run",
+  "source_run_dir": "examples/pr-gate-outcomes/accepted/evidence",
+  "validation_status": "passed",
+  "quality_gate_status": "accepted",
+  "reason": "Validation passed and the quality gate accepted the documentation-only run.",
+  "reason_codes": [
+    "docs_only.accepted",
+    "quality_gate.accepted"
+  ],
+  "evidence": [
+    {
+      "label": "validation_report",
+      "path": "validation_report.json",
+      "present": true
+    },
+    {
+      "label": "revision_decision",
+      "path": "revision_decision.json",
+      "present": true
+    },
+    {
+      "label": "model_output",
+      "path": "model_output.md",
+      "present": true
+    },
+    {
+      "label": "run_log",
+      "path": "run_log.jsonl",
+      "present": true
+    }
+  ],
+  "required_next_action": "No Workbench action required before merge."
+}

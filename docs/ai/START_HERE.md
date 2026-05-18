@@ -2,6 +2,7 @@
 
 Owner: AI Workbench MCP
 Status: v0.2 alpha release candidate
+Active milestone: v0.3 Semantic PR Acceptance Alpha. The latest published package remains `0.2.0a0` until a future release is explicitly published.
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -14,7 +15,6 @@ The repo is built around this pivot:
 
 ```text
 Goose-first distribution.
-Codex local/IDE first-class as the first second host.
 Workbench-owned acceptance and audit layer.
 Runtime-agnostic core.
 ```
@@ -38,9 +38,11 @@ Workbench should provide:
 - audit records
 - cost and accepted-artifact analytics
 
+Codex local/IDE remains the first second-host proof through the same MCP server and the same evidence ledger. That support should not displace Goose as the default execution surface or create a Codex-specific server.
+
 ## 3. Current State
 
-This is a v0.2 alpha-shaped repo, not a completed stable release.
+This is a v0.2 alpha-shaped package with active v0.3 PR acceptance work in the repo, not a completed stable release.
 
 Copied core:
 
@@ -113,6 +115,8 @@ pytest
 
 Do not treat Goose prose as acceptance evidence. A run is accepted only when the evidence folder has deterministic validation and a quality-gate decision.
 
+For the v0.3 PR acceptance surface, do not treat green CI, a sticky comment, or scaffold evidence as acceptance. A PR gate can report `accept` only when the referenced Workbench run includes `validation_report.json` and `revision_decision.json` with acceptance-supporting status. Scaffold-only fallback evidence must block.
+
 Evidence boundary:
 
 - Keep local run evidence in ignored `runs/`.
@@ -125,9 +129,10 @@ Evidence boundary:
 - Read `docs/codex/setup.md`, `docs/codex/acceptance-workflow.md`, `docs/codex/agents-snippet.md`, and `docs/codex/cloud-limitations.md` before presenting Codex support.
 - Read `docs/evals/golden-case-harness.md` before using accepted sample evidence as golden-case evals.
 - Follow `docs/dogfooding/phase5-dogfooding.md` before turning routing feedback candidates into model-selection policy.
-- Read `docs/github/pr-gate.md` before treating the CI gate prototype as anything beyond repo self-validation.
+- Read `docs/github/pr-gate.md` and `docs/github/pr-gate-workflow-template.md` before using the PR gate renderer or copy-paste GitHub workflow.
 - Read `docs/contracts/v0.2-contract-baseline.md` before building downstream host, analytics, policy, or PR gate integrations against current schemas.
 - Read `docs/publishing/pypi.md` before attempting package publication.
+- Read `docs/proof/pr-gate-outcome-demos.md` before presenting the `accept`, `needs_review`, and `block` PR gate outcomes.
 - Read `docs/github/repository-topics.md` and `docs/github/create-launch-issues.md` before public launch setup.
 - Read `docs/concepts/how-acceptance-works.md` before explaining what MCP connects versus what Workbench accepts.
 - Use `docs/walkthroughs/goose-acceptance-demo.md` as the recording-ready public demo runbook.
@@ -146,11 +151,19 @@ Before public release, remove or avoid:
 
 The public repo should look like a Goose-compatible acceptance extension, not an alternative agent platform.
 
-## 8. Post-Phase 5 Launch Path
+## 8. v0.3 Semantic PR Acceptance Alpha
 
 Phase 5 evidence collection is complete. The closeout report in `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls. Use that evidence to plan bounded routing-policy experiments; do not broadly auto-route or remove quality gates from the closeout report alone.
 
-The next product pass is not more general dogfooding or more recipes. It is one narrow routing-policy experiment at a time, plus the GitHub-native PR acceptance gate and first-class policy metadata work that make the product useful at merge time.
+The current product pass is not more general dogfooding, more recipes, GEPA, extra host integrations, provider plumbing, Checks API enforcement, or Codex cloud export. It is the v0.3 semantic PR acceptance alpha:
+
+- make GitHub PR acceptance consume real Workbench run evidence
+- report exactly one of `accept`, `needs_review`, or `block`
+- block scaffold-only fallback evidence with clear next action
+- keep five first-class policy packs clear and usable
+- provide a copy-paste GitHub workflow template
+- publish sanitized outcome demos without committing private `runs/` evidence
+- keep routing feedback advisory
 
 Codex local/IDE remains the first second-host proof. Continue using the same six-tool lifecycle and evidence folders outside Goose without adding a Codex-specific server.
 
@@ -166,5 +179,7 @@ Use:
 - `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
 - `docs/publishing/pypi.md` for package publishing prep.
+- `docs/github/pr-gate-workflow-template.md` for the copy-paste PR gate GitHub Actions workflow.
+- `docs/proof/pr-gate-outcome-demos.md` for sanitized v0.3 PR gate outcome fixtures.
 - `docs/walkthroughs/goose-acceptance-demo.md` for the recording-ready demo walkthrough.
 - `docs/walkthroughs/codex-acceptance-demo.md` for the Codex local/IDE proof walkthrough.

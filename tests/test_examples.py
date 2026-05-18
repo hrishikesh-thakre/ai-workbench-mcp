@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -10,6 +11,7 @@ SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-tiny-python-fix"
 CODEX_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-codex-tiny-python-fix"
 DOCS_ONLY_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "accepted-docs-only-smoke"
 NEEDS_REVIEW_SAMPLE_RUN = ROOT / "examples" / "sample-runs" / "needs-review-test-fix"
+PR_GATE_OUTCOMES = ROOT / "examples" / "pr-gate-outcomes"
 FOCUSED_WORKFLOWS = ROOT / "examples" / "focused-workflows" / "README.md"
 SAMPLE_RUNS_README = ROOT / "examples" / "sample-runs" / "README.md"
 ANALYTICS_GUIDE = ROOT / "docs" / "analytics" / "acceptance-analytics.md"
@@ -33,6 +35,7 @@ CODEX_WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "codex-acceptance-dem
 PROOF_PACK = ROOT / "docs" / "proof" / "proof-pack-v0.2.md"
 GEMINI_FIXTURE_PROOF = ROOT / "docs" / "proof" / "gemini-fixture-accepted-run.md"
 CODEX_FIXTURE_PROOF = ROOT / "docs" / "proof" / "codex-fixture-accepted-run.md"
+PR_GATE_OUTCOME_PROOF = ROOT / "docs" / "proof" / "pr-gate-outcome-demos.md"
 CODEX_SETUP = ROOT / "docs" / "codex" / "setup.md"
 CODEX_WORKFLOW = ROOT / "docs" / "codex" / "acceptance-workflow.md"
 CODEX_HANDOFF = ROOT / "docs" / "codex" / "live-test-handoff.md"
@@ -172,6 +175,146 @@ class PublicExamplesTests(unittest.TestCase):
                 for command in report["commands_run"]
             )
         )
+
+    def test_pr_gate_outcome_examples_are_generated_from_sanitized_evidence(self) -> None:
+        expected = {
+            "accepted": {
+                "title": "Accept",
+                "outcome": "accept",
+                "validation_status": "passed",
+                "quality_gate_status": "accepted",
+                "reason_codes": ["docs_only.accepted", "quality_gate.accepted"],
+            },
+            "needs-review": {
+                "title": "Needs Review",
+                "outcome": "needs_review",
+                "validation_status": "needs_review",
+                "quality_gate_status": "review_required",
+                "reason_codes": ["api_contract_change.review_required", "quality_gate.review_required"],
+            },
+            "blocked": {
+                "title": "Block",
+                "outcome": "block",
+                "validation_status": "needs_review",
+                "quality_gate_status": "review_required",
+                "reason_codes": ["docs_only.source_file_blocked", "quality_gate.blocker_present"],
+            },
+        }
+
+        for name, expected_values in expected.items():
+            with self.subTest(name=name):
+                demo_dir = PR_GATE_OUTCOMES / name
+                evidence_dir = demo_dir / "evidence"
+                comment_path = demo_dir / "pr_comment.md"
+                decision_path = demo_dir / "pr_decision.json"
+
+                self.assertTrue(comment_path.is_file())
+                self.assertTrue(decision_path.is_file())
+                self.assertTrue((evidence_dir / "validation_report.json").is_file())
+                self.assertTrue((evidence_dir / "revision_decision.json").is_file())
+
+                decision = json.loads(decision_path.read_text(encoding="utf-8"))
+                comment = comment_path.read_text(encoding="utf-8")
+                report = json.loads((evidence_dir / "validation_report.json").read_text(encoding="utf-8"))
+                quality_decision = json.loads((evidence_dir / "revision_decision.json").read_text(encoding="utf-8"))
+
+                self.assertEqual(decision["operation"], "workbench_pr_gate")
+                self.assertEqual(decision["schema_version"], 1)
+                self.assertEqual(decision["outcome"], expected_values["outcome"])
+                self.assertEqual(decision["evidence_source"], "acceptance_run")
+                self.assertEqual(decision["source_run_dir"], f"examples/pr-gate-outcomes/{name}/evidence")
+                self.assertEqual(decision["validation_status"], expected_values["validation_status"])
+                self.assertEqual(decision["quality_gate_status"], expected_values["quality_gate_status"])
+                self.assertEqual(decision["reason_codes"], expected_values["reason_codes"])
+                self.assertEqual(report["overall_status"], expected_values["validation_status"])
+                self.assertEqual(quality_decision["final_status"], expected_values["quality_gate_status"])
+                self.assertIn(f"# AI Workbench PR Gate: {expected_values['title']}", comment)
+                self.assertIn(f"Decision: {expected_values['title']}", comment)
+                self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
+                self.assertIn("This artifact is generated from Workbench evidence only.", comment)
+
+                evidence_presence = {
+                    str(entry["label"]): entry["present"]
+                    for entry in decision["evidence"]
+                    if isinstance(entry, dict)
+                }
+                self.assertEqual(
+                    evidence_presence,
+                    {
+                        "validation_report": True,
+                        "revision_decision": True,
+                        "model_output": True,
+                        "run_log": True,
+                    },
+                )
+
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    tmp_path = Path(tmpdir)
+                    regenerated_comment = tmp_path / "pr_comment.md"
+                    regenerated_decision = tmp_path / "pr_decision.json"
+                    result = subprocess.run(
+                        [
+                            sys.executable,
+                            "tools/pr_gate.py",
+                            "--run-dir",
+                            str(evidence_dir),
+                            "--out",
+                            str(regenerated_comment),
+                            "--json-out",
+                            str(regenerated_decision),
+                        ],
+                        cwd=ROOT,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(json.loads(regenerated_decision.read_text(encoding="utf-8")), decision)
+                    self.assertEqual(regenerated_comment.read_text(encoding="utf-8"), comment)
+
+    def test_pr_gate_outcome_examples_are_public_safe(self) -> None:
+        combined = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in PR_GATE_OUTCOMES.rglob("*")
+            if path.is_file()
+        )
+
+        self.assertNotIn("D:\\", combined)
+        self.assertNotIn("C:\\Users", combined)
+        self.assertNotIn("api_key", combined.lower())
+        self.assertNotIn("token=", combined.lower())
+        self.assertNotIn("SECRET_", combined)
+        self.assertFalse(any(path.name.lower() == "provider.log" for path in PR_GATE_OUTCOMES.rglob("*")))
+
+    def test_pr_gate_outcome_proof_doc_explains_decisions_from_evidence(self) -> None:
+        text = PR_GATE_OUTCOME_PROOF.read_text(encoding="utf-8")
+
+        for path in (
+            "examples/pr-gate-outcomes/accepted/evidence/",
+            "examples/pr-gate-outcomes/accepted/pr_comment.md",
+            "examples/pr-gate-outcomes/accepted/pr_decision.json",
+            "examples/pr-gate-outcomes/needs-review/evidence/",
+            "examples/pr-gate-outcomes/needs-review/pr_comment.md",
+            "examples/pr-gate-outcomes/needs-review/pr_decision.json",
+            "examples/pr-gate-outcomes/blocked/evidence/",
+            "examples/pr-gate-outcomes/blocked/pr_comment.md",
+            "examples/pr-gate-outcomes/blocked/pr_decision.json",
+        ):
+            self.assertIn(path, text)
+
+        for decisive_field in (
+            "overall_status = passed",
+            "sign_off_ready = true",
+            "final_status = accepted",
+            "overall_status = needs_review",
+            "final_status = review_required",
+            "reason_sources[0].severity = blocker",
+            "outcome = accept",
+            "outcome = needs_review",
+            "outcome = block",
+        ):
+            self.assertIn(decisive_field, text)
 
     def test_readme_product_page_references_quickstart_tools_recipe_and_sample_run(self) -> None:
         text = README.read_text(encoding="utf-8")

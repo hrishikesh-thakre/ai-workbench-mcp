@@ -6,7 +6,19 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from ai_workbench_mcp.contracts import SCHEMA_VERSION, error_envelope, response_envelope
+from ai_workbench_mcp.contracts import (
+    SCHEMA_VERSION,
+    V03_ACCEPTANCE_REQUIRED_ARTIFACTS,
+    V03_COMPLETE_RUN_ARTIFACTS,
+    V03_POLICY_PACK_NAMES,
+    V03_POLICY_PACK_REASON_CODE_KEYS,
+    V03_POLICY_PACK_REQUIRED_FIELDS,
+    V03_PR_GATE_EVIDENCE,
+    V03_PR_GATE_EVIDENCE_SOURCES,
+    V03_PR_GATE_OUTCOMES,
+    error_envelope,
+    response_envelope,
+)
 from ai_workbench_mcp.core import (
     model_selection_file_response,
     model_selection_response,
@@ -21,14 +33,22 @@ from ai_workbench_mcp.core import (
 )
 from ai_workbench_mcp.tools.pr_gate import (
     ACCEPTANCE_EVIDENCE_MISSING_CODE,
+    OUTCOME_LABELS,
     OPERATION as PR_GATE_OPERATION,
     STANDARD_EVIDENCE,
 )
 from ai_workbench_mcp.tools.pr_gate_comment import COMMENT_MARKER
+from ai_workbench_mcp.tools.policy_packs import (
+    PRODUCT_POLICY_PACK_NAMES,
+    REQUIRED_LIST_FIELDS,
+    REQUIRED_REASON_CODE_KEYS,
+    load_policy_pack_catalog,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_BASELINE = ROOT / "docs" / "contracts" / "v0.2-contract-baseline.md"
+CONTRACT_V02_BASELINE = ROOT / "docs" / "contracts" / "v0.2-contract-baseline.md"
+CONTRACT_V03_BASELINE = ROOT / "docs" / "contracts" / "v0.3-contract-baseline.md"
 
 
 def read_jsonl(path: Path) -> list[dict[str, object]]:
@@ -71,10 +91,11 @@ class ContractEnvelopeTests(unittest.TestCase):
 
 class ContractDocumentationTests(unittest.TestCase):
     def test_v02_contract_baseline_documents_current_public_surfaces(self) -> None:
-        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+        text = CONTRACT_V02_BASELINE.read_text(encoding="utf-8")
 
         required_phrases = [
             "Status: v0.2 alpha contract baseline, not v1-stable",
+            "v0.3-contract-baseline.md",
             "Consumers must tolerate additive fields.",
             "older committed sample runs that omit newer additive fields",
             "`runs/<run_id>/` remains the local evidence ledger",
@@ -125,7 +146,7 @@ class ContractDocumentationTests(unittest.TestCase):
                 self.assertIn(file_name, text)
 
     def test_v02_contract_baseline_documents_mcp_envelope(self) -> None:
-        text = CONTRACT_BASELINE.read_text(encoding="utf-8")
+        text = CONTRACT_V02_BASELINE.read_text(encoding="utf-8")
 
         self.assertIn(f'"schema_version": {SCHEMA_VERSION}', text)
         for field in ("operation", "status", "ok", "artifacts", "summary", "errors"):
@@ -154,6 +175,148 @@ class ContractDocumentationTests(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assertIn(
                     "v0.2-contract-baseline.md",
+                    path.read_text(encoding="utf-8"),
+                )
+
+    def test_v03_contract_baseline_documents_semantic_pr_acceptance_alpha(self) -> None:
+        text = CONTRACT_V03_BASELINE.read_text(encoding="utf-8")
+
+        required_phrases = [
+            "Status: v0.3 semantic PR acceptance alpha contract baseline, not v1-stable",
+            "v0.2-contract-baseline.md",
+            "Complete Run Evidence",
+            "validation_report.json",
+            "revision_decision.json",
+            'overall_status="passed"',
+            "sign_off_ready=true",
+            'final_status="accepted"',
+            "Policy-Pack Catalog",
+            "configs/policy_packs.yaml",
+            "schema_version: 1",
+            "PR Decision JSON",
+            PR_GATE_OPERATION,
+            "accept",
+            "needs_review",
+            "block",
+            "acceptance_run",
+            "fallback_scaffold",
+            "missing",
+            ACCEPTANCE_EVIDENCE_MISSING_CODE,
+            "PR Comment Surface",
+            "Evidence present: validation_report yes|no, revision_decision yes|no",
+            COMMENT_MARKER,
+            "GitHub Workflow Template Boundary",
+            ".github/workflows/ai-workbench-pr-gate.yml",
+            "Package And Bootstrap Boundary",
+            "ai-workbench-mcp==0.2.0a0",
+            "ai-workbench-bootstrap-assets",
+            "Deliberately Not Stable Yet",
+        ]
+
+        for phrase in required_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, text)
+
+        for artifact in V03_COMPLETE_RUN_ARTIFACTS:
+            with self.subTest(artifact=artifact):
+                self.assertIn(artifact, text)
+        for artifact in V03_ACCEPTANCE_REQUIRED_ARTIFACTS:
+            with self.subTest(required_artifact=artifact):
+                self.assertIn(artifact, text)
+        for label, file_name in V03_PR_GATE_EVIDENCE:
+            with self.subTest(evidence=label):
+                self.assertIn(label, text)
+                self.assertIn(file_name, text)
+        for pack_name in V03_POLICY_PACK_NAMES:
+            with self.subTest(policy_pack=pack_name):
+                self.assertIn(pack_name, text)
+        for field in V03_POLICY_PACK_REQUIRED_FIELDS:
+            with self.subTest(policy_field=field):
+                self.assertIn(field, text)
+        for key in V03_POLICY_PACK_REASON_CODE_KEYS:
+            with self.subTest(reason_code_key=key):
+                self.assertIn(key, text)
+
+    def test_v03_contract_constants_match_landed_implementations(self) -> None:
+        self.assertEqual(V03_PR_GATE_EVIDENCE, STANDARD_EVIDENCE)
+        self.assertEqual(V03_PR_GATE_OUTCOMES, tuple(OUTCOME_LABELS))
+        self.assertEqual(V03_PR_GATE_EVIDENCE_SOURCES, ("acceptance_run", "fallback_scaffold", "missing"))
+        self.assertEqual(V03_POLICY_PACK_NAMES, PRODUCT_POLICY_PACK_NAMES)
+        self.assertEqual(
+            V03_POLICY_PACK_REQUIRED_FIELDS,
+            ("name", "version", "source", *REQUIRED_LIST_FIELDS, "reason_codes"),
+        )
+        self.assertEqual(V03_POLICY_PACK_REASON_CODE_KEYS, REQUIRED_REASON_CODE_KEYS)
+
+        catalog = load_policy_pack_catalog()
+        self.assertEqual(tuple(catalog), V03_POLICY_PACK_NAMES)
+        for pack_name, pack in catalog.items():
+            with self.subTest(policy_pack=pack_name):
+                self.assertEqual(tuple(pack), V03_POLICY_PACK_REQUIRED_FIELDS)
+                self.assertEqual(tuple(pack["reason_codes"]), V03_POLICY_PACK_REASON_CODE_KEYS)
+                self.assertEqual(pack["required_evidence"], ["model_selection.json", "model_output.md", "run_log.jsonl"])
+
+    def test_v03_pr_gate_demo_decisions_follow_contract_shape(self) -> None:
+        expected_fields = {
+            "schema_version",
+            "operation",
+            "outcome",
+            "ok",
+            "run_id",
+            "evidence_source",
+            "source_run_dir",
+            "validation_status",
+            "quality_gate_status",
+            "reason",
+            "reason_codes",
+            "evidence",
+            "required_next_action",
+        }
+        demos = {
+            "accepted": "accept",
+            "needs-review": "needs_review",
+            "blocked": "block",
+        }
+        expected_evidence = dict(V03_PR_GATE_EVIDENCE)
+
+        for slug, expected_outcome in demos.items():
+            with self.subTest(demo=slug):
+                demo_dir = ROOT / "examples" / "pr-gate-outcomes" / slug
+                decision = json.loads((demo_dir / "pr_decision.json").read_text(encoding="utf-8"))
+                comment = (demo_dir / "pr_comment.md").read_text(encoding="utf-8")
+
+                self.assertTrue(expected_fields.issubset(decision))
+                self.assertEqual(decision["schema_version"], SCHEMA_VERSION)
+                self.assertEqual(decision["operation"], PR_GATE_OPERATION)
+                self.assertEqual(decision["outcome"], expected_outcome)
+                self.assertIn(decision["outcome"], V03_PR_GATE_OUTCOMES)
+                self.assertIn(decision["evidence_source"], V03_PR_GATE_EVIDENCE_SOURCES)
+                self.assertIsInstance(decision["reason_codes"], list)
+                self.assertIsInstance(decision["required_next_action"], str)
+
+                evidence = {entry["label"]: entry for entry in decision["evidence"]}
+                self.assertEqual({label: entry["path"] for label, entry in evidence.items()}, expected_evidence)
+                for artifact in V03_ACCEPTANCE_REQUIRED_ARTIFACTS:
+                    label = next(label for label, path in V03_PR_GATE_EVIDENCE if path == artifact)
+                    self.assertTrue(evidence[label]["present"])
+
+                self.assertIn(f"# AI Workbench PR Gate: {OUTCOME_LABELS[expected_outcome]}", comment)
+                self.assertIn("Decision:", comment)
+                self.assertIn("Why:", comment)
+                self.assertIn("Required next action:", comment)
+                self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
+                self.assertIn("This artifact is generated from Workbench evidence only.", comment)
+
+    def test_v03_contract_baseline_is_linked_from_owned_docs(self) -> None:
+        docs = [
+            CONTRACT_V02_BASELINE,
+            ROOT / "docs" / "github" / "pr-gate.md",
+        ]
+
+        for path in docs:
+            with self.subTest(path=path.relative_to(ROOT)):
+                self.assertIn(
+                    "v0.3-contract-baseline.md",
                     path.read_text(encoding="utf-8"),
                 )
 

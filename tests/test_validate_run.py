@@ -15,6 +15,7 @@ from ai_workbench_mcp.tools.validate_run import (
     validate_policy_required_tests,
     validate_run_payload,
 )
+from ai_workbench_mcp.tools.policy_packs import PRODUCT_POLICY_PACK_NAMES, load_policy_pack_catalog
 
 
 class ValidateCapturedResponseFormatTests(unittest.TestCase):
@@ -81,6 +82,38 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertIn("codex_live_handoff_help", command_names)
         self.assertIn("codex_live_result_check_help", command_names)
         self.assertEqual(report["summary"]["checks_passed"], 3)
+
+    def test_policy_pack_catalog_is_exactly_the_product_five(self) -> None:
+        catalog = load_policy_pack_catalog()
+
+        self.assertEqual(tuple(catalog), PRODUCT_POLICY_PACK_NAMES)
+        for pack_name, pack in catalog.items():
+            with self.subTest(policy_pack=pack_name):
+                self.assertEqual(pack["name"], pack_name)
+                self.assertEqual(pack["version"], "v0.2")
+                self.assertEqual(pack["source"], "configs/policy_packs.yaml")
+                self.assertGreater(len(pack["allowed_files"]), 0)
+                self.assertGreater(len(pack["required_tests"]), 0)
+                self.assertEqual(
+                    pack["required_evidence"],
+                    ["model_selection.json", "model_output.md", "run_log.jsonl"],
+                )
+                self.assertIn("required_tests_passed", pack["reason_codes"])
+
+    def test_validation_profile_resolves_first_class_policy_pack_reference(self) -> None:
+        profile = load_validation_profile("docs_only")
+
+        self.assertEqual(profile.policy_pack["name"], "docs_only")
+        self.assertEqual(profile.policy_pack["source"], "configs/policy_packs.yaml")
+        self.assertEqual(
+            profile.policy_pack["required_tests"],
+            ["verify_public_docs", "recipe_policy_discovery_tests"],
+        )
+
+    def test_support_profile_keeps_validation_profile_without_product_pack(self) -> None:
+        profile = load_validation_profile("fixture_repair_proof")
+
+        self.assertEqual(profile.policy_pack, {})
 
     def test_response_captured_without_preferred_sections_needs_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -209,6 +242,7 @@ class ValidateCapturedResponseFormatTests(unittest.TestCase):
         self.assertEqual(checks["changed_file_policy"]["status"], "passed")
         self.assertEqual(report["reason_codes"], ["docs_only.accepted"])
         self.assertEqual(report["policy_pack"]["name"], "docs_only")
+        self.assertEqual(report["policy_pack"]["source"], "configs/policy_packs.yaml")
         self.assertEqual(report["reason_sources"][0]["status"], "passed")
         self.assertEqual(report["reason_sources"][0]["source"], "validation_report")
         self.assertIn("Changed-file source: cli_changed_files", checks["changed_file_policy"]["details"])
