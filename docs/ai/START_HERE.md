@@ -2,7 +2,7 @@
 
 Owner: AI Workbench MCP
 Status: v0.3 semantic PR acceptance alpha release branch
-Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
+Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`. The external sample repository proof is complete in [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate).
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -163,7 +163,7 @@ The current product pass is not more general dogfooding, more recipes, GEPA, ext
 - keep five first-class policy packs clear and usable
 - provide a copy-paste GitHub workflow template
 - provide a one-page external repository setup guide
-- plan a real external sample repository proof without committing private `runs/` evidence
+- prove the copied workflow in a separate public toy repository without committing private `runs/` evidence
 - publish sanitized outcome demos without committing private `runs/` evidence
 - keep routing feedback advisory
 
@@ -183,7 +183,7 @@ Use:
 - `docs/publishing/pypi.md` for package publishing prep.
 - `docs/github/pr-gate-workflow-template.md` for the copy-paste PR gate GitHub Actions workflow.
 - `docs/github/external-repo-setup.md` for the 10-minute external repository setup path.
-- `docs/github/external-sample-repo-plan.md` for the separate toy-repository proof plan.
+- `docs/github/external-sample-repo-plan.md` for the completed separate toy-repository proof.
 - `docs/proof/pr-gate-outcome-demos.md` for sanitized v0.3 PR gate outcome fixtures.
 - `docs/walkthroughs/goose-acceptance-demo.md` for the recording-ready demo walkthrough.
 - `docs/walkthroughs/codex-acceptance-demo.md` for the Codex local/IDE proof walkthrough.

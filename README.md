@@ -93,7 +93,7 @@ For a PR gate to report `accept`, the referenced run must include deterministic 
 - `needs_review`: validation or the quality gate requires review and no blocker-severity reason is present.
 - `block`: required evidence is missing or unreadable, validation failed, revision is required, blocker-severity evidence is present, or only scaffold fallback evidence exists.
 
-Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`. The copy-paste GitHub Actions template in [docs/github/pr-gate-workflow-template.md](docs/github/pr-gate-workflow-template.md) renders PR comments and JSON decisions from Workbench evidence; it does not run Goose, replace the evidence artifacts, or turn CI status into acceptance. For the short external-repository path, use [Use AI Workbench PR Gate in your repo in 10 minutes](docs/github/external-repo-setup.md). For a true separate-repo proof target, use the [external sample repository proof plan](docs/github/external-sample-repo-plan.md).
+Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`. The copy-paste GitHub Actions template in [docs/github/pr-gate-workflow-template.md](docs/github/pr-gate-workflow-template.md) renders PR comments and JSON decisions from Workbench evidence; it does not run Goose, replace the evidence artifacts, or turn CI status into acceptance. For the short external-repository path, use [Use AI Workbench PR Gate in your repo in 10 minutes](docs/github/external-repo-setup.md). For a true separate-repo proof target, see the completed [external sample repository proof](docs/github/external-sample-repo-plan.md).
 
 ## 5-Minute Quickstart
 
@@ -285,7 +285,7 @@ It shows:
 
 The proof pack uses committed sanitized sample evidence under `examples/sample-runs/`. Raw local `runs/` evidence stays ignored.
 
-The v0.3 PR gate outcome demos are in [docs/proof/pr-gate-outcome-demos.md](docs/proof/pr-gate-outcome-demos.md) with sanitized fixtures under [examples/pr-gate-outcomes/](examples/pr-gate-outcomes/). They show `accept`, `needs_review`, and `block` decisions generated from Workbench evidence, not from private local run history.
+The v0.3 PR gate outcome demos are in [docs/proof/pr-gate-outcome-demos.md](docs/proof/pr-gate-outcome-demos.md) with sanitized fixtures under [examples/pr-gate-outcomes/](examples/pr-gate-outcomes/). They show `accept`, `needs_review`, and `block` decisions generated from Workbench evidence, not from private local run history. The same workflow has also been proven in the public external toy repository [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate), with durable proof records under [`proof-records/`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/tree/main/proof-records).
 
 ## Sample Analytics Demo
 
@@ -414,7 +414,7 @@ Focused v0.2 recipes use the most specific prompt by default: docs-only uses `do
 - [PR gate renderer guide](docs/github/pr-gate.md): local artifact rendering and sticky-comment safety notes.
 - [Copy-paste PR gate workflow template](docs/github/pr-gate-workflow-template.md): reusable GitHub Actions workflow that renders `accept`, `needs_review`, or `block` from Workbench evidence.
 - [External repo setup guide](docs/github/external-repo-setup.md): one-page setup path for adding the PR gate to another repository.
-- [External sample repo proof plan](docs/github/external-sample-repo-plan.md): plan for proving the workflow in a separate toy repository.
+- [External sample repo proof](docs/github/external-sample-repo-plan.md): completed public toy-repository proof for copied workflow behavior.
 - [PR gate outcome demos](docs/proof/pr-gate-outcome-demos.md): sanitized evidence fixtures for all three PR gate outcomes.
 - [Launch issue seeds](docs/github/launch-issues.md): public alpha issue backlog for dogfooding, routing feedback, cost evidence, policy packs, CI, and demo work.
 - [PyPI publishing prep](docs/publishing/pypi.md): package build, twine, wheel smoke, and release boundary.
@@ -448,8 +448,8 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, an external sample repo proof plan, and sanitized PR gate outcome demos.
-- Next: use the published `0.3.0a0` package for the external sample repository proof, then continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
+- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, a completed external sample repo proof, and sanitized PR gate outcome demos.
+- Next: continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 
 ## GitHub Topics

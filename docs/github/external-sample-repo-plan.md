@@ -1,10 +1,21 @@
-# External Sample Repository Proof Plan
+# External Sample Repository Proof
 
-Status: plan/manifest only
+Status: complete
 
-This page defines the proof target for a future external sample repository. It
-does not create a repository, remote, branch, or workflow run from this
-environment.
+Public repository:
+
+```text
+https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate
+```
+
+Proof records:
+
+```text
+https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/tree/main/proof-records
+```
+
+This page records the completed external sample repository proof and preserves
+the proof target manifest for future repeats.
 
 ## Purpose
 
@@ -34,8 +45,8 @@ Why:
 - It avoids mixing release/docs work in this repository with external proof
   branches and PRs.
 
-Do not create the separate repository or remote from this environment unless an
-orchestrator explicitly approves that action.
+The completed proof repository is public and separate from this source
+repository.
 
 ## Minimal Toy Repository Shape
 
@@ -49,9 +60,9 @@ toy-ai-workbench-pr-gate/
   src/
     toycalc/
       __init__.py
-      math_ops.py
+      arithmetic.py
   tests/
-    test_math_ops.py
+    test_arithmetic.py
   .github/
     workflows/
       ai-workbench-pr-gate.yml
@@ -140,13 +151,15 @@ The copied workflow should be driven through the existing inputs:
 | `workbench_run_id` | Specific run folder name under `workbench_runs_dir`. |
 | `workbench_fallback_run_dir` | Optional fallback path. It must remain a blocking missing/scaffold evidence path, not an acceptance shortcut. |
 
-For manual proof, run the workflow three times with the evidence path changed
-for each expected outcome:
+For manual proof, run the workflow four times with the evidence path changed
+for each expected outcome and fallback case:
 
 ```text
 workbench_run_dir=workbench-evidence/accept
 workbench_run_dir=workbench-evidence/needs-review
 workbench_run_dir=workbench-evidence/block
+workbench_run_dir=workbench-evidence/does-not-exist
+workbench_fallback_run_dir=workbench-evidence/scaffold-fallback
 ```
 
 ## Branch And Merge Hygiene
@@ -193,11 +206,45 @@ The external proof is complete when all of the following are true:
 - Same-repository PRs get at most one marker-based sticky comment; fork PRs
   still render and upload artifacts while skipping comment posting.
 
-## Handoff Notes
+## Completion Record
 
-When the orchestrator is ready to create the external sample, copy this manifest
-into the toy repo's planning issue or PR description, then copy the workflow
-template from this repository. Keep the first proof PR intentionally small, such
-as a one-line README or arithmetic helper change, so any `accept`,
-`needs_review`, or `block` outcome is attributable to the supplied Workbench
-evidence rather than target-project complexity.
+Completed on 2026-05-18 in:
+
+```text
+https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate
+```
+
+Recorded proof links:
+
+| Proof case | Run |
+|---|---|
+| Same-repo PR initial run | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039196095` |
+| Same-repo PR sticky-comment update run | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039299132` |
+| Dispatch accept | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039415176` |
+| Dispatch needs review | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039447479` |
+| Dispatch block | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039474439` |
+| Dispatch scaffold fallback block | `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/actions/runs/26039499619` |
+
+The durable artifact copies are committed under:
+
+```text
+https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/tree/main/proof-records
+```
+
+The same-repository PR proof is:
+
+```text
+https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/pull/1
+```
+
+The PR had exactly one `<!-- ai-workbench-pr-gate -->` sticky comment after the
+second run, and the comment contained the `Accept` outcome.
+
+## Repeat Notes
+
+For a future repeat, copy this manifest into the toy repo's planning issue or
+PR description, then copy the workflow template from this repository. Keep the
+first proof PR intentionally small, such as a one-line README or arithmetic
+helper change, so any `accept`, `needs_review`, or `block` outcome is
+attributable to the supplied Workbench evidence rather than target-project
+complexity.

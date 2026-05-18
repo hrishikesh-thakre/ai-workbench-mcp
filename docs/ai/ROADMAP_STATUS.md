@@ -38,6 +38,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.3 copy-paste PR workflow | Current alpha | `.github/workflows/ai-workbench-pr-gate.yml` documents a reusable GitHub workflow that renders PR gate artifacts and same-repository sticky comments from Workbench evidence |
 | v0.3 package bootstrap assets | Current alpha | Source tree includes bootstrap assets and `ai-workbench-bootstrap-assets` for configs, prompts, and recipes; package metadata and workflow defaults are prepared for `0.3.0a0` |
 | v0.3 PR gate outcome demos | Current alpha | Sanitized fixtures under `examples/pr-gate-outcomes/` and proof docs show `accept`, `needs_review`, and `block` decisions without committing private `runs/` evidence |
+| v0.3 external sample repo proof | Complete | Public toy repository `hrishikesh-thakre/toy-ai-workbench-pr-gate` proves the copied workflow installs `ai-workbench-mcp==0.3.0a0`, renders same-repo PR artifacts/comments, and dispatches `accept`, `needs_review`, `block`, and scaffold-fallback `block` outcomes |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
 | PyPI and package plumbing | Registry published | Historical package build checks, wheel smoke, TestPyPI install, exact-version PyPI install, and MCP Registry publication passed for `0.2.0a0`; `0.3.0a0` build, wheel smoke, TestPyPI upload/install, PyPI upload/install, and MCP Registry publication passed |
@@ -48,7 +49,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Dogfood Batch 2 | Evidence collected | Stage A and Stage B produced eight isolated Goose/Gemma-backed runs; Stage B confirmed exact-diff validation blocks no-op and underreported changed-file claims |
 | Targeted docs-only routing evidence | Evidence collected | Six isolated low-risk `docs_only` Goose runs stayed on `local_coding`, passed deterministic validation, and were accepted by the quality gate; report is aggregate-only in `docs/dogfooding/targeted-docs-only-current-tier-report.md` |
 | Docs-only current-tier advisory policy | Implemented | Selector feedback now returns `prefer_current_tier` only for the bounded low-risk, easy `docs_only` bucket with enough accepted evidence; defaults and selected tiers remain unchanged |
-| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, launch issues `#1`-`#6`, external repo setup, sample repo proof plan, and v0.3 docs document the move from evidence collection to semantic PR acceptance |
+| Public alpha launch material | In progress | Phase 5 dogfooding protocol, acceptance concept guide, launch issues `#1`-`#6`, external repo setup, completed external sample proof, and v0.3 docs document the move from evidence collection to semantic PR acceptance |
 
 ## Phase 0: Repo Alignment (Complete)
 
@@ -181,7 +182,7 @@ Tasks:
 - Provide a copy-paste GitHub Actions workflow template for target repositories.
 - Provide bootstrap assets for configs, prompts, and recipes in the published `0.3.0a0` package.
 - Provide a one-page external repository setup guide.
-- Provide a separate external sample repository proof plan.
+- Complete a separate external sample repository proof.
 - Commit sanitized PR gate outcome demos for public proof.
 
 Out of scope:
@@ -195,4 +196,4 @@ Out of scope:
 
 ## Current Next Step
 
-Use the published `0.3.0a0` package for the external sample repository proof. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback advisory. Do not broaden this milestone to GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry.
+The public external sample repository proof is complete at `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate`. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback advisory. Do not broaden this milestone to GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry.
