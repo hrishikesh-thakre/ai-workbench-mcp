@@ -143,6 +143,9 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Download PR gate artifacts
         uses: actions/download-artifact@v4
         with:
