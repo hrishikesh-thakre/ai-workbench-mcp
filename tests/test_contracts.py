@@ -198,6 +198,8 @@ class ContractDocumentationTests(unittest.TestCase):
             "Advisory Policy-Pack Selector",
             "workbench_select_policy_pack",
             "recommended_policy_pack",
+            "recommended_validation_profile",
+            "profile_selection_mode",
             "matched_signals",
             "security/privacy -> api/MCP contract -> docs-only -> known failing test repair -> low-risk bug fix",
             "PR Decision JSON",
@@ -251,7 +253,7 @@ class ContractDocumentationTests(unittest.TestCase):
         self.assertEqual(V03_POLICY_PACK_NAMES, PRODUCT_POLICY_PACK_NAMES)
         self.assertEqual(
             V03_POLICY_PACK_REQUIRED_FIELDS,
-            ("name", "version", "source", *REQUIRED_LIST_FIELDS, "reason_codes"),
+            ("name", "version", "validation_profile", "source", *REQUIRED_LIST_FIELDS, "reason_codes"),
         )
         self.assertEqual(V03_POLICY_PACK_REASON_CODE_KEYS, REQUIRED_REASON_CODE_KEYS)
 
@@ -273,6 +275,8 @@ class ContractDocumentationTests(unittest.TestCase):
             "evidence_source",
             "source_run_dir",
             "policy_pack",
+            "validation_profile",
+            "policy_pack_selection_mode",
             "validation_status",
             "quality_gate_status",
             "reason",
@@ -298,6 +302,8 @@ class ContractDocumentationTests(unittest.TestCase):
                 self.assertEqual(decision["operation"], PR_GATE_OPERATION)
                 self.assertEqual(decision["outcome"], expected_outcome)
                 self.assertIsInstance(decision["policy_pack"], str)
+                self.assertIsInstance(decision["validation_profile"], str)
+                self.assertIsInstance(decision["policy_pack_selection_mode"], str)
                 self.assertIn(decision["outcome"], V03_PR_GATE_OUTCOMES)
                 self.assertIn(decision["evidence_source"], V03_PR_GATE_EVIDENCE_SOURCES)
                 self.assertIsInstance(decision["reason_codes"], list)
@@ -370,6 +376,8 @@ class OperationContractTests(unittest.TestCase):
                 "status": "selected",
                 "ok": True,
                 "recommended_policy_pack": "docs_only",
+                "recommended_validation_profile": "docs_only",
+                "profile_selection_mode": "auto_advisory",
                 "reason": "Only documentation files changed.",
                 "matched_signals": ["doc_file:README.md"],
                 "confidence": 0.7,
@@ -381,6 +389,8 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["status"], "selected")
         self.assertTrue(response["ok"])
         self.assertEqual(response["summary"]["recommended_policy_pack"], "docs_only")
+        self.assertEqual(response["summary"]["recommended_validation_profile"], "docs_only")
+        self.assertEqual(response["summary"]["profile_selection_mode"], "auto_advisory")
         self.assertEqual(response["summary"]["matched_signals"], ["doc_file:README.md"])
         self.assertEqual(response["summary"]["confidence"], 0.7)
 
@@ -511,6 +521,8 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["operation"], "workbench_select_policy_pack")
         self.assertEqual(response["status"], "selected")
         self.assertEqual(response["summary"]["recommended_policy_pack"], "docs_only")
+        self.assertEqual(response["summary"]["recommended_validation_profile"], "docs_only")
+        self.assertEqual(response["summary"]["profile_selection_mode"], "auto_advisory")
         self.assertIn("doc_file:README.md", response["summary"]["matched_signals"])
 
     def test_event_write_failure_does_not_change_core_response(self) -> None:

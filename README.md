@@ -176,9 +176,9 @@ Choose the validation profile from the task shape:
 
 See [focused v0.2 workflows](examples/focused-workflows/) for copy-ready commands.
 
-The five first-class v0.3 policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml` and is loaded into validation profiles so PR gate comments can explain accepted, review-required, and blocked outcomes without parsing prose. Product-facing pack docs live in [docs/policy-packs/](docs/policy-packs/).
+The five first-class v0.3 policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml`, maps each pack to an explicit validation profile, and is loaded into validation profiles so PR gate comments can explain accepted, review-required, and blocked outcomes without parsing prose. Product-facing pack docs live in [docs/policy-packs/](docs/policy-packs/).
 
-Use the advisory selector when the task shape is unclear. It recommends a policy pack and explains the matching signals, but it does not change validation automatically:
+Use the selector when the task shape is unclear. It recommends a policy pack, returns the matching validation profile, and explains the matching signals. Selecting a profile is setup evidence only; acceptance still requires deterministic validation and the quality gate:
 
 ```bash
 python tools/policy_pack_select.py \
@@ -340,7 +340,7 @@ workbench_open_run
      records execution_host, defaulting to goose
 
 workbench_select_policy_pack
-  -> recommends an advisory policy pack from task metadata without changing validation behavior
+  -> recommends an advisory policy pack and matching validation profile from task metadata
 
 workbench_select_model
   -> recommends a model/runtime tier and writes model_selection.json
@@ -351,6 +351,7 @@ workbench_record_execution
 
 workbench_validate_run
   -> runs deterministic validation and writes validation_report.json
+     uses an explicit profile first, then selected run metadata when available
 
 workbench_quality_gate
   -> accepts, rejects, or requests review and writes revision_decision.json
@@ -462,7 +463,7 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.4 policy-pack productization closeout on top of the v0.3 Semantic PR Acceptance Alpha, with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, advisory policy-pack selection, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, a completed external sample repo proof, and sanitized PR gate outcome demos.
+- Current: v0.5 safe policy-pack auto-selection on top of the v0.3 Semantic PR Acceptance Alpha, with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, selected validation-profile evidence, advisory policy-pack selection, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, a completed external sample repo proof, and sanitized PR gate outcome demos.
 - Next: continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 

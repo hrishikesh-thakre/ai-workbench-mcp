@@ -16,6 +16,23 @@ identifies the policy metadata contract lineage. The v0.4 closeout
 productized, documented, and validated these packs without changing the
 machine-readable pack schema.
 
+## Safe Auto-Selection
+
+Goose recipes may call `workbench_select_policy_pack` before
+`workbench_select_model` when the user has not explicitly supplied a
+`validation_profile` override. The selector returns a recommended policy pack
+and recommended validation profile from task metadata. Recipes should pass that
+selected validation profile to both `workbench_select_model` and
+`workbench_validate_run`.
+
+`validation_profile` remains an override parameter for backward compatibility.
+When it is supplied explicitly, recipes should skip advisory auto-selection and
+use that profile for both model selection and deterministic validation.
+
+Selector output and profile selection are setup guidance only. They choose the
+validation profile when no explicit profile is passed; they are not acceptance
+evidence and do not replace deterministic validation or the quality gate.
+
 ## Acceptance Rule
 
 Do not claim a run is accepted from policy-pack metadata, green CI, scaffold

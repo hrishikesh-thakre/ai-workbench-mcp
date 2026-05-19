@@ -12,7 +12,7 @@ import time
 
 from .config_loader import load_simple_yaml
 from .context_scout import WORKBENCH_ROOT, load_project_config, resolve_cli_path
-from .policy_packs import resolve_policy_pack_reference
+from .policy_packs import load_policy_pack_catalog, resolve_policy_pack_reference
 from .response_format import extract_preferred_response_text, missing_required_sections
 
 
@@ -67,6 +67,13 @@ class CommandResult:
     exit_code: int
     status: str
     duration_ms: int
+
+
+@dataclass(frozen=True)
+class ValidationProfileCandidate:
+    profile: str
+    source: str
+    field: str
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -585,13 +592,135 @@ def model_selection_validation_profile(run_dir: Path) -> str | None:
     return None
 
 
+def profile_value(data: dict[str, object], key: str) -> str | None:
+    value = data.get(key)
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def task_metadata_validation_profile(run_dir: Path) -> ValidationProfileCandidate | None:
+    metadata = read_json_if_exists(run_dir / "task_metadata.json")
+    profile = profile_value(metadata, "validation_profile")
+    if profile:
+        return ValidationProfileCandidate(profile=profile, source="task_metadata", field="validation_profile")
+    return None
+
+
+def policy_pack_selection_validation_profiles(run_dir: Path) -> list[ValidationProfileCandidate]:
+    selection = read_json_if_exists(run_dir / "policy_pack_selection.json")
+    candidates: list[ValidationProfileCandidate] = []
+    if selection and (
+        str(selection.get("status") or "") != "selected"
+        or selection.get("ok") is False
+    ):
+        return candidates
+
+    for field in (
+        "recommended_validation_profile",
+        "selected_validation_profile",
+        "validation_profile",
+        "selected_profile",
+        "profile",
+    ):
+        profile = profile_value(selection, field)
+        if profile:
+            candidates.append(
+                ValidationProfileCandidate(profile=profile, source="policy_pack_selection", field=field)
+            )
+
+    policy_pack_candidates = [
+        (field, policy_pack)
+        for field in ("recommended_policy_pack", "selected_policy_pack", "policy_pack")
+        if (policy_pack := profile_value(selection, field))
+    ]
+    if not policy_pack_candidates:
+        return candidates
+
+    catalog = load_policy_pack_catalog()
+    for field, policy_pack in policy_pack_candidates:
+        pack_data = catalog.get(policy_pack, {})
+        mapped_profile = pack_data.get("validation_profile") if isinstance(pack_data, dict) else None
+        profile = mapped_profile.strip() if isinstance(mapped_profile, str) and mapped_profile.strip() else policy_pack
+        candidates.append(ValidationProfileCandidate(profile=profile, source="policy_pack_selection", field=field))
+
+    return candidates
+
+
+def selected_validation_profile_candidates(run_dir: Path) -> list[ValidationProfileCandidate]:
+    candidates: list[ValidationProfileCandidate] = []
+    metadata_candidate = task_metadata_validation_profile(run_dir)
+    if metadata_candidate is not None:
+        candidates.append(metadata_candidate)
+    candidates.extend(policy_pack_selection_validation_profiles(run_dir))
+
+    selection_profile = model_selection_validation_profile(run_dir)
+    if selection_profile:
+        candidates.append(
+            ValidationProfileCandidate(
+                profile=selection_profile,
+                source="model_selection",
+                field="validation_profile",
+            )
+        )
+    return candidates
+
+
+def has_profile_selection_artifact(run_dir: Path) -> bool:
+    return any(
+        (run_dir / artifact).exists()
+        for artifact in ("task_metadata.json", "policy_pack_selection.json", "model_selection.json")
+    )
+
+
+def known_validation_profile_names() -> set[str]:
+    raw_data = load_simple_yaml(WORKBENCH_ROOT / "configs" / "validation_profiles.yaml")
+    profiles = raw_data.get("profiles", {})
+    if not isinstance(profiles, dict):
+        return set()
+    return {str(profile_name) for profile_name in profiles}
+
+
+def profile_candidate_label(candidate: ValidationProfileCandidate) -> str:
+    return f"{candidate.source}.{candidate.field}={candidate.profile}"
+
+
+def validate_selected_profile_candidates(candidates: list[ValidationProfileCandidate]) -> None:
+    known_profiles = known_validation_profile_names()
+    invalid_candidates = [candidate for candidate in candidates if candidate.profile not in known_profiles]
+    if invalid_candidates:
+        invalid_details = ", ".join(profile_candidate_label(candidate) for candidate in invalid_candidates)
+        valid_details = ", ".join(sorted(known_profiles))
+        raise ValueError(
+            f"Invalid selected validation profile: {invalid_details}. "
+            f"Valid profiles are: {valid_details}."
+        )
+
+    selected_profiles = {candidate.profile for candidate in candidates}
+    if len(selected_profiles) > 1:
+        selected_details = ", ".join(profile_candidate_label(candidate) for candidate in candidates)
+        raise ValueError(
+            "Conflicting selected validation profiles: "
+            f"{selected_details}. Pass --profile to choose explicitly or update the run artifacts to agree."
+        )
+
+
 def resolve_validation_profile_name(args_profile: str | None, run_dir: Path, project_default: str) -> tuple[str, str]:
     if args_profile:
         return args_profile, "cli_profile"
 
-    selection_profile = model_selection_validation_profile(run_dir)
-    if selection_profile:
-        return selection_profile, "model_selection"
+    candidates = selected_validation_profile_candidates(run_dir)
+    if candidates:
+        validate_selected_profile_candidates(candidates)
+        candidate = candidates[0]
+        return candidate.profile, candidate.source
+
+    if has_profile_selection_artifact(run_dir):
+        raise ValueError(
+            "No selected validation profile found. Pass --profile, set task_metadata.json validation_profile, "
+            "write policy_pack_selection.json recommended_validation_profile, or provide model_selection.json "
+            "validation_profile. Project default fallback is limited to legacy/scaffold runs."
+        )
 
     return project_default, "project_default"
 

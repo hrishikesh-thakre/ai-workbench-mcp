@@ -7,6 +7,8 @@
   "evidence_source": "acceptance_run",
   "source_run_dir": "examples/pr-gate-outcomes/needs-review/evidence",
   "policy_pack": "api_contract_change",
+  "validation_profile": "api_contract_change",
+  "policy_pack_selection_mode": "unknown",
   "validation_status": "needs_review",
   "quality_gate_status": "review_required",
   "reason": "Policy requires contract-owner review before merge.",

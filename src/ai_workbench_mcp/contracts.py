@@ -41,6 +41,7 @@ V03_POLICY_PACK_NAMES = (
 V03_POLICY_PACK_REQUIRED_FIELDS = (
     "name",
     "version",
+    "validation_profile",
     "source",
     "allowed_files",
     "required_tests",

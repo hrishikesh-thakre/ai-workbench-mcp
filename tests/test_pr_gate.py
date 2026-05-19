@@ -84,12 +84,16 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["source_run_dir"], "examples/sample-runs/accepted-tiny-python-fix")
         self.assertEqual(decision["validation_status"], "passed")
         self.assertEqual(decision["quality_gate_status"], "accepted")
+        self.assertEqual(decision["validation_profile"], "run_signoff")
+        self.assertEqual(decision["policy_pack_selection_mode"], "unknown")
         self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Accept", comment)
         self.assertIn("Decision: Accept", comment)
         self.assertIn("Why: Validation passed and the quality gate accepted the run.", comment)
         self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
         self.assertIn("**Evidence source:** `acceptance_run`", comment)
+        self.assertIn("**Validation profile:** `run_signoff`", comment)
+        self.assertIn("**Selection mode:** `unknown`", comment)
         self.assertIn("validation_report.json", comment)
         self.assertIn("revision_decision.json", comment)
 
@@ -134,7 +138,9 @@ class PrGateTests(unittest.TestCase):
 
         self.assertEqual(decision["outcome"], "accept")
         self.assertEqual(decision["policy_pack"], "docs_only")
+        self.assertEqual(decision["validation_profile"], "legacy_profile_should_not_win")
         self.assertIn("**Policy pack:** `docs_only`", comment)
+        self.assertIn("**Validation profile:** `legacy_profile_should_not_win`", comment)
 
     def test_policy_pack_name_falls_back_to_legacy_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -162,7 +168,85 @@ class PrGateTests(unittest.TestCase):
 
         self.assertEqual(decision["outcome"], "accept")
         self.assertEqual(decision["policy_pack"], "low_risk_bug_fix")
+        self.assertEqual(decision["validation_profile"], "low_risk_bug_fix")
         self.assertIn("**Policy pack:** `low_risk_bug_fix`", comment)
+        self.assertIn("**Validation profile:** `low_risk_bug_fix`", comment)
+
+    def test_policy_pack_selection_mode_is_read_from_task_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "task-metadata-mode-run",
+                    "profile": "docs_only",
+                    "policy_pack": {"name": "docs_only"},
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "run_id": "task-metadata-mode-run",
+                    "final_status": "accepted",
+                },
+            )
+            write_json(
+                run_dir / "task_metadata.json",
+                {
+                    "run_id": "task-metadata-mode-run",
+                    "policy_pack_selection_mode": "manual_override",
+                },
+            )
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "accept")
+        self.assertEqual(decision["validation_profile"], "docs_only")
+        self.assertEqual(decision["policy_pack_selection_mode"], "manual_override")
+        self.assertIn("**Selection mode:** `manual_override`", comment)
+
+    def test_policy_pack_selection_mode_falls_back_to_selection_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "selection-artifact-mode-run",
+                    "profile": "api_contract_change",
+                    "policy_pack": {"name": "api_contract_change"},
+                    "overall_status": "needs_review",
+                    "sign_off_ready": False,
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "run_id": "selection-artifact-mode-run",
+                    "final_status": "review_required",
+                    "reason": "Contract review required.",
+                    "next_action": "manual_review_handoff",
+                },
+            )
+            write_json(
+                run_dir / "policy_pack_selection.json",
+                {
+                    "recommended_policy_pack": "api_contract_change",
+                    "profile_selection_mode": "auto_advisory",
+                },
+            )
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "needs_review")
+        self.assertEqual(decision["validation_profile"], "api_contract_change")
+        self.assertEqual(decision["policy_pack_selection_mode"], "auto_advisory")
+        self.assertIn("**Selection mode:** `auto_advisory`", comment)
 
     def test_missing_validation_report_maps_to_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -47,7 +47,7 @@ parameters:
   - key: validation_profile
     input_type: string
     requirement: optional
-    description: "Validation profile from configs/validation_profiles.yaml."
+    description: "Optional validation profile override from configs/validation_profiles.yaml. If supplied explicitly, skip advisory policy-pack auto-selection; the default remains a backward-compatible fallback."
     default: "run_signoff"
   - key: routing_feedback_path
     input_type: string
@@ -78,6 +78,7 @@ extensions:
     description: "AI Workbench routing, validation, quality gate, and run analytics."
     available_tools:
       - "workbench_open_run"
+      - "workbench_select_policy_pack"
       - "workbench_select_model"
       - "workbench_record_execution"
       - "workbench_validate_run"
@@ -89,17 +90,20 @@ instructions: |
 
   Use the AI Workbench MCP tools as the source of truth for routing, validation, quality gate decisions, and analytics. Do not claim the run is accepted unless deterministic validation and the quality gate both support that conclusion.
 
+  Policy-pack selector output and selected_validation_profile are setup guidance only. They are not acceptance evidence and do not replace deterministic validation or the quality gate.
+
   Workflow:
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-engineering-acceptance.yaml".
-  2. Call workbench_select_model with project="{{ project }}", task_type="{{ task_type }}", risk="{{ risk }}", validation_strength="{{ validation_strength }}", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-engineering-acceptance.yaml", validation_profile="{{ validation_profile }}", routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
-  3. Perform the requested engineering task: {{ task }}
-  4. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
-  5. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
+  2. Determine selected_validation_profile for this run. If the user explicitly supplied validation_profile="{{ validation_profile }}" as an override, use that value and skip advisory auto-selection. Otherwise call workbench_select_policy_pack with task_text="{{ task }}", task_type="{{ task_type }}", prompt="{{ prompt }}", and risk="{{ risk }}" before model selection, then use its recommended_validation_profile. If the selector cannot provide one, fall back to profile="{{ validation_profile }}".
+  3. Call workbench_select_model with project="{{ project }}", task_type="{{ task_type }}", risk="{{ risk }}", validation_strength="{{ validation_strength }}", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-engineering-acceptance.yaml", validation_profile=selected_validation_profile, routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
+  4. Perform the requested engineering task: {{ task }}
+  5. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
+  6. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections.
      If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
-  6. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. Focused change profiles require non-empty changed files that exactly match current worktree diff evidence.
-  7. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
-  8. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
-  9. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
+  7. Call workbench_validate_run with project="{{ project }}", profile=selected_validation_profile, out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. For explicit override runs, this is equivalent to profile="{{ validation_profile }}". Focused change profiles require non-empty changed files that exactly match current worktree diff evidence.
+  8. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
+  9. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
+  10. Call workbench_analyze_runs with runs_dir="runs" and out_dir="runs/_reports" after validation and quality gate artifacts exist.
 
 prompt: |
   Task: {{ task }}
@@ -108,9 +112,9 @@ prompt: |
   Project: {{ project }}
   Task type: {{ task_type }}
   Risk: {{ risk }}
-  Validation profile: {{ validation_profile }}
+  Validation profile override or fallback: {{ validation_profile }}
 
-  Start by opening the Workbench run, then select the model tier with Workbench. Complete the engineering work, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
+  Start by opening the Workbench run, then determine the selected validation profile from the explicit override or advisory policy-pack selector before model selection. Complete the engineering work, record execution evidence with Workbench, validate it with the same selected profile, run the quality gate, and summarize the final Workbench envelope statuses.
 
 activities:
   - "Run an accepted engineering workflow for: {{ task }}"

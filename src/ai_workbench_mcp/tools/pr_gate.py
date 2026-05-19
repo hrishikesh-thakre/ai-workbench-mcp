@@ -187,6 +187,40 @@ def policy_pack_name_from(report: dict[str, object]) -> str:
     return "unknown"
 
 
+def validation_profile_from(report: dict[str, object]) -> str:
+    profile = str(report.get("profile") or "").strip()
+    if profile:
+        return profile
+    return "unknown"
+
+
+def first_non_empty_string(payload: dict[str, object], keys: tuple[str, ...]) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        text = str(value or "").strip()
+        if text:
+            return text
+    return None
+
+
+def policy_pack_selection_mode_from(
+    task_metadata: dict[str, object],
+    policy_pack_selection: dict[str, object],
+) -> str:
+    keys = ("policy_pack_selection_mode", "profile_selection_mode", "selection_mode", "mode")
+    for payload in (task_metadata, dict_from(task_metadata.get("policy_pack_selection")), policy_pack_selection):
+        mode = first_non_empty_string(payload, keys)
+        if mode:
+            return mode
+    return "unknown"
+
+
+def policy_pack_selection_mode_for(run_dir: Path) -> str:
+    task_metadata = read_json_artifact(run_dir, "task_metadata", "task_metadata.json").payload
+    policy_pack_selection = read_json_artifact(run_dir, "policy_pack_selection", "policy_pack_selection.json").payload
+    return policy_pack_selection_mode_from(task_metadata, policy_pack_selection)
+
+
 def reason_codes_from(*payloads: dict[str, object]) -> list[str]:
     codes: list[str] = []
     seen: set[str] = set()
@@ -287,6 +321,8 @@ def acceptance_evidence_missing_decision(
         "evidence_source": evidence_source,
         "source_run_dir": source_run_dir,
         "policy_pack": policy_pack_name_from(report),
+        "validation_profile": validation_profile_from(report),
+        "policy_pack_selection_mode": policy_pack_selection_mode_for(run_dir),
         "validation_status": str(report.get("overall_status", "unknown")),
         "quality_gate_status": str(decision_payload.get("final_status", "unknown")),
         "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
@@ -376,6 +412,8 @@ def decision_from_evidence(
         "evidence_source": evidence_source,
         "source_run_dir": source_label,
         "policy_pack": policy_pack_name_from(report),
+        "validation_profile": validation_profile_from(report),
+        "policy_pack_selection_mode": policy_pack_selection_mode_for(run_dir),
         "validation_status": validation_status,
         "quality_gate_status": quality_gate_status,
         "reason": reason,
@@ -431,6 +469,8 @@ def render_comment(decision: dict[str, object]) -> str:
         f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
         f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
         f"**Policy pack:** `{markdown_escape(decision.get('policy_pack', 'unknown'))}`",
+        f"**Validation profile:** `{markdown_escape(decision.get('validation_profile', 'unknown'))}`",
+        f"**Selection mode:** `{markdown_escape(decision.get('policy_pack_selection_mode', 'unknown'))}`",
         "",
         "## Status",
         "",

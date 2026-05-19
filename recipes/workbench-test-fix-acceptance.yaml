@@ -28,7 +28,7 @@ parameters:
   - key: validation_profile
     input_type: string
     requirement: optional
-    description: "Validation profile from configs/validation_profiles.yaml. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures."
+    description: "Optional validation profile override from configs/validation_profiles.yaml. If supplied explicitly, skip advisory policy-pack auto-selection; the default remains a backward-compatible fallback. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures."
     default: "test_fix"
   - key: routing_feedback_path
     input_type: string
@@ -73,6 +73,7 @@ extensions:
     description: "AI Workbench routing, validation, quality gate, and run analytics."
     available_tools:
       - "workbench_open_run"
+      - "workbench_select_policy_pack"
       - "workbench_select_model"
       - "workbench_record_execution"
       - "workbench_validate_run"
@@ -83,6 +84,8 @@ instructions: |
   You are running a Test-fix AI Workbench acceptance workflow through Goose.
 
   Use the AI Workbench MCP tools as the source of truth for routing, validation, quality gate decisions, and analytics. Do not claim the run is accepted unless deterministic validation and the quality gate both support that conclusion.
+
+  Policy-pack selector output and selected_validation_profile are setup guidance only. They are not acceptance evidence and do not replace deterministic validation or the quality gate.
 
   Boundaries:
   - Start from the failing test signal and make the smallest production or test update that is justified by the intended behavior.
@@ -95,16 +98,17 @@ instructions: |
 
   Workflow:
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-test-fix-acceptance.yaml".
-  2. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-test-fix-acceptance.yaml", validation_profile="{{ validation_profile }}", routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
-  3. Perform the requested test-fix task: {{ task }}
-  4. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran. If a shell inspection command fails because it is not available on the current OS, retry with an equivalent local command and do not treat the failed inspection as validation evidence.
-  5. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
-  6. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
+  2. Determine selected_validation_profile for this run. If the user explicitly supplied validation_profile="{{ validation_profile }}" as an override, use that value and skip advisory auto-selection. Otherwise call workbench_select_policy_pack with task_text="{{ task }}", task_type="test", prompt="{{ prompt }}", and risk="{{ risk }}" before model selection, then use its recommended_validation_profile. If the selector cannot provide one, fall back to profile="{{ validation_profile }}".
+  3. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-test-fix-acceptance.yaml", validation_profile=selected_validation_profile, routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
+  4. Perform the requested test-fix task: {{ task }}
+  5. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran. If a shell inspection command fails because it is not available on the current OS, retry with an equivalent local command and do not treat the failed inspection as validation evidence.
+  6. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
+  7. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
      If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
-  7. Call workbench_validate_run with project="{{ project }}", profile="{{ validation_profile }}", task_test_command="{{ task_test_command }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
-  8. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
-  9. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
-  10. Call workbench_analyze_runs with runs_dir="{{ analytics_runs_dir }}" and out_dir="{{ analytics_out_dir }}" after validation and quality gate artifacts exist.
+  8. Call workbench_validate_run with project="{{ project }}", profile=selected_validation_profile, task_test_command="{{ task_test_command }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. For explicit override runs, this is equivalent to profile="{{ validation_profile }}". The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
+  9. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
+  10. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
+  11. Call workbench_analyze_runs with runs_dir="{{ analytics_runs_dir }}" and out_dir="{{ analytics_out_dir }}" after validation and quality gate artifacts exist.
 
 prompt: |
   Task: {{ task }}
@@ -112,12 +116,12 @@ prompt: |
   Run directory: {{ run_dir }}
   Project: {{ project }}
   Risk: {{ risk }}
-  Validation profile: {{ validation_profile }}
+  Validation profile override or fallback: {{ validation_profile }}
   Focused test command: {{ task_test_command }}
   Analytics runs dir: {{ analytics_runs_dir }}
   Analytics out dir: {{ analytics_out_dir }}
 
-  Start by opening the Workbench run, then select the model tier with Workbench. Repair the failing test signal with a bounded change, record execution evidence with Workbench, validate it, run the quality gate, and summarize the final Workbench envelope statuses.
+  Start by opening the Workbench run, then determine the selected validation profile from the explicit override or advisory policy-pack selector before model selection. Repair the failing test signal with a bounded change, record execution evidence with Workbench, validate it with the same selected profile, run the quality gate, and summarize the final Workbench envelope statuses.
 
 activities:
   - "Run an accepted test-fix workflow for: {{ task }}"

@@ -185,6 +185,7 @@ class PublicExamplesTests(unittest.TestCase):
                 "title": "Accept",
                 "outcome": "accept",
                 "policy_pack": "docs_only",
+                "validation_profile": "docs_only",
                 "validation_status": "passed",
                 "quality_gate_status": "accepted",
                 "reason_codes": ["docs_only.accepted", "quality_gate.accepted"],
@@ -193,6 +194,7 @@ class PublicExamplesTests(unittest.TestCase):
                 "title": "Needs Review",
                 "outcome": "needs_review",
                 "policy_pack": "api_contract_change",
+                "validation_profile": "api_contract_change",
                 "validation_status": "needs_review",
                 "quality_gate_status": "review_required",
                 "reason_codes": ["api_contract_change.review_required", "quality_gate.review_required"],
@@ -201,6 +203,7 @@ class PublicExamplesTests(unittest.TestCase):
                 "title": "Block",
                 "outcome": "block",
                 "policy_pack": "docs_only",
+                "validation_profile": "docs_only",
                 "validation_status": "needs_review",
                 "quality_gate_status": "review_required",
                 "reason_codes": ["docs_only.source_file_blocked", "quality_gate.blocker_present"],
@@ -230,6 +233,8 @@ class PublicExamplesTests(unittest.TestCase):
                 self.assertEqual(decision["evidence_source"], "acceptance_run")
                 self.assertEqual(decision["source_run_dir"], f"examples/pr-gate-outcomes/{name}/evidence")
                 self.assertEqual(decision["policy_pack"], expected_values["policy_pack"])
+                self.assertEqual(decision["validation_profile"], expected_values["validation_profile"])
+                self.assertEqual(decision["policy_pack_selection_mode"], "unknown")
                 self.assertEqual(decision["validation_status"], expected_values["validation_status"])
                 self.assertEqual(decision["quality_gate_status"], expected_values["quality_gate_status"])
                 self.assertEqual(decision["reason_codes"], expected_values["reason_codes"])
@@ -238,6 +243,8 @@ class PublicExamplesTests(unittest.TestCase):
                 self.assertIn(f"# AI Workbench PR Gate: {expected_values['title']}", comment)
                 self.assertIn(f"Decision: {expected_values['title']}", comment)
                 self.assertIn(f"**Policy pack:** `{expected_values['policy_pack']}`", comment)
+                self.assertIn(f"**Validation profile:** `{expected_values['validation_profile']}`", comment)
+                self.assertIn("**Selection mode:** `unknown`", comment)
                 self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
                 self.assertIn("This artifact is generated from Workbench evidence only.", comment)
 

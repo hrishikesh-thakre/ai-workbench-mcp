@@ -32,6 +32,9 @@ def register_tools(mcp: Any) -> Any:
         docs: list[str] | None = None,
         include_diff: bool = False,
         execution_host: str = "goose",
+        auto_select_policy_pack: bool = True,
+        policy_pack: str | None = None,
+        validation_profile: str | None = None,
     ) -> JsonObject:
         """Create a Workbench run folder and initial evidence artifacts."""
 
@@ -48,6 +51,9 @@ def register_tools(mcp: Any) -> Any:
                 docs=docs,
                 include_diff=include_diff,
                 execution_host=execution_host,
+                auto_select_policy_pack=auto_select_policy_pack,
+                policy_pack=policy_pack,
+                validation_profile=validation_profile,
             )
         except Exception as exc:
             return _tool_error("workbench_open_run", exc)

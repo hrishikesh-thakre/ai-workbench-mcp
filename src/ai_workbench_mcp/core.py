@@ -15,6 +15,7 @@ from .events import response_with_event
 from .tools import context_scout as context_scout_tool
 from .tools import model_handoff as model_handoff_tool
 from .tools import model_select as model_select_tool
+from .tools import policy_packs as policy_packs_tool
 from .tools import policy_pack_select as policy_pack_select_tool
 from .tools import quality_loop as quality_loop_tool
 from .tools import run_analyze as run_analyze_tool
@@ -27,6 +28,8 @@ ALLOWED_RISKS = {"low", "medium", "high"}
 ALLOWED_EXECUTION_HOSTS = {"goose", "codex", "ci", "other"}
 ALLOWED_RUN_STATUSES = {"started", "in_progress", "completed", "blocked"}
 ALLOWED_RECORD_MODEL_OUTPUT_STATUSES = {"response_captured"}
+AUTO_POLICY_SELECTION_MIN_CONFIDENCE = 0.7
+MUTATING_TASK_TYPES = {"implementation", "bug investigation", "test development", "general investigation"}
 
 
 def read_json_artifact(path: str | Path) -> JsonObject:
@@ -138,6 +141,8 @@ def policy_pack_selection_response(payload: JsonObject, artifacts: JsonObject | 
         artifacts=artifacts,
         summary={
             "recommended_policy_pack": payload.get("recommended_policy_pack"),
+            "recommended_validation_profile": payload.get("recommended_validation_profile"),
+            "profile_selection_mode": payload.get("profile_selection_mode"),
             "reason": payload.get("reason"),
             "matched_signals": payload.get("matched_signals"),
             "confidence": payload.get("confidence"),
@@ -228,24 +233,33 @@ def run_analysis_response(metrics: JsonObject, artifacts: JsonObject | None = No
 
 
 def open_run_response(payload: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
+    summary = {
+        "run_id": payload.get("run_id"),
+        "project": payload.get("project"),
+        "task": payload.get("task"),
+        "prompt": payload.get("prompt"),
+        "risk": payload.get("risk"),
+        "execution_host": payload.get("execution_host"),
+        "recipe": payload.get("recipe"),
+        "run_dir": payload.get("run_dir"),
+        "docs_read": payload.get("docs_read"),
+        "files_considered": payload.get("files_considered"),
+        "git_status": payload.get("git_status"),
+    }
+    for key in (
+        "policy_pack",
+        "validation_profile",
+        "policy_pack_selection_mode",
+        "policy_pack_selection_confidence",
+    ):
+        if key in payload:
+            summary[key] = payload.get(key)
     return response_envelope(
         operation="workbench_open_run",
         status="opened",
         ok=True,
         artifacts=artifacts,
-        summary={
-            "run_id": payload.get("run_id"),
-            "project": payload.get("project"),
-            "task": payload.get("task"),
-            "prompt": payload.get("prompt"),
-            "risk": payload.get("risk"),
-            "execution_host": payload.get("execution_host"),
-            "recipe": payload.get("recipe"),
-            "run_dir": payload.get("run_dir"),
-            "docs_read": payload.get("docs_read"),
-            "files_considered": payload.get("files_considered"),
-            "git_status": payload.get("git_status"),
-        },
+        summary=summary,
     )
 
 
@@ -311,6 +325,288 @@ def _write_json(path: Path, payload: JsonObject) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _optional_text(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _confidence(value: object, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _policy_pack_for_profile(
+    catalog: dict[str, dict[str, object]],
+    validation_profile: str,
+) -> str | None:
+    for pack_name, pack_data in catalog.items():
+        if str(pack_data.get("validation_profile", "")).strip() == validation_profile:
+            return pack_name
+    return None
+
+
+def _policy_selection_base(
+    *,
+    auto_select_policy_pack: bool,
+    policy_pack: str | None,
+    validation_profile: str | None,
+) -> JsonObject:
+    return {
+        "schema_version": 1,
+        "operation": "workbench_select_policy_pack",
+        "artifact": "policy_pack_selection",
+        "selection_attempted": True,
+        "auto_select_policy_pack": auto_select_policy_pack,
+        "requested_policy_pack": policy_pack,
+        "requested_validation_profile": validation_profile,
+    }
+
+
+def _manual_policy_selection(
+    *,
+    auto_select_policy_pack: bool,
+    policy_pack: str | None,
+    validation_profile: str | None,
+) -> JsonObject:
+    base = _policy_selection_base(
+        auto_select_policy_pack=auto_select_policy_pack,
+        policy_pack=policy_pack,
+        validation_profile=validation_profile,
+    )
+    try:
+        catalog = policy_packs_tool.load_policy_pack_catalog()
+        selected_pack: str | None = None
+        selected_profile: str | None = None
+
+        if policy_pack is not None:
+            pack_data = catalog.get(policy_pack)
+            if pack_data is None:
+                raise ValueError(f"Unknown policy pack: {policy_pack}")
+            selected_pack = policy_pack
+            selected_profile = str(pack_data.get("validation_profile", "")).strip() or None
+            if selected_profile is None:
+                raise ValueError(f"Policy pack {policy_pack} does not map to a validation profile.")
+
+        if validation_profile is not None:
+            profile = validate_run_tool.load_validation_profile(validation_profile)
+            selected_profile = profile.name
+            profile_pack = _policy_pack_for_profile(catalog, profile.name)
+            profile_policy_pack = profile.policy_pack if isinstance(profile.policy_pack, dict) else {}
+            profile_pack = _optional_text(profile_policy_pack.get("name")) or profile_pack
+            if policy_pack is not None and selected_pack is not None:
+                mapped_profile = str(catalog[selected_pack].get("validation_profile", "")).strip()
+                if mapped_profile != profile.name:
+                    raise ValueError(
+                        "Conflicting policy_pack and validation_profile: "
+                        f"{policy_pack} maps to {mapped_profile}, but validation_profile={profile.name}."
+                    )
+            selected_pack = profile_pack or selected_pack
+
+        if selected_profile is None:
+            raise ValueError("Manual policy-pack selection did not resolve a validation profile.")
+
+        validate_run_tool.load_validation_profile(selected_profile)
+        mode = "manual_validation_profile" if validation_profile is not None else "manual_policy_pack"
+        if validation_profile is not None and policy_pack is not None:
+            reason = "Explicit validation_profile was used; explicit policy_pack mapped to the same profile."
+        elif validation_profile is not None:
+            reason = "Explicit validation_profile was used."
+        else:
+            reason = "Explicit policy_pack was mapped through the catalog to its validation profile."
+        return {
+            **base,
+            "status": "selected",
+            "ok": True,
+            "blocking": False,
+            "policy_pack": selected_pack,
+            "validation_profile": selected_profile,
+            "recommended_policy_pack": selected_pack,
+            "recommended_validation_profile": selected_profile,
+            "profile_selection_mode": mode,
+            "policy_pack_selection_mode": mode,
+            "confidence": 1.0,
+            "reason": reason,
+            "matched_signals": [],
+            "candidate_policy_packs": list(policy_packs_tool.PRODUCT_POLICY_PACK_NAMES),
+        }
+    except Exception as exc:
+        return {
+            **base,
+            "status": "error",
+            "ok": False,
+            "blocking": True,
+            "policy_pack": None,
+            "validation_profile": validation_profile,
+            "recommended_policy_pack": None,
+            "recommended_validation_profile": validation_profile,
+            "profile_selection_mode": "manual_error",
+            "policy_pack_selection_mode": "manual_error",
+            "confidence": 0.0,
+            "reason": str(exc),
+            "matched_signals": [],
+            "candidate_policy_packs": list(policy_packs_tool.PRODUCT_POLICY_PACK_NAMES),
+        }
+
+
+def _auto_policy_selection_not_selected(base: JsonObject, reason: str) -> JsonObject:
+    return {
+        **base,
+        "status": "not_selected",
+        "ok": False,
+        "blocking": False,
+        "policy_pack": None,
+        "validation_profile": None,
+        "recommended_policy_pack": None,
+        "recommended_validation_profile": None,
+        "profile_selection_mode": "auto_advisory",
+        "policy_pack_selection_mode": "auto_advisory",
+        "confidence": 0.0,
+        "reason": reason,
+        "matched_signals": [],
+        "candidate_policy_packs": list(policy_packs_tool.PRODUCT_POLICY_PACK_NAMES),
+    }
+
+
+def _automatic_policy_selection(
+    *,
+    task: str,
+    task_type: str,
+    prompt: str,
+    risk: str,
+    changed_files: list[str] | None,
+) -> JsonObject:
+    base = _policy_selection_base(
+        auto_select_policy_pack=True,
+        policy_pack=None,
+        validation_profile=None,
+    )
+    try:
+        selector_payload = policy_pack_select_tool.select_policy_pack_payload(
+            task_text=task,
+            task_type=task_type,
+            changed_files=changed_files or [],
+            prompt=prompt,
+            risk=risk,
+        )
+    except Exception as exc:
+        return _auto_policy_selection_not_selected(base, f"Automatic policy-pack selection failed: {exc}")
+
+    status = str(selector_payload.get("status") or "")
+    ok = bool(selector_payload.get("ok", status == "selected"))
+    selected_pack = _optional_text(selector_payload.get("recommended_policy_pack"))
+    selected_profile = _optional_text(selector_payload.get("recommended_validation_profile"))
+    if not ok or status != "selected" or selected_pack is None or selected_profile is None:
+        return _auto_policy_selection_not_selected(
+            base,
+            "Automatic policy-pack selection did not return a usable policy pack and validation profile.",
+        )
+
+    confidence = _confidence(selector_payload.get("confidence"), 0.0)
+    if confidence < AUTO_POLICY_SELECTION_MIN_CONFIDENCE:
+        return _auto_policy_selection_not_selected(
+            base,
+            "Automatic policy-pack selection confidence "
+            f"{confidence:.2f} is below the required {AUTO_POLICY_SELECTION_MIN_CONFIDENCE:.2f}; "
+            "pass validation_profile or policy_pack explicitly.",
+        )
+
+    if not changed_files and selected_pack != "docs_only" and task_type in MUTATING_TASK_TYPES:
+        return _auto_policy_selection_not_selected(
+            base,
+            "Changed files are required before automatic policy-pack selection can choose a "
+            f"mutating validation profile for task_type={task_type}.",
+        )
+
+    try:
+        catalog = policy_packs_tool.load_policy_pack_catalog()
+        pack_data = catalog.get(selected_pack)
+        if pack_data is None:
+            raise ValueError(f"recommended policy pack is not in the catalog: {selected_pack}")
+        mapped_profile = str(pack_data.get("validation_profile", "")).strip()
+        if mapped_profile != selected_profile:
+            raise ValueError(
+                f"recommended policy pack {selected_pack} maps to {mapped_profile}, "
+                f"not {selected_profile}"
+            )
+        validate_run_tool.load_validation_profile(selected_profile)
+    except Exception as exc:
+        return _auto_policy_selection_not_selected(
+            base,
+            f"Automatic policy-pack selection was not usable: {exc}",
+        )
+
+    mode = str(selector_payload.get("profile_selection_mode") or "auto_advisory")
+    return {
+        **base,
+        **selector_payload,
+        "operation": "workbench_select_policy_pack",
+        "artifact": "policy_pack_selection",
+        "selection_attempted": True,
+        "auto_select_policy_pack": True,
+        "requested_policy_pack": None,
+        "requested_validation_profile": None,
+        "status": "selected",
+        "ok": True,
+        "blocking": False,
+        "policy_pack": selected_pack,
+        "validation_profile": selected_profile,
+        "profile_selection_mode": mode,
+        "policy_pack_selection_mode": mode,
+        "confidence": confidence,
+    }
+
+
+def _run_policy_pack_selection(
+    *,
+    task: str,
+    task_type: str,
+    prompt: str,
+    risk: str,
+    changed_files: list[str] | None,
+    auto_select_policy_pack: bool,
+    policy_pack: str | None,
+    validation_profile: str | None,
+) -> JsonObject | None:
+    requested_pack = _optional_text(policy_pack)
+    requested_profile = _optional_text(validation_profile)
+    if requested_pack is None and requested_profile is None and not auto_select_policy_pack:
+        return None
+    if requested_pack is not None or requested_profile is not None:
+        return _manual_policy_selection(
+            auto_select_policy_pack=auto_select_policy_pack,
+            policy_pack=requested_pack,
+            validation_profile=requested_profile,
+        )
+    return _automatic_policy_selection(
+        task=task,
+        task_type=task_type,
+        prompt=prompt,
+        risk=risk,
+        changed_files=changed_files,
+    )
+
+
+def _policy_selection_metadata(selection: JsonObject | None) -> JsonObject:
+    if not selection or selection.get("status") != "selected":
+        return {}
+    validation_profile = _optional_text(selection.get("validation_profile"))
+    if validation_profile is None:
+        return {}
+    mode = _optional_text(selection.get("policy_pack_selection_mode")) or _optional_text(
+        selection.get("profile_selection_mode")
+    )
+    return {
+        "policy_pack": _optional_text(selection.get("policy_pack")),
+        "validation_profile": validation_profile,
+        "policy_pack_selection_mode": mode,
+        "policy_pack_selection_confidence": _confidence(selection.get("confidence"), 0.0),
+    }
+
+
 def _final_prompt_text(
     *,
     run_id: str,
@@ -371,6 +667,9 @@ def open_run(
     docs: list[str] | None = None,
     include_diff: bool = False,
     execution_host: str = "goose",
+    auto_select_policy_pack: bool = True,
+    policy_pack: str | None = None,
+    validation_profile: str | None = None,
 ) -> JsonObject:
     try:
         _require_choice("risk", risk, ALLOWED_RISKS)
@@ -398,6 +697,23 @@ def open_run(
         output_dir = Path(str(scout_payload["output_dir"]))
         run_id = str(scout_payload["run_id"])
 
+        policy_selection = _run_policy_pack_selection(
+            task=task,
+            task_type=task_type,
+            prompt=Path(prompt).stem,
+            risk=risk,
+            changed_files=changed_files or [],
+            auto_select_policy_pack=auto_select_policy_pack,
+            policy_pack=policy_pack,
+            validation_profile=validation_profile,
+        )
+        policy_selection_path = output_dir / "policy_pack_selection.json"
+        if policy_selection is not None:
+            _write_json(policy_selection_path, policy_selection)
+            if bool(policy_selection.get("blocking", False)):
+                raise ValueError(str(policy_selection.get("reason") or "Policy-pack selection failed."))
+        selected_policy_metadata = _policy_selection_metadata(policy_selection)
+
         task_metadata = {
             "schema_version": 1,
             "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -413,6 +729,7 @@ def open_run(
             "changed_files": changed_files or [],
             "docs": docs or [],
             "include_diff": include_diff,
+            **selected_policy_metadata,
         }
         task_metadata_path = output_dir / "task_metadata.json"
         _write_json(task_metadata_path, task_metadata)
@@ -470,6 +787,7 @@ def open_run(
             "context_profile": profile_name,
             "execution_host": execution_host,
             "recipe": recipe,
+            **selected_policy_metadata,
         }
     except Exception as exc:
         return error_envelope(
@@ -486,6 +804,7 @@ def open_run(
             "final_prompt": final_prompt_path,
             "run_log": run_log_path,
             "expert_packet": output_dir / "expert_packet.md",
+            **({"policy_pack_selection": policy_selection_path} if policy_selection is not None else {}),
         },
     )
     return response_with_event(response, output_dir / "events.jsonl")

@@ -113,6 +113,9 @@ class ServerToolHandlerTests(unittest.TestCase):
             docs=None,
             include_diff=False,
             execution_host="goose",
+            auto_select_policy_pack=True,
+            policy_pack=None,
+            validation_profile=None,
         )
 
     def test_workbench_open_run_forwards_codex_execution_host(self) -> None:
@@ -143,6 +146,44 @@ class ServerToolHandlerTests(unittest.TestCase):
             docs=None,
             include_diff=False,
             execution_host="codex",
+            auto_select_policy_pack=True,
+            policy_pack=None,
+            validation_profile=None,
+        )
+
+    def test_workbench_open_run_forwards_policy_selection_inputs(self) -> None:
+        expected = envelope("workbench_open_run", status="opened")
+
+        with (
+            patch("ai_workbench_mcp.server.core.open_run", return_value=expected) as open_run,
+            patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+            patch("ai_workbench_mcp.core.subprocess.run", side_effect=AssertionError("subprocess not expected")),
+        ):
+            response = self.tools["workbench_open_run"](
+                project="ai_workbench_mcp",
+                task="Open with policy metadata.",
+                run_dir="runs/run1",
+                auto_select_policy_pack=True,
+                policy_pack="docs_only",
+                validation_profile="docs_only",
+            )
+
+        self.assertEqual(response, expected)
+        open_run.assert_called_once_with(
+            project="ai_workbench_mcp",
+            task="Open with policy metadata.",
+            run_dir="runs/run1",
+            prompt="implement_request_change_request",
+            risk="medium",
+            context_profile=None,
+            recipe=None,
+            changed_files=None,
+            docs=None,
+            include_diff=False,
+            execution_host="goose",
+            auto_select_policy_pack=True,
+            policy_pack="docs_only",
+            validation_profile="docs_only",
         )
 
     def test_workbench_select_model_returns_core_envelope(self) -> None:
