@@ -174,7 +174,7 @@ Implications:
 - Same-repository PRs can receive one marker-based sticky comment when workflow permissions allow it.
 - Fork PRs can still render and upload artifacts while skipping comment posting.
 - GitHub Checks API integration, enforcement policy, fork-comment strategy changes, GEPA, provider plumbing, extra host integrations, and Codex cloud export remain out of scope for this alpha.
-- The current published package remains `0.2.0a0`; v0.3 is not a published PyPI release until a future version is explicitly shipped.
+- At the time of this decision, the current published package remained `0.2.0a0`; package publication status is now tracked in `docs/publishing/pypi.md`.
 
 ## 10. v0.3 Policy Packs Are First-Class Catalog Assets
 

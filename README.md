@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is v0.6 external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.3.0a0` remains the latest published package and is exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
+Current repo work is v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.6.0a0` is the target package version for this pass. The latest historical published package before this release is `ai-workbench-mcp==0.3.0a0`, exact-version install verified on TestPyPI and PyPI with MCP Registry publication complete for `0.3.0a0`.
 
 ## Before
 
@@ -97,25 +97,25 @@ Scaffold-only evidence is visibility evidence, not semantic acceptance evidence,
 
 ## 5-Minute Quickstart
 
-Install the published v0.3 package:
+Install the currently published package:
 
 ```bash
 python -m pip install ai-workbench-mcp==0.3.0a0
 ```
 
-For source development in this checked-out repository, install editable:
+For the v0.6 release candidate in this checked-out repository, install editable or build and install a local wheel:
 
 ```bash
 python -m pip install -e .
 ```
 
-The prepared `0.3.0a0` source build includes bootstrappable configs, prompts, and recipes through `ai-workbench-bootstrap-assets`. The current source tree also adds the preferred v0.6 external-repo bootstrap command:
+The v0.6 release candidate adds the preferred external-repo bootstrap command:
 
 ```bash
 ai-workbench-bootstrap --target .
 ```
 
-That command materializes starter assets for a target repository, including the PR gate workflow and a short setup doc. Historical `0.2.0a0` wheels are code/server only. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the package boundary and release checklist.
+That command materializes starter assets for a target repository, including the PR gate workflow and a short setup doc. The compatibility command `ai-workbench-bootstrap-assets` remains available for configs, prompts, and recipes. Historical `0.2.0a0` wheels are code/server only. See [the PyPI publishing prep guide](docs/publishing/pypi.md) for the package boundary and release checklist.
 
 Bootstrap assets do not include private `runs/` evidence, committed proof fixtures, provider setup, examples, or evals.
 
@@ -469,7 +469,7 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.6 external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and v0.5 safe policy-pack auto-selection, with one-command bootstrap, clearer missing-evidence recovery, bootstrap-first setup docs, real Workbench evidence PR decisions, scaffold-only blocking, and a completed external sample repo proof.
+- Current: v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and v0.5 safe policy-pack auto-selection, with one-command bootstrap, clearer missing-evidence recovery, bootstrap-first setup docs, real Workbench evidence PR decisions, scaffold-only blocking, and a completed external sample repo proof.
 - Next after v0.6: Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 

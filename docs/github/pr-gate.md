@@ -148,7 +148,7 @@ it into a target repository.
 
 The template:
 
-- installs `ai-workbench-mcp==0.3.0a0` by default
+- installs `ai-workbench-mcp==0.6.0a0` by default
 - accepts `workbench_run_dir`, or `workbench_runs_dir` plus `workbench_run_id`
 - falls back to a blocking missing/scaffold result when no real run directory is
   available

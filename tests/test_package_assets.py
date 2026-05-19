@@ -87,7 +87,7 @@ class PackageAssetTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("AI Workbench PR Gate", workflow_text)
-        self.assertIn("ai-workbench-mcp==0.3.0a0", workflow_text)
+        self.assertIn("ai-workbench-mcp==0.6.0a0", workflow_text)
         setup_doc_text = assets_root.joinpath("docs", "ai-workbench-pr-gate.md").read_text(encoding="utf-8")
         self.assertIn("validation_report.json", setup_doc_text)
         self.assertIn("revision_decision.json", setup_doc_text)
