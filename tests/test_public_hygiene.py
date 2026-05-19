@@ -219,7 +219,14 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("python -m pip install ai-workbench-mcp==0.6.0a0", readme_text)
         self.assertIn("source package version is `0.7.0a0`", v07_release_text)
         self.assertIn("external PR-gate workflow defaults remain pinned", v07_release_text)
+        self.assertIn("Same-repository GitHub Checks API presentation prototype", v07_release_text)
+        self.assertIn("fork pull requests kept artifact-only", v07_release_text)
+        self.assertIn("Provider cost/time evidence status metadata", v07_release_text)
+        self.assertIn("while retaining root `tools/`", v07_release_text)
         self.assertIn("No TestPyPI upload.", v07_release_text)
+        self.assertIn("No GitHub Checks API merge enforcement", v07_release_text)
+        self.assertIn("No fork PR write-token workaround", v07_release_text)
+        self.assertIn("No root `tools/` shim removal.", v07_release_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
