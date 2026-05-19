@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 import textwrap
 import time
 

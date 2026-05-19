@@ -29,4 +29,24 @@ Keep local Workbench evidence out of git:
 runs/
 ```
 
-Use Goose or another MCP host to create a run, then point the workflow at the run with `WORKBENCH_RUN_DIR` or with `WORKBENCH_RUNS_DIR` plus `WORKBENCH_RUN_ID`.
+Use Goose or another MCP host to create a run, then point the workflow at the
+run with `WORKBENCH_RUN_DIR` or with `WORKBENCH_RUNS_DIR` plus
+`WORKBENCH_RUN_ID`.
+
+## Local Renderer Smoke
+
+You can verify that the renderer is wired without claiming semantic acceptance:
+
+```bash
+mkdir -p runs/pr_gate
+python -m ai_workbench_mcp.tools.pr_gate \
+  --fallback-run-dir runs/ai_workbench_missing_evidence \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+That fallback command should produce `pr_comment.md` and `pr_decision.json`
+with a `block` outcome. Missing evidence and scaffold evidence are not semantic
+acceptance.
+
+Do not commit `runs/`.

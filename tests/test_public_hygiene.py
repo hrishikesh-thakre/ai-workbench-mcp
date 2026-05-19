@@ -14,6 +14,7 @@ MODEL_REGISTRY_EXAMPLE = ROOT / "configs" / "model_registry.example.yaml"
 PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
 V03_RELEASE_NOTE = ROOT / "docs" / "releases" / "v0.3-semantic-pr-acceptance-alpha.md"
 V06_RELEASE_NOTE = ROOT / "docs" / "releases" / "v0.6-pr-gate-adoption-hardening.md"
+V07_RELEASE_NOTE = ROOT / "docs" / "releases" / "v0.7.0-alpha.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 ACCEPTANCE_CONCEPT = ROOT / "docs" / "concepts" / "how-acceptance-works.md"
@@ -103,10 +104,10 @@ class PublicHygieneTests(unittest.TestCase):
 
     def test_operating_docs_are_aligned_to_release_branch_state(self) -> None:
         expected_status_by_path = {
-            ROOT / "docs" / "ai" / "START_HERE.md": "Status: v0.6 package/release readiness branch",
+            ROOT / "docs" / "ai" / "START_HERE.md": "Status: v0.7 version-boundary and release-candidate prep branch",
             ROOT / "docs" / "ai" / "DECISIONS.md": "Status: v0.2 alpha release candidate",
             ROOT / "docs" / "ai" / "PROJECT_MAP.md": "Status: v0.2 alpha release candidate",
-            ROOT / "docs" / "ai" / "ROADMAP_STATUS.md": "Status: v0.6 package/release readiness branch",
+            ROOT / "docs" / "ai" / "ROADMAP_STATUS.md": "Status: v0.7 version-boundary and release-candidate prep branch",
         }
         for path in OPERATING_DOCS:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -122,15 +123,16 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertNotIn("Phase 4: v0.2 Recipe And Policy Packs (Next)", roadmap)
         self.assertNotIn("Continue v0.2 hardening by adding sanitized sample evidence", roadmap)
 
-    def test_package_version_matches_v06_release_branch_docs(self) -> None:
+    def test_package_version_matches_v07_release_branch_docs(self) -> None:
         pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
         v02_release_note = (ROOT / "docs" / "releases" / "v0.2.0-alpha.md").read_text(encoding="utf-8")
         v03_release_note = V03_RELEASE_NOTE.read_text(encoding="utf-8")
         v06_release_note = V06_RELEASE_NOTE.read_text(encoding="utf-8")
+        v07_release_note = V07_RELEASE_NOTE.read_text(encoding="utf-8")
 
         self.assertEqual(pyproject["build-system"]["build-backend"], "setuptools.build_meta")
         self.assertIn("setuptools>=68", pyproject["build-system"]["requires"])
-        self.assertEqual(pyproject["project"]["version"], "0.6.0a0")
+        self.assertEqual(pyproject["project"]["version"], "0.7.0a0")
         self.assertEqual(pyproject["project"]["license"], "Apache-2.0")
         self.assertEqual(pyproject["project"]["optional-dependencies"]["publish"], ["build", "twine"])
         self.assertEqual(pyproject["tool"]["setuptools"]["packages"]["find"]["where"], ["src"])
@@ -138,6 +140,8 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("Python package version: `0.2.0a0`", v02_release_note)
         self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", v03_release_note)
         self.assertIn("Release-readiness note for package target `ai-workbench-mcp==0.6.0a0`", v06_release_note)
+        self.assertIn("Release-candidate note for source package target `ai-workbench-mcp==0.7.0a0`", v07_release_note)
+        self.assertIn("Publication status: not published to TestPyPI, PyPI, or MCP Registry.", v07_release_note)
         self.assertEqual(
             pyproject["project"]["urls"],
             {
@@ -191,16 +195,17 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn(expected_marker, readme_text)
         self.assertEqual(readme_text.count("mcp-name:"), 1)
 
-    def test_v06_release_note_records_pypi_and_registry_proof(self) -> None:
+    def test_v07_release_note_records_version_boundary(self) -> None:
         metadata = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
         pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
         readme_text = README.read_text(encoding="utf-8")
         v03_release_text = V03_RELEASE_NOTE.read_text(encoding="utf-8")
         v06_release_text = V06_RELEASE_NOTE.read_text(encoding="utf-8")
+        v07_release_text = V07_RELEASE_NOTE.read_text(encoding="utf-8")
 
-        self.assertEqual(pyproject["project"]["version"], "0.6.0a0")
-        self.assertEqual(metadata["version"], "0.6.0a0")
-        self.assertEqual(metadata["packages"][0]["version"], "0.6.0a0")
+        self.assertEqual(pyproject["project"]["version"], "0.7.0a0")
+        self.assertEqual(metadata["version"], "0.7.0a0")
+        self.assertEqual(metadata["packages"][0]["version"], "0.7.0a0")
         self.assertIn("Release note with package upload proof.", v03_release_text)
         self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", v03_release_text)
         self.assertIn("MCP Registry publication completed for `0.3.0a0`", v03_release_text)
@@ -209,10 +214,12 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.6.0a0/", v06_release_text)
         self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", v06_release_text)
         self.assertIn("with latest status", v06_release_text)
-        self.assertIn("`ai-workbench-mcp==0.6.0a0` is published on PyPI with exact-version install proof", readme_text)
-        self.assertIn("MCP Registry publication is complete for `0.6.0a0`", readme_text)
-        self.assertIn("latest historical published package before this release was `ai-workbench-mcp==0.3.0a0`", readme_text)
+        self.assertIn("Current source metadata targets unpublished `ai-workbench-mcp==0.7.0a0`", readme_text)
+        self.assertIn("`ai-workbench-mcp==0.6.0a0` remains the latest published PyPI and MCP Registry package", readme_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.6.0a0", readme_text)
+        self.assertIn("source package version is `0.7.0a0`", v07_release_text)
+        self.assertIn("external PR-gate workflow defaults remain pinned", v07_release_text)
+        self.assertIn("No TestPyPI upload.", v07_release_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
@@ -241,6 +248,12 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn('python-version: "3.11"', workflow)
         self.assertIn('python -m pip install -e ".[dev,publish]"', workflow)
         self.assertIn("python -m pytest -q -p no:cacheprovider", workflow)
+        self.assertIn("python -m ruff check . --no-cache", workflow)
+        self.assertIn("python -m mypy --no-sqlite-cache --no-incremental", workflow)
+        self.assertIn(
+            "python -m ai_workbench_mcp.tools.demo --target runs/package_demo_smoke",
+            workflow,
+        )
         self.assertIn(
             "python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
             workflow,
@@ -279,8 +292,9 @@ class PublicHygieneTests(unittest.TestCase):
         launch_issues_text = (ROOT / "docs" / "github" / "launch-issues.md").read_text(encoding="utf-8")
 
         self.assertIn("dist/", gitignore_text)
-        self.assertIn("Release target: `ai-workbench-mcp==0.6.0a0`", pypi_text)
-        self.assertIn("latest historical published package before this release was", pypi_text)
+        self.assertIn("Release target: `ai-workbench-mcp==0.7.0a0`", pypi_text)
+        self.assertIn("latest published package before this release target is", pypi_text)
+        self.assertIn("`ai-workbench-mcp==0.6.0a0`", pypi_text)
         self.assertIn("`ai-workbench-mcp==0.3.0a0`", pypi_text)
         self.assertIn("latest historical verified publication before the v0.3 release", pypi_text)
         self.assertIn("code/server only", pypi_text)
@@ -292,7 +306,9 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("scripts/'ai-workbench-mcp.exe'", pypi_text)
         self.assertIn("scripts/'ai-workbench-bootstrap.exe'", pypi_text)
         self.assertIn("scripts/'ai-workbench-bootstrap-assets.exe'", pypi_text)
+        self.assertIn("scripts/'ai-workbench-demo.exe'", pypi_text)
         self.assertIn("ai-workbench-bootstrap --target .", pypi_text)
+        self.assertIn("python -m ai_workbench_mcp.tools.demo --target", pypi_text)
         self.assertIn("Do not run `ai-workbench-mcp` directly as a smoke command.", pypi_text)
         self.assertIn("ai_workbench_mcp.tools.pr_gate --fallback-run-dir", pypi_text)
         self.assertIn("external_launch_execution_prep.md", pypi_text)
@@ -304,6 +320,8 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.", pypi_text)
         self.assertIn("TestPyPI", pypi_text)
         self.assertIn("TestPyPI upload, PyPI upload, and exact-version install proof also", pypi_text)
+        self.assertIn("no TestPyPI dry run has been completed for", pypi_text)
+        self.assertIn("no PyPI release has been completed for", pypi_text)
         self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.6.0a0`", pypi_text)
         self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.6.0a0/", pypi_text)
         self.assertIn("Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.", pypi_text)
@@ -319,6 +337,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("PyPI release completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
         self.assertIn('"ai-workbench-mcp==0.6.0a0"', pypi_text)
+        self.assertIn('"ai-workbench-mcp==0.7.0a0"', pypi_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.6.0a0", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.6.0a0`", pypi_text)
@@ -326,6 +345,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("mcp-publisher publish --file server.json --dry-run", pypi_text)
         self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", pypi_text)
         self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.", pypi_text)
+        self.assertIn("Do not publish `0.7.0a0` registry metadata", pypi_text)
         self.assertNotIn("MCP Registry submission remains pending.", pypi_text)
         self.assertNotIn("pending registry validation/publication", pypi_text)
         self.assertNotIn("has not been published to PyPI yet", pypi_text)

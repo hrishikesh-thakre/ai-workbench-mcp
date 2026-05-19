@@ -94,6 +94,34 @@ class PackageAssetTests(unittest.TestCase):
         self.assertFalse(assets_root.joinpath("examples").is_dir())
         self.assertFalse(assets_root.joinpath("evals").is_dir())
 
+    def test_packaged_pr_gate_workflow_matches_source_template(self) -> None:
+        source_workflow = ROOT / ".github" / "workflows" / "ai-workbench-pr-gate.yml"
+        packaged_workflow = Path(str(package_assets_root())).joinpath(
+            "github",
+            "workflows",
+            "ai-workbench-pr-gate.yml",
+        )
+
+        self.assertEqual(packaged_workflow.read_bytes(), source_workflow.read_bytes())
+
+    def test_packaged_bootstrap_doc_explains_local_recovery_smoke(self) -> None:
+        setup_doc_text = Path(str(package_assets_root())).joinpath(
+            "docs",
+            "ai-workbench-pr-gate.md",
+        ).read_text(encoding="utf-8")
+
+        for phrase in (
+            "python -m ai_workbench_mcp.tools.pr_gate",
+            "--fallback-run-dir",
+            "pr_decision.json",
+            "pr_comment.md",
+            "Missing evidence and scaffold evidence are not semantic",
+            "acceptance.",
+            "Do not commit `runs/`.",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, setup_doc_text)
+
     def test_packaged_assets_match_source_defaults(self) -> None:
         for group in DEFAULT_GROUPS:
             with self.subTest(group=group):
@@ -215,6 +243,10 @@ class PackageAssetTests(unittest.TestCase):
         self.assertEqual(
             pyproject["project"]["scripts"]["ai-workbench-bootstrap-assets"],
             "ai_workbench_mcp.tools.bootstrap_assets:main",
+        )
+        self.assertEqual(
+            pyproject["project"]["scripts"]["ai-workbench-demo"],
+            "ai_workbench_mcp.tools.demo:main",
         )
         self.assertTrue(pyproject["tool"]["setuptools"]["include-package-data"])
         self.assertIn("recursive-include src/ai_workbench_mcp/assets/configs *.yaml", manifest)

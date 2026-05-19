@@ -3,7 +3,7 @@
   "name": "io.github.hrishikesh-thakre/ai-workbench-mcp",
   "title": "AI Workbench MCP",
   "description": "Goose-first MCP server for Workbench-owned acceptance evidence, validation gates, and analytics.",
-  "version": "0.6.0a0",
+  "version": "0.7.0a0",
   "repository": {
     "url": "https://github.com/hrishikesh-thakre/ai-workbench-mcp",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "ai-workbench-mcp",
-      "version": "0.6.0a0",
+      "version": "0.7.0a0",
       "transport": {
         "type": "stdio"
       }

@@ -114,9 +114,9 @@ def validate_simple_id(value: str, field: str) -> None:
 def validate_artifact_name(value: str) -> None:
     artifact = Path(value)
     if artifact.is_absolute() or ".." in artifact.parts or artifact.as_posix() != value:
-        raise GoldenEvalError(f"invalid_case_schema:required_artifacts")
+        raise GoldenEvalError("invalid_case_schema:required_artifacts")
     if value not in REQUIRED_ARTIFACTS:
-        raise GoldenEvalError(f"invalid_case_schema:required_artifacts")
+        raise GoldenEvalError("invalid_case_schema:required_artifacts")
 
 
 def validate_case(case: JsonObject) -> JsonObject:

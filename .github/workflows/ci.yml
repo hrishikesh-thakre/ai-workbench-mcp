@@ -35,6 +35,15 @@ jobs:
       - name: Run tests
         run: python -m pytest -q -p no:cacheprovider
 
+      - name: Run lint
+        run: python -m ruff check . --no-cache
+
+      - name: Run type check
+        run: python -m mypy --no-sqlite-cache --no-incremental
+
+      - name: Run package demo smoke
+        run: python -m ai_workbench_mcp.tools.demo --target runs/package_demo_smoke
+
       - name: Run scaffold validation
         run: python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
 
