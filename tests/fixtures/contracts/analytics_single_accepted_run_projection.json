@@ -73,6 +73,37 @@
     "total_validation_duration_ms": 0,
     "validation_runs_with_time_data": 0
   },
+  "provider_cost_time_evidence": {
+    "provider_calls_scanned": 0,
+    "provider_identity_counts": {},
+    "provider_tier_counts": {},
+    "run_cost_evidence_status_counts": {
+      "missing": 1
+    },
+    "run_cost_evidence_status": {
+      "run1": "missing"
+    },
+    "runs_with_zero_cost_data": 0,
+    "zero_cost_run_ids": [],
+    "runs_missing_cost_data": 1,
+    "missing_cost_data_run_ids": [
+      "run1"
+    ],
+    "provider_call_cost_evidence_status_counts": {},
+    "cost_evidence_status_by_provider": {},
+    "run_provider_time_evidence_status_counts": {
+      "missing": 1
+    },
+    "run_provider_time_evidence_status": {
+      "run1": "missing"
+    },
+    "runs_missing_provider_time_data": 1,
+    "missing_provider_time_run_ids": [
+      "run1"
+    ],
+    "provider_call_time_evidence_status_counts": {},
+    "time_evidence_status_by_provider": {}
+  },
   "run_cost_time": {
     "run1": {
       "estimated_cost_usd": 0.0,

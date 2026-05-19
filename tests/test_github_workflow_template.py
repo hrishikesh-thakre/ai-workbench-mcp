@@ -60,6 +60,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertRegex(workflow, r"(?m)^permissions:\n  contents: read\n")
         self.assertIn("permissions:\n      contents: read", render)
         self.assertNotIn("pull-requests: write", render)
+        self.assertNotIn("checks: write", render)
         self.assertIn('python -m pip install "$AI_WORKBENCH_MCP_PACKAGE"', render)
         self.assertIn("python -m ai_workbench_mcp.tools.pr_gate", render)
         self.assertNotIn("python tools/pr_gate.py", workflow)
@@ -111,9 +112,39 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertIn("--comment runs/pr_gate/pr_comment.md", comment)
         self.assertIn("--decision runs/pr_gate/pr_decision.json", comment)
 
+    def test_same_repo_check_job_has_checks_permission_and_decision_mapping(self) -> None:
+        workflow = read_workflow()
+        check = job_block(workflow, "post-pr-check")
+
+        self.assertIn(
+            "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+            check,
+        )
+        self.assertIn("permissions:\n      contents: read\n      checks: write", check)
+        self.assertIn("actions/download-artifact@v7", check)
+        self.assertIn("name: workbench-pr-gate", check)
+        self.assertIn("path: runs/pr_gate", check)
+        self.assertIn("PR_GATE_CHECK_NAME: AI Workbench PR Gate", check)
+        self.assertIn("PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", check)
+        self.assertIn('decision_path = Path("runs/pr_gate/pr_decision.json")', check)
+        self.assertIn('comment_path = Path("runs/pr_gate/pr_comment.md")', check)
+        self.assertIn('"accept": "success"', check)
+        self.assertIn('"needs_review": "action_required"', check)
+        self.assertIn('"block": "failure"', check)
+        self.assertIn("check_run_id", check)
+        self.assertIn("--method GET", check)
+        self.assertIn("--method PATCH", check)
+        self.assertIn("--method POST", check)
+        self.assertIn('"/repos/${GITHUB_REPOSITORY}/check-runs"', check)
+        self.assertIn('"/repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-runs"', check)
+        self.assertIn("--input runs/pr_gate/check_run_update_payload.json", check)
+        self.assertIn("--input runs/pr_gate/check_run_create_payload.json", check)
+
     def test_fork_pull_requests_are_artifact_only(self) -> None:
         workflow = read_workflow()
         render = job_block(workflow, "render-pr-gate")
+        comment = job_block(workflow, "post-pr-comment")
+        check = job_block(workflow, "post-pr-check")
 
         self.assertNotIn("pull_request_target", workflow)
         self.assertNotIn("issues: write", workflow)
@@ -122,7 +153,15 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository",
             render,
         )
-        self.assertIn("uploaded artifacts and skipped sticky comment", render)
+        self.assertIn("uploaded artifacts and skipped sticky comment/check run", render)
+        self.assertIn(
+            "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+            comment,
+        )
+        self.assertIn(
+            "if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository",
+            check,
+        )
 
     def test_docs_explain_copy_paste_usage_and_acceptance_boundary(self) -> None:
         self.assertTrue(DOC.is_file())
@@ -136,6 +175,10 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "pr_decision.json",
             "same-repository pull requests",
             "Fork pull requests",
+            "Checks API",
+            "checks: write",
+            "AI Workbench PR Gate",
+            "| `needs_review` | `action_required` |",
             "Green CI is not semantic acceptance",
             "pipx install ai-workbench-mcp",
             "ai-workbench-bootstrap --target .",

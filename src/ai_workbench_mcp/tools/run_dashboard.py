@@ -4,7 +4,15 @@ import html
 import os
 from pathlib import Path
 
-from .run_cost_time import as_dict, as_int, format_duration_ms, format_usd, selected_model_parts
+from .run_cost_time import (
+    as_dict,
+    as_int,
+    cost_evidence_status,
+    format_duration_ms,
+    format_usd,
+    selected_model_parts,
+    time_evidence_status,
+)
 from .run_evidence import latest_tier
 from .run_metrics import (
     accepted_by_validation_and_gate,
@@ -152,7 +160,18 @@ def run_cost_time_lines(cost_time: dict[str, object]) -> list[tuple[str, object]
             if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
             else "not recorded",
         ),
+        (
+            "Cost evidence",
+            cost_evidence_status(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True),
+        ),
         ("Cost", format_usd(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True)),
+        (
+            "Time evidence",
+            time_evidence_status(
+                cost_time.get("provider_duration_ms"),
+                cost_time.get("has_provider_time_data") is True,
+            ),
+        ),
         (
             "Provider time",
             format_duration_ms(cost_time.get("provider_duration_ms"), cost_time.get("has_provider_time_data") is True),
@@ -279,11 +298,17 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
     outcome_counts = as_dict(metrics.get("outcome_counts"))
     cost_tracking = as_dict(metrics.get("cost_tracking"))
     time_tracking = as_dict(metrics.get("time_tracking"))
-    cost_note = (
-        "No provider cost evidence was found. Empty or zero cost fields do not mean execution was free."
-        if not cost_tracking.get("runs_with_cost_data")
-        else "Provider cost evidence was found in model_call_metadata.json artifacts."
-    )
+    provider_cost_time_evidence = as_dict(metrics.get("provider_cost_time_evidence"))
+    zero_cost_runs = as_int(provider_cost_time_evidence.get("runs_with_zero_cost_data")) or 0
+    if not cost_tracking.get("runs_with_cost_data"):
+        cost_note = "No provider cost evidence was found. Empty or zero cost fields do not mean execution was free."
+    elif zero_cost_runs:
+        cost_note = (
+            "Provider cost evidence includes zero-cost/free execution. Missing cost evidence is still reported "
+            "separately from $0 evidence."
+        )
+    else:
+        cost_note = "Provider cost evidence was found in model_call_metadata.json artifacts."
     outcome_breakdown = as_dict(metrics.get("outcome_breakdown"))
 
     html_text = "\n".join(
@@ -361,6 +386,7 @@ def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], o
             f"<p class=\"note\">{html_escape(cost_note)}</p>",
             html_mapping_table("Cost Tracking", cost_tracking),
             html_mapping_table("Time Tracking", time_tracking),
+            html_mapping_table("Provider Cost/Time Evidence", provider_cost_time_evidence),
             "</section>",
             "<section>",
             "<h2>Run Evidence</h2>",

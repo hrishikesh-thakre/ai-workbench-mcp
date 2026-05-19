@@ -33,9 +33,11 @@ The bootstrapped workflow:
 - renders `runs/pr_gate/pr_decision.json`
 - uploads those files as the `workbench-pr-gate` artifact
 - posts one sticky PR comment for same-repository pull requests
+- creates or updates one completed check run for same-repository pull requests
+- skips comment and check-run writes for fork pull requests
 
 The template does not run Goose, create Workbench evidence, call provider APIs,
-or turn green CI into semantic acceptance.
+configure branch protection, or turn green CI into semantic acceptance.
 
 ## Bootstrap Path
 
@@ -109,8 +111,9 @@ or turn green CI into semantic acceptance.
    runs/pr_gate/pr_decision.json
    ```
 
-   Same-repository PRs get a sticky comment when workflow permissions allow it.
-   Fork PRs still upload the artifact but skip comment posting.
+   Same-repository PRs get a sticky comment and a completed check run when
+   workflow permissions allow them. Fork PRs still upload the artifact but skip
+   comment and check-run posting.
 
 ## Manual Fallback
 
@@ -139,6 +142,11 @@ revision_decision.json
 `revision_decision.json` proves the Workbench quality gate made the acceptance
 decision. The PR comment and `pr_decision.json` summarize the result without
 embedding raw run evidence.
+
+The same-repository check run is another summary surface. It maps `accept` to
+`success`, `needs_review` to `action_required`, and `block` to `failure`.
+Branch protection and merge enforcement are repository-owner choices outside
+the bootstrap template.
 
 Missing evidence, unreadable evidence, failed validation, revision-required
 quality-gate decisions, and scaffold-only fallback evidence all block. Scaffold
@@ -216,6 +224,8 @@ using scaffold evidence as an acceptance shortcut.
 - The run has `validation_report.json` and `revision_decision.json`.
 - The PR decision is checked in `runs/pr_gate/pr_decision.json` or the uploaded
   `workbench-pr-gate` artifact.
+- Fork PRs are artifact-only and should not rely on comments or check-run
+  writes.
 
 For the full workflow behavior, see
 [`pr-gate-workflow-template.md`](pr-gate-workflow-template.md).

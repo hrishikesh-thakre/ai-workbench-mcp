@@ -134,6 +134,34 @@ class CliReleaseSmokeTests(unittest.TestCase):
                     self.assertEqual(wrapper_payload[field], module_payload[field])
             self.assertEqual(wrapper_payload["outcome"], "accept")
 
+    def test_root_validate_run_wrapper_executes_scaffold_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            run_dir = Path(tmpdir) / "wrapper-scaffold"
+
+            result = run_python(
+                [
+                    str(ROOT / "tools" / "validate_run.py"),
+                    "--project",
+                    "ai_workbench_mcp",
+                    "--profile",
+                    "scaffold",
+                    "--out-dir",
+                    str(run_dir),
+                ]
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("overall_status=passed", result.stdout)
+
+            report = json.loads((run_dir / "validation_report.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["overall_status"], "passed")
+            self.assertTrue(report["sign_off_ready"])
+            self.assertGreater(report["summary"]["commands_passed"], 0)
+            self.assertIn(
+                "validate_run_help",
+                {str(command.get("name")) for command in report["commands_run"]},
+            )
+
     def test_root_tool_shims_stay_thin_compatibility_wrappers(self) -> None:
         executable_shims = {
             "bootstrap_assets": "ai_workbench_mcp.tools.bootstrap_assets",

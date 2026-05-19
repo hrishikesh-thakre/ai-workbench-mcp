@@ -130,7 +130,7 @@ jobs:
 
       - name: Skip fork PR sticky comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: echo "Fork pull request detected; uploaded artifacts and skipped sticky comment."
+        run: echo "Fork pull request detected; uploaded artifacts and skipped sticky comment/check run."
 
   post-pr-comment:
     name: Post same-repo sticky PR comment
@@ -171,3 +171,107 @@ jobs:
             --pr-number "${{ github.event.pull_request.number }}" \
             --comment runs/pr_gate/pr_comment.md \
             --decision runs/pr_gate/pr_decision.json
+
+  post-pr-check:
+    name: Publish same-repo PR check run
+    needs: render-pr-gate
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Download PR gate artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: workbench-pr-gate
+          path: runs/pr_gate
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Create or update PR gate check run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_GATE_CHECK_NAME: AI Workbench PR Gate
+          PR_GATE_DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          decision_path = Path("runs/pr_gate/pr_decision.json")
+          comment_path = Path("runs/pr_gate/pr_comment.md")
+          decision = json.loads(decision_path.read_text(encoding="utf-8"))
+          comment = comment_path.read_text(encoding="utf-8").strip()
+
+          outcome = str(decision.get("outcome") or "block")
+          labels = {"accept": "Accept", "needs_review": "Needs Review", "block": "Block"}
+          conclusions = {"accept": "success", "needs_review": "action_required", "block": "failure"}
+          label = labels.get(outcome, "Block")
+          conclusion = conclusions.get(outcome, "failure")
+          summary = (
+              f"Outcome: {label}. "
+              f"Validation: {decision.get('validation_status', 'unknown')}. "
+              f"Quality gate: {decision.get('quality_gate_status', 'unknown')}. "
+              f"Evidence source: {decision.get('evidence_source', 'unknown')}. "
+              f"Required next action: {decision.get('required_next_action', 'See PR gate artifact.')}"
+          )
+          payload = {
+              "name": os.environ["PR_GATE_CHECK_NAME"],
+              "status": "completed",
+              "conclusion": conclusion,
+              "details_url": os.environ["PR_GATE_DETAILS_URL"],
+              "external_id": f"{os.environ.get('GITHUB_RUN_ID', '')}:{os.environ.get('GITHUB_RUN_ATTEMPT', '')}",
+              "output": {
+                  "title": f"AI Workbench PR Gate: {label}",
+                  "summary": summary,
+                  "text": comment[:60000],
+              },
+          }
+          create_payload = {"head_sha": os.environ["PR_HEAD_SHA"], **payload}
+          Path("runs/pr_gate/check_run_create_payload.json").write_text(
+              json.dumps(create_payload, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          Path("runs/pr_gate/check_run_update_payload.json").write_text(
+              json.dumps(payload, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(f"check_run_conclusion={conclusion}")
+          PY
+
+          check_run_id="$(
+            gh api \
+              --method GET \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-runs" \
+              -f "check_name=${PR_GATE_CHECK_NAME}" \
+              --jq '.check_runs[0].id // empty'
+          )"
+
+          if [[ -n "${check_run_id}" ]]; then
+            gh api \
+              --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}" \
+              --input runs/pr_gate/check_run_update_payload.json
+          else
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/check-runs" \
+              --input runs/pr_gate/check_run_create_payload.json
+          fi

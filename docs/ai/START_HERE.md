@@ -106,10 +106,10 @@ Focused v0.2 defaults:
 For this starter extraction, begin with:
 
 ```bash
-python tools/model_select.py --help
-python tools/validate_run.py --help
-python tools/quality_loop.py --help
-python tools/run_analyze.py --help
+python -m ai_workbench_mcp.tools.model_select --help
+python -m ai_workbench_mcp.tools.validate_run --help
+python -m ai_workbench_mcp.tools.quality_loop --help
+python -m ai_workbench_mcp.tools.run_analyze --help
 pytest
 ```
 

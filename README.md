@@ -180,7 +180,7 @@ python -m pip install -e ".[dev]"
 python -m pytest -q -p no:cacheprovider
 python -m ruff check . --no-cache
 python -m mypy --no-sqlite-cache --no-incremental
-python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/scaffold-smoke
+python -m ai_workbench_mcp.tools.validate_run --project ai_workbench_mcp --profile scaffold --out-dir runs/scaffold-smoke
 ```
 
 Do not commit `runs/`. It is the local evidence ledger. The root `tools/` scripts remain backward-compatible shims; new package-oriented docs should prefer `python -m ai_workbench_mcp.tools.<name>` or a console script when one exists.

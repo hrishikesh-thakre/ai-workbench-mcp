@@ -10,13 +10,16 @@ from .run_cost_time import (
     as_dict,
     as_float,
     as_int,
+    cost_evidence_status,
     duration_ms_from_metadata,
     estimate_cost_from_metadata,
     format_duration_ms,
     format_usd,
     load_runtime_config,
+    sanitized_provider_identity,
     selected_model_parts,
     successful_attempt_model,
+    time_evidence_status,
     usage_summary_from_metadata,
     validation_duration_ms,
 )
@@ -457,12 +460,18 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     total_provider_duration_ms = 0
     provider_duration_ms_by_provider: defaultdict[str, int] = defaultdict(int)
     provider_duration_ms_by_tier: defaultdict[str, int] = defaultdict(int)
+    provider_call_cost_status_counts: Counter[str] = Counter()
+    provider_call_cost_status_by_provider: dict[str, Counter[str]] = defaultdict(Counter)
+    provider_call_time_status_counts: Counter[str] = Counter()
+    provider_call_time_status_by_provider: dict[str, Counter[str]] = defaultdict(Counter)
+    provider_identity_counts: Counter[str] = Counter()
     raw_run_cost_time: dict[str, dict[str, object]] = {}
 
     for result in model_call_results:
-        provider = str(result.get("provider", "unknown"))
+        provider = sanitized_provider_identity(result.get("provider", "unknown"))
         tier = str(result.get("tier", "unknown"))
         run_id = str(result.get("_run_id", "unknown"))
+        provider_identity_counts[provider] += 1
         provider_call_counts_by_provider[provider] += 1
         provider_call_counts_by_tier[tier] += 1
         run_cost_time = raw_run_cost_time.setdefault(
@@ -501,6 +510,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             run_cost_time["has_token_data"] = True
 
         estimated_cost, pricing_source = estimate_cost_from_metadata(result, runtime)
+        call_cost_status = cost_evidence_status(estimated_cost, estimated_cost is not None)
+        provider_call_cost_status_counts[call_cost_status] += 1
+        provider_call_cost_status_by_provider[provider][call_cost_status] += 1
         if estimated_cost is not None:
             total_estimated_cost_usd += estimated_cost
             cost_runs += 1
@@ -513,6 +525,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 pricing_sources_used[pricing_source] += 1
 
         provider_duration_ms = duration_ms_from_metadata(result)
+        call_time_status = time_evidence_status(provider_duration_ms, provider_duration_ms is not None)
+        provider_call_time_status_counts[call_time_status] += 1
+        provider_call_time_status_by_provider[provider][call_time_status] += 1
         if provider_duration_ms is not None:
             provider_calls_with_time_data += 1
             total_provider_duration_ms += provider_duration_ms
@@ -524,6 +539,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     total_validation_duration_ms = 0
     validation_runs_with_time_data = 0
     run_cost_time_by_run: dict[str, dict[str, object]] = {}
+    run_cost_status_counts: Counter[str] = Counter()
+    run_provider_time_status_counts: Counter[str] = Counter()
+    run_cost_status_by_run: dict[str, str] = {}
+    run_provider_time_status_by_run: dict[str, str] = {}
     for run in runs:
         run_id = str(run.get("run_id", "unknown"))
         source = raw_run_cost_time.get(run_id, {})
@@ -552,6 +571,18 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         }
         run["cost_time"] = normalized_cost_time
         run_cost_time_by_run[run_id] = normalized_cost_time
+        run_cost_status = cost_evidence_status(
+            normalized_cost_time.get("estimated_cost_usd"),
+            normalized_cost_time.get("has_cost_data") is True,
+        )
+        run_provider_time_status = time_evidence_status(
+            normalized_cost_time.get("provider_duration_ms"),
+            normalized_cost_time.get("has_provider_time_data") is True,
+        )
+        run_cost_status_counts[run_cost_status] += 1
+        run_provider_time_status_counts[run_provider_time_status] += 1
+        run_cost_status_by_run[run_id] = run_cost_status
+        run_provider_time_status_by_run[run_id] = run_provider_time_status
 
     metrics = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -715,6 +746,41 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 else 0
             ),
         },
+        "provider_cost_time_evidence": {
+            "provider_calls_scanned": len(model_call_results),
+            "provider_identity_counts": dict(provider_identity_counts),
+            "provider_tier_counts": dict(provider_call_counts_by_tier),
+            "run_cost_evidence_status_counts": dict(run_cost_status_counts),
+            "run_cost_evidence_status": run_cost_status_by_run,
+            "runs_with_zero_cost_data": len(
+                [run_id for run_id, status in run_cost_status_by_run.items() if status == "zero_cost"]
+            ),
+            "zero_cost_run_ids": [
+                run_id for run_id, status in run_cost_status_by_run.items() if status == "zero_cost"
+            ],
+            "runs_missing_cost_data": len(
+                [run_id for run_id, status in run_cost_status_by_run.items() if status == "missing"]
+            ),
+            "missing_cost_data_run_ids": [
+                run_id for run_id, status in run_cost_status_by_run.items() if status == "missing"
+            ],
+            "provider_call_cost_evidence_status_counts": dict(provider_call_cost_status_counts),
+            "cost_evidence_status_by_provider": {
+                provider: dict(counts) for provider, counts in sorted(provider_call_cost_status_by_provider.items())
+            },
+            "run_provider_time_evidence_status_counts": dict(run_provider_time_status_counts),
+            "run_provider_time_evidence_status": run_provider_time_status_by_run,
+            "runs_missing_provider_time_data": len(
+                [run_id for run_id, status in run_provider_time_status_by_run.items() if status == "missing"]
+            ),
+            "missing_provider_time_run_ids": [
+                run_id for run_id, status in run_provider_time_status_by_run.items() if status == "missing"
+            ],
+            "provider_call_time_evidence_status_counts": dict(provider_call_time_status_counts),
+            "time_evidence_status_by_provider": {
+                provider: dict(counts) for provider, counts in sorted(provider_call_time_status_by_provider.items())
+            },
+        },
         "run_cost_time": run_cost_time_by_run,
         "runs_eligible_for_golden_cases": [
             str(run["run_id"]) for run in runs if run["eligible_for_golden_case"]
@@ -834,6 +900,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     summary_path = out_dir / "run_summary.md"
     dashboard_path = out_dir / "run_dashboard.html"
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    provider_cost_time_evidence = as_dict(metrics.get("provider_cost_time_evidence"))
 
     lines = [
         "# Run Analysis Summary",
@@ -922,7 +989,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Cost Tracking",
         "",
-        "Cost tracking is optional provider metadata; zero or empty values mean no provider cost evidence was found.",
+        (
+            "Cost tracking is optional provider metadata. Use the evidence status fields to separate missing cost "
+            "metadata from provider-backed zero-cost or free execution."
+        ),
         f"- Total tokens tracked: {metrics['total_tokens_tracked']}",
         f"- Runs with token data: {metrics['runs_with_token_data']}",
         f"- Average tokens per run: {metrics['average_tokens_per_run']}",
@@ -932,6 +1002,11 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Average estimated cost per priced run (USD): {metrics['average_estimated_cost_usd_per_priced_run']}",
         f"- Estimated cost by provider: {metrics['estimated_cost_usd_by_provider']}",
         f"- Estimated cost by selected tier: {metrics['estimated_cost_usd_by_selected_tier']}",
+        f"- Run cost evidence statuses: {provider_cost_time_evidence.get('run_cost_evidence_status_counts', {})}",
+        f"- Provider call cost evidence statuses: {provider_cost_time_evidence.get('provider_call_cost_evidence_status_counts', {})}",
+        f"- Cost evidence by provider: {provider_cost_time_evidence.get('cost_evidence_status_by_provider', {})}",
+        f"- Zero-cost run ids: {provider_cost_time_evidence.get('zero_cost_run_ids', [])}",
+        f"- Missing cost data run ids: {provider_cost_time_evidence.get('missing_cost_data_run_ids', [])}",
         "",
         "## Time Tracking",
         "",
@@ -939,6 +1014,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Total provider duration (ms): {metrics['time_tracking']['total_provider_duration_ms']}",
         f"- Average provider duration per timed call (ms): {metrics['time_tracking']['average_provider_duration_ms_per_timed_call']}",
         f"- Runs with provider time data: {metrics['time_tracking']['runs_with_provider_time_data']}",
+        f"- Run provider-time evidence statuses: {provider_cost_time_evidence.get('run_provider_time_evidence_status_counts', {})}",
+        f"- Provider call time evidence statuses: {provider_cost_time_evidence.get('provider_call_time_evidence_status_counts', {})}",
+        f"- Time evidence by provider: {provider_cost_time_evidence.get('time_evidence_status_by_provider', {})}",
         f"- Validation runs with time data: {metrics['time_tracking']['validation_runs_with_time_data']}",
         f"- Total validation duration (ms): {metrics['time_tracking']['total_validation_duration_ms']}",
         f"- Average validation duration per timed run (ms): {metrics['time_tracking']['average_validation_duration_ms_per_timed_run']}",
@@ -1004,8 +1082,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Run Details",
         "",
-        "| Run ID | Outcome | Host | Source | Provider | Model | Profile | Gate | Failure Reasons | Tokens | Estimated Cost | Provider Time | Validation Time |",
-        "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|",
+        "| Run ID | Outcome | Host | Source | Provider | Model | Profile | Gate | Failure Reasons | Tokens | Cost Evidence | Estimated Cost | Provider Time | Validation Time |",
+        "|---|---|---|---|---|---|---|---|---|---:|---|---:|---:|---:|",
     ])
     for run in runs:
         report = as_dict(run.get("report"))
@@ -1018,8 +1096,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
             else "not recorded"
         )
+        cost_status = cost_evidence_status(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True)
         lines.append(
-            f"| {run['run_id']} | {public_outcome_bucket(report, decision)} | {run.get('execution_host', 'goose')} | {run.get('response_source', 'unknown')} | {provider} | {model} | {report.get('profile', 'unknown')} | {quality_gate_outcome(decision)} | {run_failure_reason_text(report, decision)} | {token_text} | {format_usd(cost_time.get('estimated_cost_usd'), cost_time.get('has_cost_data') is True)} | {format_duration_ms(cost_time.get('provider_duration_ms'), cost_time.get('has_provider_time_data') is True)} | {format_duration_ms(cost_time.get('validation_duration_ms'), cost_time.get('has_validation_time_data') is True)} |"
+            f"| {run['run_id']} | {public_outcome_bucket(report, decision)} | {run.get('execution_host', 'goose')} | {run.get('response_source', 'unknown')} | {provider} | {model} | {report.get('profile', 'unknown')} | {quality_gate_outcome(decision)} | {run_failure_reason_text(report, decision)} | {token_text} | {cost_status} | {format_usd(cost_time.get('estimated_cost_usd'), cost_time.get('has_cost_data') is True)} | {format_duration_ms(cost_time.get('provider_duration_ms'), cost_time.get('has_provider_time_data') is True)} | {format_duration_ms(cost_time.get('validation_duration_ms'), cost_time.get('has_validation_time_data') is True)} |"
         )
     lines.extend([
         "",

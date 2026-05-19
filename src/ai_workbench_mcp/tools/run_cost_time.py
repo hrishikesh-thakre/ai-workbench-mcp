@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from .config_loader import load_simple_yaml
@@ -52,6 +53,35 @@ def format_usd(amount: object, has_evidence: bool = True) -> str:
         return "not recorded"
     rendered = f"{value:.8f}".rstrip("0").rstrip(".")
     return f"${rendered or '0'}"
+
+
+def cost_evidence_status(amount: object, has_evidence: bool) -> str:
+    value = as_float(amount)
+    if not has_evidence or value is None:
+        return "missing"
+    if value == 0:
+        return "zero_cost"
+    return "priced"
+
+
+def time_evidence_status(duration_ms: object, has_evidence: bool) -> str:
+    value = as_int(duration_ms)
+    if not has_evidence or value is None:
+        return "missing"
+    return "recorded"
+
+
+def sanitized_provider_identity(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "unknown"
+    lowered = text.lower()
+    if any(marker in lowered for marker in ("api_key", "apikey", "token" + "=", "secret", "bearer ", "sk-")):
+        return "redacted"
+    if "\\" in text or re.match(r"^[A-Za-z]:[/\\]", text):
+        text = Path(text).name or "path"
+    sanitized = re.sub(r"[^A-Za-z0-9_.:/@+-]+", "_", text).strip("_")
+    return sanitized[:120] or "unknown"
 
 
 def selected_model_parts(selection: dict[str, object], cost_time: dict[str, object]) -> tuple[str, str]:

@@ -255,13 +255,15 @@ class PublicHygieneTests(unittest.TestCase):
             workflow,
         )
         self.assertIn(
-            "python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
+            "python -m ai_workbench_mcp.tools.validate_run --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold",
             workflow,
         )
         self.assertIn(
-            "python tools/pr_gate.py --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+            "python -m ai_workbench_mcp.tools.pr_gate --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
             workflow,
         )
+        self.assertNotIn("python tools/validate_run.py", workflow)
+        self.assertNotIn("python tools/pr_gate.py", workflow)
         self.assertNotIn("python tools/pr_gate.py --run-dir runs/ci_scaffold", workflow)
         self.assertIn("actions/upload-artifact@v6", workflow)
         self.assertIn("runs/pr_gate/pr_comment.md", workflow)
@@ -273,9 +275,10 @@ class PublicHygieneTests(unittest.TestCase):
         )
         self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
         self.assertIn(
-            'python tools/pr_gate_comment.py --repo "${{ github.repository }}" --pr-number "${{ github.event.pull_request.number }}" --comment runs/pr_gate/pr_comment.md --decision runs/pr_gate/pr_decision.json',
+            'python -m ai_workbench_mcp.tools.pr_gate_comment --repo "${{ github.repository }}" --pr-number "${{ github.event.pull_request.number }}" --comment runs/pr_gate/pr_comment.md --decision runs/pr_gate/pr_decision.json',
             workflow,
         )
+        self.assertNotIn("python tools/pr_gate_comment.py", workflow)
         self.assertIn("python -m build", workflow)
         self.assertIn("python -m twine check dist/*", workflow)
         self.assertIn("python -m pip install --force-reinstall", workflow)

@@ -65,6 +65,25 @@ def write_model_call_metadata(run_dir: Path) -> None:
     )
 
 
+def write_zero_cost_model_call_metadata(run_dir: Path) -> None:
+    write_json(
+        run_dir / "model_call_metadata.json",
+        {
+            "provider": "litellm",
+            "tier": "local_coding",
+            "model": "free-local-tier",
+            "usage_summary": {
+                "prompt_tokens": 120,
+                "completion_tokens": 30,
+                "total_tokens": 150,
+            },
+            "estimated_cost_usd": 0.0,
+            "pricing_source": "provider_reported",
+            "duration_ms": 0,
+        },
+    )
+
+
 def write_sample_run(runs_dir: Path) -> Path:
     run_dir = runs_dir / "run1"
     run_dir.mkdir(parents=True)
@@ -513,6 +532,20 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["time_tracking"]["runs_with_provider_time_data"], 1)
         self.assertEqual(metrics["time_tracking"]["validation_runs_with_time_data"], 1)
         self.assertEqual(metrics["time_tracking"]["total_validation_duration_ms"], 175)
+        self.assertEqual(metrics["provider_cost_time_evidence"]["run_cost_evidence_status_counts"], {"priced": 1})
+        self.assertEqual(
+            metrics["provider_cost_time_evidence"]["provider_call_cost_evidence_status_counts"],
+            {"priced": 1},
+        )
+        self.assertEqual(
+            metrics["provider_cost_time_evidence"]["cost_evidence_status_by_provider"],
+            {"litellm": {"priced": 1}},
+        )
+        self.assertEqual(metrics["provider_cost_time_evidence"]["run_provider_time_evidence_status_counts"], {"recorded": 1})
+        self.assertEqual(
+            metrics["provider_cost_time_evidence"]["time_evidence_status_by_provider"],
+            {"litellm": {"recorded": 1}},
+        )
         self.assertEqual(metrics["run_cost_time"]["run1"]["provider_calls"], 1)
         self.assertEqual(metrics["run_cost_time"]["run1"]["providers"], {"litellm": 1})
         self.assertEqual(metrics["run_cost_time"]["run1"]["models"], {"local-coding-tier": 1})
@@ -526,12 +559,85 @@ class RunAnalyzePayloadTests(unittest.TestCase):
         self.assertEqual(metrics["run_cost_time"]["run1"]["provider_duration_ms"], 2300)
         self.assertEqual(metrics["run_cost_time"]["run1"]["validation_duration_ms"], 175)
         self.assertIn("## Time Tracking", summary)
-        self.assertIn("| run1 | accepted | goose | goose | litellm | local-coding-tier | run_signoff | accepted | None recorded | 1300 | $0.01234567 | 2.30s | 175ms |", summary)
+        self.assertIn("| run1 | accepted | goose | goose | litellm | local-coding-tier | run_signoff | accepted | None recorded | 1300 | priced | $0.01234567 | 2.30s | 175ms |", summary)
         self.assertIn("Cost And Time Evidence", dashboard)
+        self.assertIn("Cost evidence", dashboard)
         self.assertIn("local-coding-tier", dashboard)
         self.assertIn("$0.01234567", dashboard)
         self.assertIn("2.30s", dashboard)
         self.assertIn("175ms", dashboard)
+
+    def test_run_analysis_payload_distinguishes_zero_cost_from_missing_cost_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            zero_cost_run = write_sample_run(runs_dir)
+            write_zero_cost_model_call_metadata(zero_cost_run)
+            write_codex_sample_run(runs_dir)
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            metrics = run_analysis_payload(args)
+            summary = (out_dir / "run_summary.md").read_text(encoding="utf-8")
+            dashboard = (out_dir / "run_dashboard.html").read_text(encoding="utf-8")
+
+        evidence = metrics["provider_cost_time_evidence"]
+        self.assertEqual(metrics["runs_with_cost_data"], 1)
+        self.assertEqual(metrics["total_estimated_cost_usd"], 0.0)
+        self.assertEqual(evidence["run_cost_evidence_status_counts"], {"zero_cost": 1, "missing": 1})
+        self.assertEqual(evidence["provider_call_cost_evidence_status_counts"], {"zero_cost": 1})
+        self.assertEqual(evidence["cost_evidence_status_by_provider"], {"litellm": {"zero_cost": 1}})
+        self.assertEqual(evidence["runs_with_zero_cost_data"], 1)
+        self.assertEqual(evidence["zero_cost_run_ids"], ["run1"])
+        self.assertEqual(evidence["runs_missing_cost_data"], 1)
+        self.assertEqual(evidence["missing_cost_data_run_ids"], ["run4"])
+        self.assertTrue(metrics["run_cost_time"]["run1"]["has_cost_data"])
+        self.assertFalse(metrics["run_cost_time"]["run4"]["has_cost_data"])
+        self.assertIn("| run1 | accepted | goose | goose | litellm | free-local-tier | run_signoff | accepted | None recorded | 150 | zero_cost | $0 | 0ms | not recorded |", summary)
+        self.assertIn("| run4 | accepted | codex | codex | unknown | unknown | run_signoff | accepted | None recorded | not recorded | missing | not recorded | not recorded | not recorded |", summary)
+        self.assertIn("Provider cost evidence includes zero-cost/free execution", dashboard)
+        self.assertIn("zero_cost", dashboard)
+        self.assertIn("$0", dashboard)
+
+    def test_run_analysis_payload_sanitizes_sensitive_provider_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            runs_dir = tmp_path / "runs"
+            out_dir = tmp_path / "reports"
+            run_dir = write_sample_run(runs_dir)
+            write_json(
+                run_dir / "model_call_metadata.json",
+                {
+                    "provider": "litellm token=secret",
+                    "tier": "local_coding",
+                    "model": "local-coding-tier",
+                    "estimated_cost_usd": 0.01,
+                    "duration_ms": 100,
+                },
+            )
+            args = SimpleNamespace(
+                runs_dir=str(runs_dir),
+                task_type=None,
+                since=None,
+                out_dir=str(out_dir),
+                evals_dir=str(tmp_path / "evals"),
+            )
+
+            metrics = run_analysis_payload(args)
+
+        rendered = json.dumps(metrics, sort_keys=True)
+        self.assertNotIn("token=secret", rendered)
+        self.assertEqual(metrics["provider_call_counts_by_provider"], {"redacted": 1})
+        self.assertEqual(metrics["estimated_cost_usd_by_provider"], {"redacted": 0.01})
+        self.assertEqual(metrics["time_tracking"]["provider_duration_ms_by_provider"], {"redacted": 100})
+        self.assertEqual(metrics["run_cost_time"]["run1"]["providers"], {"redacted": 1})
+        self.assertEqual(metrics["provider_cost_time_evidence"]["provider_identity_counts"], {"redacted": 1})
 
     def test_run_analysis_payload_groups_goose_and_codex_hosts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

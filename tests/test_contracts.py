@@ -79,6 +79,7 @@ ANALYTICS_CONTRACT_KEYS = (
     "outcome_counts",
     "cost_tracking",
     "time_tracking",
+    "provider_cost_time_evidence",
     "run_cost_time",
     "workflow_kpis",
 )

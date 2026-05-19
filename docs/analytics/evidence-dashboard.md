@@ -37,14 +37,14 @@ The run table is meant for fast review without opening every artifact first:
 - `Agent / Model` shows execution host, response source, selected provider/model when available, and selected tier.
 - `Policy` shows validation profile, quality-gate outcome, risk, and complexity.
 - `Failure Reasons` shows deterministic validation and quality-gate reasons for non-accepted runs.
-- `Cost / Time` shows tokens, estimated provider cost, provider-call duration, and validation-command duration only when evidence exists.
+- `Cost / Time` shows tokens, cost-evidence status, estimated provider cost, time-evidence status, provider-call duration, and validation-command duration only when evidence exists.
 - `Evidence Links` points to standard artifacts by relative path.
 
 ## What It Does Not Show
 
 The dashboard does not embed raw model output, raw provider logs, or run artifact bodies. It links to standard evidence files by relative path so a reviewer can open them deliberately.
 
-Cost fields are shown only when real provider cost or token metadata exists. Empty or zero cost values mean no provider cost evidence was found, not free execution. Time fields are shown only when validation reports or provider-call metadata record explicit durations.
+Cost fields are shown only when real provider cost or token metadata exists. Missing cost evidence is shown separately from `zero_cost` evidence so a recorded `$0` can represent free execution without making empty cost fields look free. Time fields are shown only when validation reports or provider-call metadata record explicit durations.
 
 ## Hygiene Boundary
 
