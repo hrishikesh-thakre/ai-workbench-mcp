@@ -5,10 +5,10 @@ Release target: `ai-workbench-mcp==0.6.0a0`.
 Local release-readiness validation for `0.6.0a0` completed on 2026-05-19:
 full pytest, diff hygiene, clean temp build, `twine check`, fresh wheel install,
 bootstrap into an empty repository, idempotent rerun, and missing-evidence PR
-gate smoke. TestPyPI upload and exact-version install proof also completed on
-2026-05-19.
+gate smoke. TestPyPI upload, PyPI upload, and exact-version install proof also
+completed on 2026-05-19.
 
-The latest historical published package before this release is
+The latest historical published package before this release was
 `ai-workbench-mcp==0.3.0a0`, exact-version install verified on TestPyPI and
 PyPI as of 2026-05-18. MCP Registry publication for `0.3.0a0` completed on
 2026-05-18. The latest historical verified publication before the v0.3 release
@@ -173,10 +173,10 @@ https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/
 
 The historical rehearsal verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to TestPyPI, and an exact-version install smoke from TestPyPI with PyPI as the dependency fallback.
 
-Do not rerun the upload for `0.3.0a0` or `0.6.0a0`. Future TestPyPI dry runs
-require a version bump, a fresh existence check, and explicit release intent.
-Only run this after confirming credentials and release approval. Do not use
-`--skip-existing`:
+Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`. Future
+TestPyPI dry runs require a version bump, a fresh existence check, and explicit
+release intent. Only run this after confirming credentials and release
+approval. Do not use `--skip-existing`:
 
 ```powershell
 python -m twine upload --repository testpypi --non-interactive dist/*
@@ -194,8 +194,19 @@ python -c "import shutil; assert shutil.which('ai-workbench-bootstrap-assets')"
 
 ## PyPI Upload
 
-Status: PyPI upload for `ai-workbench-mcp==0.6.0a0` is pending explicit release
-approval. TestPyPI proof is complete.
+Status: PyPI release completed for `ai-workbench-mcp==0.6.0a0` on 2026-05-19.
+
+PyPI package page:
+
+```text
+https://pypi.org/project/ai-workbench-mcp/0.6.0a0/
+```
+
+The completed release verified fresh artifacts, `twine check`, upload to PyPI,
+exact-version install from PyPI, console-script discovery for
+`ai-workbench-mcp`, `ai-workbench-bootstrap`, and
+`ai-workbench-bootstrap-assets`, bootstrap into an empty repository, idempotent
+`runs/` ignore behavior, and missing-evidence PR gate recovery.
 
 Historical status: PyPI release completed for `ai-workbench-mcp==0.3.0a0` on
 2026-05-18.
@@ -218,9 +229,9 @@ https://pypi.org/project/ai-workbench-mcp/0.2.0a0/
 
 The historical release verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to PyPI, and an exact-version install smoke from PyPI.
 
-Do not rerun the upload for `0.2.0a0` or `0.3.0a0`. The v0.6 PyPI upload
-requires the `0.6.0a0` version bump, TestPyPI verification, final version
-review, and explicit release approval:
+Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`. Future PyPI
+uploads require a version bump, TestPyPI verification, final version review,
+and explicit release approval:
 
 ```powershell
 python -m twine upload --repository pypi --non-interactive dist/*
@@ -235,7 +246,8 @@ python -m pip install ai-workbench-mcp==0.6.0a0
 ## MCP Registry Prep
 
 Status: MCP Registry update for `io.github.hrishikesh-thakre/ai-workbench-mcp`
-version `0.6.0a0` is pending PyPI publication and explicit approval.
+version `0.6.0a0` is pending registry validation/publication and explicit
+approval.
 
 Historical status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0` on 2026-05-18.
 
@@ -252,6 +264,6 @@ The MCP Registry metadata is prepared in `server.json`. The public proof note is
 Registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
 
 Do not rerun `mcp-publisher publish` for `0.2.0a0` or `0.3.0a0`. The v0.6
-registry update requires a version bump, a published `0.6.0a0` package version,
+registry update requires the published `0.6.0a0` package version,
 `mcp-publisher validate server.json`, explicit approval, and
 `mcp-publisher publish server.json`. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.

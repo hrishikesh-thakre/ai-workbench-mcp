@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.6.0a0` is the target package version for this pass. The latest historical published package before this release is `ai-workbench-mcp==0.3.0a0`, exact-version install verified on TestPyPI and PyPI with MCP Registry publication complete for `0.3.0a0`.
+Current repo work is v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.6.0a0` is published on PyPI with exact-version install proof. The latest historical published package before this release was `ai-workbench-mcp==0.3.0a0`, with MCP Registry publication complete for `0.3.0a0`; the v0.6 MCP Registry update remains a separate approval gate.
 
 ## Before
 
@@ -100,16 +100,16 @@ Scaffold-only evidence is visibility evidence, not semantic acceptance evidence,
 Install the currently published package:
 
 ```bash
-python -m pip install ai-workbench-mcp==0.3.0a0
+python -m pip install ai-workbench-mcp==0.6.0a0
 ```
 
-For the v0.6 release candidate in this checked-out repository, install editable or build and install a local wheel:
+For source development in this checked-out repository, install editable or build and install a local wheel:
 
 ```bash
 python -m pip install -e .
 ```
 
-The v0.6 release candidate adds the preferred external-repo bootstrap command:
+The v0.6 alpha adds the preferred external-repo bootstrap command:
 
 ```bash
 ai-workbench-bootstrap --target .
