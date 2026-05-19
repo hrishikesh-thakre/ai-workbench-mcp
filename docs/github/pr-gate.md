@@ -175,15 +175,24 @@ The template:
 
 - installs `ai-workbench-mcp==0.6.0a0` by default
 - accepts `workbench_run_dir`, or `workbench_runs_dir` plus `workbench_run_id`
+- can optionally generate a source-repository self-acceptance run when
+  `WORKBENCH_SELF_ACCEPTANCE=true`
 - falls back to a blocking missing/scaffold result when no real run directory is
   available
 - uploads `pr_comment.md` and `pr_decision.json` as the `workbench-pr-gate`
   artifact
+- uploads the generated `workbench-acceptance-run` artifact when opt-in
+  self-acceptance mode runs
 - posts one same-repository marker comment when workflow permissions allow it
 - creates or updates one same-repository check run when `checks: write` is available
 
-The template does not run Goose, create a Workbench run, define merge
-enforcement policy, or turn CI status into acceptance.
+By default, the template does not run Goose, create a Workbench run, define
+merge enforcement policy, or turn CI status into acceptance. The opt-in
+self-acceptance mode is narrower: it creates a local Workbench run for this
+source repository's same-repository pull request, validates it with the
+package-maintenance profile, runs the quality gate, and renders only from that
+accepted evidence. It stays disabled unless `WORKBENCH_SELF_ACCEPTANCE=true`
+and does not run for fork pull requests.
 
 ## Local Mirror
 

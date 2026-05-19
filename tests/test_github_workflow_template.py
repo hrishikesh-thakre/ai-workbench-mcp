@@ -39,6 +39,8 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "workbench_runs_dir",
             "workbench_run_id",
             "workbench_fallback_run_dir",
+            "workbench_self_acceptance",
+            "workbench_self_acceptance_run_dir",
         ):
             self.assertIn(f"      {input_name}:", workflow)
 
@@ -48,6 +50,9 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "WORKBENCH_RUNS_DIR",
             "WORKBENCH_RUN_ID",
             "WORKBENCH_FALLBACK_RUN_DIR",
+            "WORKBENCH_SELF_ACCEPTANCE",
+            "WORKBENCH_SELF_ACCEPTANCE_RUN_DIR",
+            "WORKBENCH_PR_HEAD_REPO",
         ):
             self.assertIn(f"  {env_name}:", workflow)
 
@@ -62,6 +67,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertNotIn("pull-requests: write", render)
         self.assertNotIn("checks: write", render)
         self.assertIn('python -m pip install "$AI_WORKBENCH_MCP_PACKAGE"', render)
+        self.assertIn('python -m pip install -e ".[dev]"', render)
         self.assertIn("python -m ai_workbench_mcp.tools.pr_gate", render)
         self.assertNotIn("python tools/pr_gate.py", workflow)
         self.assertNotIn("tools/pr_gate.py", workflow)
@@ -92,6 +98,32 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertIn("if-no-files-found: error", render)
         self.assertIn("runs/pr_gate/pr_comment.md", render)
         self.assertIn("runs/pr_gate/pr_decision.json", render)
+        self.assertIn("name: workbench-acceptance-run", render)
+        self.assertIn("path: ${{ env.WORKBENCH_SELF_ACCEPTANCE_RUN_DIR }}", render)
+
+    def test_self_acceptance_mode_generates_real_acceptance_evidence(self) -> None:
+        workflow = read_workflow()
+        render = job_block(workflow, "render-pr-gate")
+
+        self.assertIn("Prepare self-acceptance evidence", render)
+        self.assertIn("WORKBENCH_SELF_ACCEPTANCE", render)
+        self.assertIn("WORKBENCH_SELF_ACCEPTANCE_RUN_DIR", render)
+        self.assertIn('"${WORKBENCH_PR_HEAD_REPO}" == "${GITHUB_REPOSITORY}"', render)
+        self.assertIn("Fork pull request detected; skipping source-repository self-acceptance.", render)
+        self.assertIn('git checkout --detach "${PR_HEAD_SHA}"', render)
+        self.assertIn("git diff --name-only", render)
+        self.assertIn("git reset --mixed", render)
+        self.assertIn("python -m ai_workbench_mcp.tools.model_select", render)
+        self.assertIn("python -m ai_workbench_mcp.tools.model_handoff", render)
+        self.assertIn("python -m ai_workbench_mcp.tools.run_log", render)
+        self.assertIn("python -m ai_workbench_mcp.tools.validate_run", render)
+        self.assertIn("--profile python_package_maintenance", render)
+        self.assertIn("python -m ai_workbench_mcp.tools.quality_loop", render)
+        self.assertIn("--mode auto", render)
+        self.assertIn("--risk low", render)
+        self.assertIn('Rendering from opt-in self-acceptance run ${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}', render)
+        self.assertIn('--run-dir "${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}"', render)
+        self.assertNotIn("--fallback-run-dir \"${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}\"", render)
 
     def test_same_repo_comment_job_has_write_permission_and_sticky_comment_guard(self) -> None:
         workflow = read_workflow()
@@ -184,6 +216,8 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "ai-workbench-bootstrap --target .",
             "WORKBENCH_RUN_DIR",
             "WORKBENCH_RUNS_DIR",
+            "WORKBENCH_SELF_ACCEPTANCE",
+            "workbench-acceptance-run",
             "pr_gate.acceptance_evidence_missing",
             "Missing evidence and scaffold evidence are not semantic acceptance",
         ):

@@ -10,6 +10,20 @@ This repository has been bootstrapped with the AI Workbench PR gate assets.
 
 The workflow renders PR-facing Workbench artifacts from an existing Workbench run. It does not run Goose, create provider credentials, call model APIs, or treat green CI as semantic acceptance.
 
+For source repositories that can validate themselves with the bundled Workbench
+profiles, the workflow also has an opt-in self-acceptance mode:
+
+```text
+WORKBENCH_SELF_ACCEPTANCE=true
+```
+
+When enabled on a same-repository pull request and no explicit run directory is
+configured, the workflow creates `runs/pr_gate_acceptance`, runs deterministic
+validation and the quality gate, renders from that real run directory, and
+uploads the full run as the `workbench-acceptance-run` artifact. It does not run
+for fork pull requests. Leave this disabled unless the checked-out repository
+can run the packaged validation profile successfully.
+
 ## Evidence Rule
 
 A PR can report `accept` only when the referenced Workbench run includes deterministic validation and quality-gate evidence:
@@ -32,6 +46,8 @@ runs/
 Use Goose or another MCP host to create a run, then point the workflow at the
 run with `WORKBENCH_RUN_DIR` or with `WORKBENCH_RUNS_DIR` plus
 `WORKBENCH_RUN_ID`.
+
+An explicit run directory takes precedence over opt-in self-acceptance mode.
 
 ## Local Renderer Smoke
 
