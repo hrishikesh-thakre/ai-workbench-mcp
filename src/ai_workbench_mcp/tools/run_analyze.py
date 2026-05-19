@@ -3,13 +3,64 @@ from __future__ import annotations
 import argparse
 from collections import Counter, defaultdict
 from datetime import datetime
-import html
 import json
-import os
 from pathlib import Path
-import re
 
-from .config_loader import load_simple_yaml
+from .run_cost_time import (
+    as_dict,
+    as_float,
+    as_int,
+    cost_evidence_status,
+    duration_ms_from_metadata,
+    estimate_cost_from_metadata,
+    format_duration_ms,
+    format_usd,
+    load_runtime_config,
+    sanitized_provider_identity,
+    selected_model_parts,
+    successful_attempt_model,
+    time_evidence_status,
+    usage_summary_from_metadata,
+    validation_duration_ms,
+)
+from .run_dashboard import (
+    run_failure_reason_text,
+    write_dashboard,
+)
+from .run_evidence import (
+    eligible_for_golden_case,
+    evidence_scope_for,
+    exclusion_reason_for_missing_artifact,
+    execution_host_for,
+    final_prompt_name,
+    golden_case_count,
+    latest_tier,
+    missing_complete_evidence,
+    read_json,
+    read_jsonl,
+    response_source_for,
+    run_created_at,
+    scan_eval_results,
+    scan_model_call_metadata,
+    scan_model_eval_matrices,
+    scan_model_eval_results,
+    scan_prompt_normalizer_evals,
+    selection_for,
+    task_metadata_for,
+    task_type_for,
+)
+from .run_metrics import (
+    acceptance_breakdown,
+    acceptance_bucket,
+    accepted_by_validation_and_gate,
+    failure_reasons,
+    final_status,
+    outcome_breakdown,
+    public_outcome_bucket,
+    quality_gate_outcome,
+    recipe_for,
+    routing_feedback_candidates,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,971 +80,6 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     return parser
-
-
-def read_json(file_path: Path) -> dict[str, object]:
-    if not file_path.exists():
-        return {}
-    try:
-        payload = json.loads(file_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def read_jsonl(file_path: Path) -> list[dict[str, object]]:
-    if not file_path.exists():
-        return []
-    rows: list[dict[str, object]] = []
-    for line in file_path.read_text(encoding="utf-8", errors="replace").splitlines():
-        if not line.strip():
-            continue
-        try:
-            payload = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(payload, dict):
-            rows.append(payload)
-    return rows
-
-
-def html_escape(value: object) -> str:
-    return html.escape(str(value), quote=True)
-
-
-def html_attr(value: object) -> str:
-    return html.escape(str(value), quote=True)
-
-
-def format_duration_ms(duration_ms: object, has_evidence: bool = True) -> str:
-    value = as_int(duration_ms)
-    if not has_evidence or value is None:
-        return "not recorded"
-    if value >= 1000:
-        return f"{value / 1000:.2f}s"
-    return f"{value}ms"
-
-
-def format_usd(amount: object, has_evidence: bool = True) -> str:
-    value = as_float(amount)
-    if not has_evidence or value is None:
-        return "not recorded"
-    rendered = f"{value:.8f}".rstrip("0").rstrip(".")
-    return f"${rendered or '0'}"
-
-
-def selected_model_parts(selection: dict[str, object], cost_time: dict[str, object]) -> tuple[str, str]:
-    selected_model = as_dict(selection.get("selected_model"))
-    provider = selected_model.get("provider") or selection.get("provider")
-    model = selected_model.get("model") or selection.get("model")
-    if not provider:
-        providers = as_dict(cost_time.get("providers"))
-        provider = next(iter(providers), None)
-    if not model:
-        models = as_dict(cost_time.get("models"))
-        model = next(iter(models), None)
-    return (str(provider) if provider else "unknown", str(model) if model else "unknown")
-
-
-def as_float(value: object) -> float | None:
-    if isinstance(value, (int, float)):
-        return float(value)
-    return None
-
-
-def as_int(value: object) -> int | None:
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, int):
-        return value
-    if isinstance(value, float) and value.is_integer():
-        return int(value)
-    return None
-
-
-def as_dict(value: object) -> dict[str, object]:
-    return value if isinstance(value, dict) else {}
-
-
-def explicit_duration_ms(payload: dict[str, object]) -> int | None:
-    for field_name in ("duration_ms", "elapsed_ms", "latency_ms", "wall_time_ms"):
-        value = as_float(payload.get(field_name))
-        if value is not None and value >= 0:
-            return int(round(value))
-    for field_name in ("duration_seconds", "elapsed_seconds", "latency_seconds", "wall_time_seconds"):
-        value = as_float(payload.get(field_name))
-        if value is not None and value >= 0:
-            return int(round(value * 1000))
-    return None
-
-
-def evidence_scope_for(args: argparse.Namespace) -> str:
-    scope = str(getattr(args, "evidence_scope", "all") or "all")
-    if scope not in {"all", "complete"}:
-        raise ValueError(f"invalid_evidence_scope={scope}")
-    return scope
-
-
-def missing_complete_evidence(run_dir: Path) -> list[str]:
-    required = ("run_log.jsonl", "validation_report.json", "revision_decision.json")
-    return [artifact_name for artifact_name in required if not (run_dir / artifact_name).exists()]
-
-
-def exclusion_reason_for_missing_artifact(artifact_name: str) -> str:
-    return f"missing_{artifact_name.removesuffix('.json').removesuffix('.jsonl')}"
-
-
-def relative_artifact_href(out_dir: Path, artifact_path: Path) -> str:
-    try:
-        relative = os.path.relpath(artifact_path, start=out_dir)
-    except ValueError:
-        relative = artifact_path.name
-    return Path(relative).as_posix()
-
-
-def html_table(headers: list[str], rows: list[list[object]]) -> str:
-    rendered = [
-        "<table>",
-        "<thead><tr>" + "".join(f"<th>{html_escape(header)}</th>" for header in headers) + "</tr></thead>",
-        "<tbody>",
-    ]
-    if rows:
-        for row in rows:
-            rendered.append("<tr>" + "".join(f"<td>{html_escape(cell)}</td>" for cell in row) + "</tr>")
-    else:
-        rendered.append(f"<tr><td colspan=\"{len(headers)}\">No evidence found.</td></tr>")
-    rendered.extend(["</tbody>", "</table>"])
-    return "\n".join(rendered)
-
-
-def html_mapping_table(title: str, mapping: object, headers: tuple[str, str] = ("Name", "Count")) -> str:
-    rows: list[list[object]] = []
-    for key, value in as_dict(mapping).items():
-        rows.append([key, value])
-    return "\n".join([f"<h3>{html_escape(title)}</h3>", html_table([headers[0], headers[1]], rows)])
-
-
-def html_breakdown_table(title: str, mapping: object) -> str:
-    rows: list[list[object]] = []
-    for key, data in as_dict(mapping).items():
-        data = as_dict(data)
-        rows.append(
-            [
-                key,
-                data.get("accepted", 0),
-                data.get("review_required", data.get("needs_review", 0)),
-                data.get("failed", 0),
-                data.get("other", 0),
-                data.get("total", 0),
-                data.get("acceptance_rate", 0.0),
-                data.get("review_rate", ""),
-                data.get("failure_rate", ""),
-            ]
-        )
-    return "\n".join(
-        [
-            f"<h3>{html_escape(title)}</h3>",
-            html_table(
-                [
-                    "Name",
-                    "Accepted",
-                    "Review Required",
-                    "Failed",
-                    "Other",
-                    "Total",
-                    "Acceptance Rate",
-                    "Review Rate",
-                    "Failure Rate",
-                ],
-                rows,
-            ),
-        ]
-    )
-
-
-def html_artifact_links(out_dir: Path, run_dir: Path) -> str:
-    artifact_names = [
-        "task_metadata.json",
-        "final_prompt.md",
-        "model_selection.json",
-        "model_output.md",
-        "validation_report.json",
-        "revision_decision.json",
-        "run_log.jsonl",
-    ]
-    links: list[str] = []
-    for artifact_name in artifact_names:
-        artifact_path = run_dir / artifact_name
-        if artifact_path.exists():
-            href = html_attr(relative_artifact_href(out_dir, artifact_path))
-            label = html_escape(artifact_name)
-            links.append(f"<a href=\"{href}\">{label}</a>")
-    return " ".join(links) if links else "No standard artifacts found."
-
-
-def html_status_badge(outcome: str) -> str:
-    class_name = {
-        "accepted": "accepted",
-        "review_required": "review",
-        "failed": "failed",
-    }.get(outcome, "other")
-    return f"<span class=\"status-badge {class_name}\">{html_escape(outcome)}</span>"
-
-
-def html_cell_stack(lines: list[tuple[str, object]]) -> str:
-    rendered_lines = []
-    for label, value in lines:
-        rendered_lines.append(
-            "<span>"
-            f"<span class=\"cell-label\">{html_escape(label)}</span>"
-            f"{html_escape(value)}"
-            "</span>"
-        )
-    return "<div class=\"cell-stack\">" + "".join(rendered_lines) + "</div>"
-
-
-def run_failure_reason_text(report: dict[str, object], decision: dict[str, object]) -> str:
-    if accepted_by_validation_and_gate(report, decision):
-        return "None recorded"
-    reasons = failure_reasons(report, decision)
-    if not reasons:
-        return "unknown"
-    rendered = reasons[:4]
-    if len(reasons) > 4:
-        rendered.append(f"+{len(reasons) - 4} more")
-    return ", ".join(rendered)
-
-
-def run_cost_time_lines(cost_time: dict[str, object]) -> list[tuple[str, object]]:
-    return [
-        (
-            "Tokens",
-            f"{as_int(cost_time.get('total_tokens')):,}"
-            if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
-            else "not recorded",
-        ),
-        ("Cost", format_usd(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True)),
-        (
-            "Provider time",
-            format_duration_ms(cost_time.get("provider_duration_ms"), cost_time.get("has_provider_time_data") is True),
-        ),
-        (
-            "Validation time",
-            format_duration_ms(
-                cost_time.get("validation_duration_ms"),
-                cost_time.get("has_validation_time_data") is True,
-            ),
-        ),
-    ]
-
-
-def html_run_rows(runs: list[dict[str, object]], out_dir: Path) -> str:
-    rows: list[str] = [
-        "<table>",
-        (
-            "<thead><tr>"
-            "<th>Run</th><th>Outcome</th><th>Agent / Model</th><th>Policy</th>"
-            "<th>Failure Reasons</th><th>Cost / Time</th><th>Evidence Links</th>"
-            "</tr></thead>"
-        ),
-        "<tbody>",
-    ]
-    if not runs:
-        rows.append("<tr><td colspan=\"7\">No run folders were scanned.</td></tr>")
-    for run in runs:
-        logs = run.get("logs", [])
-        logs = logs if isinstance(logs, list) else []
-        report = as_dict(run.get("report"))
-        decision = as_dict(run.get("decision"))
-        selection = as_dict(run.get("selection"))
-        metadata = as_dict(run.get("metadata"))
-        cost_time = as_dict(run.get("cost_time"))
-        recipe = recipe_for(metadata, selection, report, logs)
-        profile = str(report.get("profile", "unknown"))
-        selected_tier = latest_tier(logs, selection)
-        risk = str(selection.get("risk", "unknown"))
-        complexity = str(selection.get("complexity_band", "unknown"))
-        provider, model = selected_model_parts(selection, cost_time)
-        outcome = public_outcome_bucket(report, decision)
-        run_dir = Path(str(run.get("path", "")))
-        cells = [
-            html_cell_stack(
-                [
-                    ("Run ID", run.get("run_id", "unknown")),
-                    ("Task", run.get("task_type", "unknown")),
-                    ("Recipe", recipe),
-                ]
-            ),
-            html_status_badge(outcome),
-            html_cell_stack(
-                [
-                    ("Host", run.get("execution_host", "goose")),
-                    ("Source", run.get("response_source", "unknown")),
-                    ("Provider", provider),
-                    ("Model", model),
-                    ("Tier", selected_tier),
-                ]
-            ),
-            html_cell_stack(
-                [
-                    ("Profile", profile),
-                    ("Gate", quality_gate_outcome(decision)),
-                    ("Risk", risk),
-                    ("Complexity", complexity),
-                ]
-            ),
-            html_escape(run_failure_reason_text(report, decision)),
-            html_cell_stack(run_cost_time_lines(cost_time)),
-            html_artifact_links(out_dir, run_dir),
-        ]
-        rows.append(
-            f"<tr data-outcome=\"{html_attr(outcome)}\">"
-            + "".join(f"<td>{cell}</td>" for cell in cells)
-            + "</tr>"
-        )
-    rows.extend(["</tbody>", "</table>"])
-    return "\n".join(rows)
-
-
-def html_routing_candidates(candidates: object) -> str:
-    rows: list[list[object]] = []
-    for key, data in as_dict(candidates).items():
-        data = as_dict(data)
-        reasons = as_dict(data.get("top_failure_reasons"))
-        reason_text = ", ".join(f"{reason}={count}" for reason, count in reasons.items())
-        rows.append(
-            [
-                key,
-                data.get("recipe", "unknown"),
-                data.get("validation_profile", "unknown"),
-                data.get("selected_tier", "unknown"),
-                data.get("risk", "unknown"),
-                data.get("complexity_band", "unknown"),
-                data.get("total", 0),
-                data.get("acceptance_rate", 0.0),
-                data.get("review_rate", 0.0),
-                data.get("failure_rate", 0.0),
-                reason_text,
-            ]
-        )
-    return html_table(
-        [
-            "Candidate Key",
-            "Recipe",
-            "Profile",
-            "Tier",
-            "Risk",
-            "Complexity",
-            "Total",
-            "Acceptance Rate",
-            "Review Rate",
-            "Failure Rate",
-            "Top Failure Reasons",
-        ],
-        rows,
-    )
-
-
-def write_dashboard(metrics: dict[str, object], runs: list[dict[str, object]], out_dir: Path) -> Path:
-    dashboard_path = out_dir / "run_dashboard.html"
-    outcome_counts = as_dict(metrics.get("outcome_counts"))
-    cost_tracking = as_dict(metrics.get("cost_tracking"))
-    time_tracking = as_dict(metrics.get("time_tracking"))
-    cost_note = (
-        "No provider cost evidence was found. Empty or zero cost fields do not mean execution was free."
-        if not cost_tracking.get("runs_with_cost_data")
-        else "Provider cost evidence was found in model_call_metadata.json artifacts."
-    )
-    outcome_breakdown = as_dict(metrics.get("outcome_breakdown"))
-
-    html_text = "\n".join(
-        [
-            "<!doctype html>",
-            "<html lang=\"en\">",
-            "<head>",
-            "<meta charset=\"utf-8\">",
-            "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
-            "<title>Workbench Evidence Dashboard</title>",
-            "<style>",
-            (
-                ":root{--bg:#f6f7f9;--surface:#ffffff;--ink:#111827;--muted:#5b6472;--line:#d9dee7;"
-                "--soft:#eef1f5;--accepted:#15803d;--review:#b45309;--failed:#b91c1c;--other:#475569;--link:#075985;}"
-                "*{box-sizing:border-box;}body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;"
-                "margin:0;background:var(--bg);color:var(--ink);line-height:1.45;}main{max-width:1320px;margin:0 auto;padding:30px 20px 48px;}"
-                "section{margin-top:28px;}h1{font-size:32px;line-height:1.15;margin:0 0 8px;font-weight:750;}h2{font-size:22px;line-height:1.25;margin:0 0 12px;}"
-                "h3{font-size:15px;margin:20px 0 8px;}.muted{color:var(--muted);max-width:900px;}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));}"
-                ".metric{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 14px 13px;min-height:92px;}"
-                ".metric span{display:block;color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;}.metric strong{display:block;font-size:28px;line-height:1.1;margin-top:10px;}"
-                ".metric.accepted{border-top:4px solid var(--accepted);}.metric.review{border-top:4px solid var(--review);}.metric.failed{border-top:4px solid var(--failed);}"
-                "table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;}"
-                "th,td{padding:10px 12px;border-top:1px solid #e7eaf0;text-align:left;vertical-align:top;font-size:13px;}td{min-width:120px;}"
-                "th{background:var(--soft);font-size:11px;text-transform:uppercase;font-weight:750;color:#374151;}tbody tr:hover{background:#fbfcfd;}"
-                "tr[data-outcome=accepted]{border-left:4px solid var(--accepted);}tr[data-outcome=review_required]{border-left:4px solid var(--review);}tr[data-outcome=failed]{border-left:4px solid var(--failed);}"
-                "a{color:var(--link);text-decoration:none;margin-right:8px;white-space:nowrap;}a:hover{text-decoration:underline;}"
-                ".note{background:var(--surface);border-left:4px solid var(--other);padding:12px 14px;border-radius:0 8px 8px 0;}"
-                ".status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:750;text-transform:capitalize;white-space:nowrap;}"
-                ".status-badge.accepted{background:#dcfce7;color:#166534;}.status-badge.review{background:#fef3c7;color:#92400e;}.status-badge.failed{background:#fee2e2;color:#991b1b;}"
-                ".status-badge.other{background:#e2e8f0;color:#334155;}.cell-stack{display:grid;gap:3px;min-width:180px;}.cell-stack>span{display:block;}"
-                ".cell-label{display:inline-block;min-width:86px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;}"
-                "code{background:#e5e7eb;border-radius:5px;padding:1px 5px;}@media(max-width:720px){main{padding:22px 12px 36px;}h1{font-size:26px;}th,td{font-size:12px;padding:8px;}table{display:block;overflow-x:auto;}}"
-            ),
-            "</style>",
-            "</head>",
-            "<body>",
-            "<main>",
-            "<h1>Workbench Evidence Dashboard</h1>",
-            (
-                f"<p class=\"muted\">Generated from run evidence at "
-                f"<code>{html_escape(metrics.get('generated_at', 'unknown'))}</code>. "
-                "This static report links to evidence artifacts but does not embed model outputs or provider logs.</p>"
-            ),
-            "<section class=\"grid\" aria-label=\"Outcome metrics\">",
-            f"<div class=\"metric\"><span>Evidence Scope</span><strong>{html_escape(metrics.get('evidence_scope', 'all'))}</strong></div>",
-            f"<div class=\"metric\"><span>Runs Total</span><strong>{html_escape(metrics.get('runs_total', 0))}</strong></div>",
-            f"<div class=\"metric\"><span>Excluded Runs</span><strong>{html_escape(metrics.get('excluded_runs_total', 0))}</strong></div>",
-            f"<div class=\"metric accepted\"><span>Accepted</span><strong>{html_escape(outcome_counts.get('accepted', 0))}</strong></div>",
-            f"<div class=\"metric review\"><span>Review Required</span><strong>{html_escape(outcome_counts.get('review_required', 0))}</strong></div>",
-            f"<div class=\"metric failed\"><span>Failed</span><strong>{html_escape(outcome_counts.get('failed', 0))}</strong></div>",
-            f"<div class=\"metric\"><span>Acceptance Rate</span><strong>{html_escape(metrics.get('acceptance_rate', 0.0))}</strong></div>",
-            f"<div class=\"metric\"><span>Average Confidence</span><strong>{html_escape(metrics.get('average_confidence', 0.0))}</strong></div>",
-            "</section>",
-            "<section>",
-            "<h2>Outcome Buckets</h2>",
-            html_mapping_table("Public Outcome Counts", metrics.get("outcome_counts")),
-            html_mapping_table("Quality Gate Outcomes", metrics.get("quality_gate_outcomes")),
-            html_mapping_table("Failure Reasons", metrics.get("failure_reasons")),
-            "</section>",
-            "<section>",
-            "<h2>Breakdowns</h2>",
-            html_breakdown_table("By Recipe", as_dict(outcome_breakdown.get("by_recipe"))),
-            html_breakdown_table("By Execution Host", as_dict(outcome_breakdown.get("by_execution_host"))),
-            html_breakdown_table("By Response Source", as_dict(outcome_breakdown.get("by_response_source"))),
-            html_breakdown_table("By Validation Profile", as_dict(outcome_breakdown.get("by_validation_profile"))),
-            html_breakdown_table("By Selected Tier", as_dict(outcome_breakdown.get("by_selected_tier"))),
-            html_breakdown_table("By Quality Gate Outcome", as_dict(outcome_breakdown.get("by_quality_gate_outcome"))),
-            "</section>",
-            "<section>",
-            "<h2>Routing Feedback Candidates</h2>",
-            html_routing_candidates(metrics.get("routing_feedback_candidates")),
-            "</section>",
-            "<section>",
-            "<h2>Cost And Time Evidence</h2>",
-            f"<p class=\"note\">{html_escape(cost_note)}</p>",
-            html_mapping_table("Cost Tracking", cost_tracking),
-            html_mapping_table("Time Tracking", time_tracking),
-            "</section>",
-            "<section>",
-            "<h2>Run Evidence</h2>",
-            "<p class=\"muted\">Links are relative references to standard evidence artifacts; artifact contents are not embedded.</p>",
-            html_run_rows(runs, out_dir),
-            "</section>",
-            "</main>",
-            "</body>",
-            "</html>",
-        ]
-    )
-    dashboard_path.write_text(html_text + "\n", encoding="utf-8")
-    return dashboard_path
-
-
-def first_non_none(*values: object) -> object | None:
-    for value in values:
-        if value is not None:
-            return value
-    return None
-
-
-def load_runtime_config() -> dict[str, object]:
-    config_path = Path(__file__).resolve().parent.parent / "configs" / "litellm.yaml"
-    if not config_path.exists():
-        return {}
-    return load_simple_yaml(config_path)
-
-
-def run_created_at(logs: list[dict[str, object]]) -> str:
-    if not logs:
-        return ""
-    return str(logs[0].get("timestamp", ""))
-
-
-def task_type_for(run_dir: Path, logs: list[dict[str, object]]) -> str:
-    selection = read_json(run_dir / "model_selection.json")
-    task_type = selection.get("task_type") or selection.get("workflow_mode")
-    if task_type:
-        return str(task_type)
-    for row in reversed(logs):
-        prompt = row.get("prompt")
-        if prompt:
-            return str(prompt)
-    return "unknown"
-
-
-def final_status(report: dict[str, object], decision: dict[str, object]) -> str:
-    quality_status = str(decision.get("final_status", ""))
-    if quality_status in {"review_required", "revision_required"}:
-        return "needs_review"
-    report_status = str(report.get("overall_status", "unknown"))
-    if report_status in {"passed", "failed", "needs_review"}:
-        return report_status
-    return "unknown"
-
-
-def eligible_for_golden_case(run_dir: Path) -> bool:
-    required = ["expert_packet.md", "final_prompt.md", "model_output.md", "validation_report.json"]
-    return all((run_dir / artifact).exists() for artifact in required)
-
-
-def selection_for(run_dir: Path) -> dict[str, object]:
-    return read_json(run_dir / "model_selection.json")
-
-
-def model_pricing(runtime: dict[str, object], model: str) -> dict[str, object]:
-    providers = as_dict(runtime.get("providers"))
-    litellm = as_dict(providers.get("litellm"))
-    pricing = as_dict(litellm.get("model_pricing_usd_per_1m"))
-    return as_dict(pricing.get(model))
-
-
-def latest_tier(logs: list[dict[str, object]], selection: dict[str, object]) -> str:
-    tier = str(selection.get("selected_tier", ""))
-    if tier:
-        return tier
-    for row in reversed(logs):
-        row_tier = row.get("model_tier")
-        if row_tier and str(row_tier) != "not_selected":
-            return str(row_tier)
-    return "unknown"
-
-
-def final_prompt_name(selection: dict[str, object], logs: list[dict[str, object]]) -> str:
-    prompt = selection.get("prompt")
-    if prompt:
-        return str(prompt)
-    for row in reversed(logs):
-        row_prompt = row.get("prompt")
-        if row_prompt:
-            return str(row_prompt)
-    return "unknown"
-
-
-def task_metadata_for(run_dir: Path) -> dict[str, object]:
-    return read_json(run_dir / "task_metadata.json")
-
-
-def read_text_if_exists(file_path: Path) -> str:
-    if not file_path.exists():
-        return ""
-    return file_path.read_text(encoding="utf-8", errors="replace")
-
-
-def markdown_field_value(text: str, field_name: str) -> str | None:
-    pattern = rf"^-\s*{re.escape(field_name)}:\s*`?([^`\n]+?)`?\s*$"
-    match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
-    if not match:
-        return None
-    value = match.group(1).strip()
-    return value or None
-
-
-def execution_host_for(metadata: dict[str, object]) -> str:
-    execution_host = metadata.get("execution_host")
-    return str(execution_host) if execution_host else "goose"
-
-
-def response_source_for(run_dir: Path) -> str:
-    text = read_text_if_exists(run_dir / "model_output.md")
-    response_source = markdown_field_value(text, "Response Source")
-    return response_source or "unknown"
-
-
-def recipe_for(
-    metadata: dict[str, object],
-    selection: dict[str, object],
-    report: dict[str, object],
-    logs: list[dict[str, object]],
-) -> str:
-    for candidate in (
-        metadata.get("recipe"),
-        selection.get("recipe"),
-        report.get("recipe"),
-    ):
-        if candidate:
-            return str(candidate)
-    for row in reversed(logs):
-        recipe = row.get("recipe")
-        if recipe:
-            return str(recipe)
-
-    profile = str(report.get("profile", ""))
-    profile_to_recipe = {
-        "docs_only": "workbench-docs-only-acceptance.yaml",
-        "python_package_maintenance": "workbench-python-package-maintenance.yaml",
-        "test_fix": "workbench-test-fix-acceptance.yaml",
-        "fixture_repair_proof": "workbench-test-fix-acceptance.yaml",
-        "low_risk_coding": "workbench-engineering-acceptance.yaml",
-        "run_signoff": "workbench-engineering-acceptance.yaml",
-        "tiny_python_fix": "workbench-engineering-acceptance.yaml",
-    }
-    if profile in profile_to_recipe:
-        return profile_to_recipe[profile]
-
-    prompt = final_prompt_name(selection, logs)
-    prompt_to_recipe = {
-        "documentation_accuracy_audit": "workbench-docs-only-acceptance.yaml",
-        "bug_root_cause_investigation": "workbench-test-fix-acceptance.yaml",
-    }
-    return prompt_to_recipe.get(prompt, "unknown")
-
-
-def quality_gate_outcome(decision: dict[str, object]) -> str:
-    outcome = str(decision.get("final_status", "")).strip()
-    return outcome or "missing_decision"
-
-
-def accepted_by_validation_and_gate(report: dict[str, object], decision: dict[str, object]) -> bool:
-    return (
-        quality_gate_outcome(decision) == "accepted"
-        and report.get("overall_status") == "passed"
-        and report.get("sign_off_ready") is True
-    )
-
-
-def acceptance_bucket(report: dict[str, object], decision: dict[str, object]) -> str:
-    if accepted_by_validation_and_gate(report, decision):
-        return "accepted"
-    outcome = quality_gate_outcome(decision)
-    if outcome in {"review_required", "revision_required"}:
-        return "needs_review"
-    if report.get("overall_status") == "failed":
-        return "failed"
-    return outcome
-
-
-def public_outcome_bucket(report: dict[str, object], decision: dict[str, object]) -> str:
-    if accepted_by_validation_and_gate(report, decision):
-        return "accepted"
-    outcome = quality_gate_outcome(decision)
-    if outcome in {"review_required", "revision_required"}:
-        return "review_required"
-    if report.get("overall_status") == "failed":
-        return "failed"
-    return "other"
-
-
-def acceptance_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str, object]]:
-    result: dict[str, dict[str, object]] = {}
-    for key, counts in sorted(matrix.items()):
-        total = sum(counts.values())
-        accepted = counts.get("accepted", 0)
-        result[key] = {
-            "accepted": accepted,
-            "needs_review": counts.get("needs_review", 0),
-            "failed": counts.get("failed", 0),
-            "other": total - accepted - counts.get("needs_review", 0) - counts.get("failed", 0),
-            "total": total,
-            "acceptance_rate": round(accepted / max(1, total), 2),
-        }
-    return result
-
-
-def outcome_breakdown(matrix: dict[str, Counter[str]]) -> dict[str, dict[str, object]]:
-    result: dict[str, dict[str, object]] = {}
-    for key, counts in sorted(matrix.items()):
-        total = sum(counts.values())
-        accepted = counts.get("accepted", 0)
-        review_required = counts.get("review_required", 0)
-        failed = counts.get("failed", 0)
-        result[key] = {
-            "accepted": accepted,
-            "review_required": review_required,
-            "failed": failed,
-            "other": total - accepted - review_required - failed,
-            "total": total,
-            "acceptance_rate": round(accepted / max(1, total), 2),
-            "review_rate": round(review_required / max(1, total), 2),
-            "failure_rate": round(failed / max(1, total), 2),
-        }
-    return result
-
-
-def routing_feedback_candidates(
-    outcome_matrix: dict[str, Counter[str]],
-    failure_reason_matrix: dict[str, Counter[str]],
-) -> dict[str, dict[str, object]]:
-    candidates: dict[str, dict[str, object]] = {}
-    for key, counts in sorted(outcome_matrix.items()):
-        parts = str(key).split("|")
-        recipe, profile, tier, risk, complexity = (parts + ["unknown"] * 5)[:5]
-        total = sum(counts.values())
-        accepted = counts.get("accepted", 0)
-        review_required = counts.get("review_required", 0)
-        failed = counts.get("failed", 0)
-        candidates[key] = {
-            "recipe": recipe,
-            "validation_profile": profile,
-            "selected_tier": tier,
-            "risk": risk,
-            "complexity_band": complexity,
-            "accepted": accepted,
-            "review_required": review_required,
-            "failed": failed,
-            "other": total - accepted - review_required - failed,
-            "total": total,
-            "acceptance_rate": round(accepted / max(1, total), 2),
-            "review_rate": round(review_required / max(1, total), 2),
-            "failure_rate": round(failed / max(1, total), 2),
-            "top_failure_reasons": dict(failure_reason_matrix.get(key, Counter()).most_common(5)),
-        }
-    return candidates
-
-
-def failure_reasons(report: dict[str, object], decision: dict[str, object]) -> list[str]:
-    reasons: list[str] = []
-    for reason_code in report.get("reason_codes", []) if isinstance(report.get("reason_codes", []), list) else []:
-        if reason_code:
-            reasons.append(str(reason_code))
-    for reason_code in decision.get("reason_codes", []) if isinstance(decision.get("reason_codes", []), list) else []:
-        if reason_code:
-            reasons.append(str(reason_code))
-    if report.get("overall_status") not in {"passed", None, ""}:
-        reasons.append(f"validation_overall:{report.get('overall_status')}")
-    if report and report.get("sign_off_ready") is False:
-        reasons.append("validation_not_sign_off_ready")
-
-    for command in report.get("commands_run", []) if isinstance(report.get("commands_run", []), list) else []:
-        command = as_dict(command)
-        status = str(command.get("status", ""))
-        exit_code = command.get("exit_code")
-        if status == "failed" or exit_code not in {None, 0}:
-            reasons.append(f"command_failed:{command.get('name', 'unknown')}")
-
-    for command in report.get("commands_not_run", []) if isinstance(report.get("commands_not_run", []), list) else []:
-        command = as_dict(command)
-        reasons.append(f"command_not_run:{command.get('name', 'unknown')}")
-
-    for section in ("artifact_checks", "review_checks"):
-        for check in report.get(section, []) if isinstance(report.get(section, []), list) else []:
-            check = as_dict(check)
-            status = str(check.get("status", ""))
-            if status in {"failed", "needs_review"}:
-                reasons.append(f"{section}:{status}:{check.get('name', 'unknown')}")
-
-    notes = report.get("missing_context_notes", {})
-    if isinstance(notes, dict):
-        for note in notes.get("needs_review", []) if isinstance(notes.get("needs_review", []), list) else []:
-            reasons.append(f"missing_context:{note}")
-
-    outcome = quality_gate_outcome(decision)
-    if outcome not in {"accepted", "missing_decision"}:
-        reasons.append(f"quality_gate:{outcome}")
-    loop_type = str(decision.get("loop_type", "none"))
-    if loop_type and loop_type != "none":
-        reasons.append(f"quality_loop:{loop_type}")
-    if outcome == "missing_decision":
-        reasons.append("quality_gate:missing_decision")
-
-    unique_reasons: list[str] = []
-    seen: set[str] = set()
-    for reason in reasons:
-        if reason in seen:
-            continue
-        seen.add(reason)
-        unique_reasons.append(reason)
-    return unique_reasons or ["unknown"]
-
-
-def scan_eval_results(runs_dir: Path) -> list[dict[str, object]]:
-    results: list[dict[str, object]] = []
-    reports_dir = runs_dir / "_reports"
-    for result_path in runs_dir.rglob("eval_result*.json"):
-        if reports_dir in result_path.parents:
-            continue
-        payload = read_json(result_path)
-        if payload:
-            payload["_path"] = str(result_path)
-            payload["_run_id"] = result_path.parent.name
-            payload["_run_dir"] = str(result_path.parent)
-            results.append(payload)
-    return results
-
-
-def scan_model_eval_results(runs_dir: Path) -> list[dict[str, object]]:
-    results: list[dict[str, object]] = []
-    for metadata_path in runs_dir.glob("*/model_eval_metadata.json"):
-        metadata = read_json(metadata_path)
-        score = read_json(metadata_path.parent / "score_report.json")
-        if not metadata and not score:
-            continue
-        combined = {
-            **metadata,
-            "score_report": score,
-            "_path": str(metadata_path),
-            "_run_id": metadata_path.parent.name,
-        }
-        results.append(combined)
-    return results
-
-
-def scan_model_eval_matrices(runs_dir: Path) -> list[dict[str, object]]:
-    reports_dir = runs_dir / "_reports"
-    if not reports_dir.exists():
-        return []
-    matrices: list[dict[str, object]] = []
-    for report_path in reports_dir.glob("model_eval_matrix*.json"):
-        payload = read_json(report_path)
-        if payload:
-            payload["_path"] = str(report_path)
-            matrices.append(payload)
-    return matrices
-
-
-def scan_prompt_normalizer_evals(runs_dir: Path) -> list[dict[str, object]]:
-    reports_dir = runs_dir / "_reports"
-    if not reports_dir.exists():
-        return []
-    reports: list[dict[str, object]] = []
-    for report_path in reports_dir.glob("prompt_normalizer_eval*.json"):
-        payload = read_json(report_path)
-        if payload:
-            payload["_path"] = str(report_path)
-            reports.append(payload)
-    return reports
-
-
-def golden_case_count(evals_dir: Path) -> int:
-    if not evals_dir.exists():
-        return 0
-    return len([path for path in evals_dir.glob("*.json") if path.is_file()])
-
-
-def scan_model_call_metadata(runs_dir: Path) -> list[dict[str, object]]:
-    results: list[dict[str, object]] = []
-    reports_dir = runs_dir / "_reports"
-    for metadata_path in runs_dir.rglob("model_call_metadata.json"):
-        if reports_dir in metadata_path.parents:
-            continue
-        payload = read_json(metadata_path)
-        if payload:
-            payload["_path"] = str(metadata_path)
-            payload["_run_id"] = metadata_path.parent.name
-            results.append(payload)
-    return results
-
-
-def usage_summary_from_metadata(metadata: dict[str, object]) -> dict[str, object]:
-    existing = as_dict(metadata.get("usage_summary"))
-    if existing:
-        return existing
-
-    attempts = metadata.get("attempts", [])
-    for attempt in reversed(attempts) if isinstance(attempts, list) else []:
-        attempt_dict = as_dict(attempt)
-        if attempt_dict.get("status") != "completed":
-            continue
-        usage = as_dict(attempt_dict.get("usage"))
-        if not usage:
-            continue
-        prompt_tokens = as_int(usage.get("prompt_tokens"))
-        completion_tokens = as_int(usage.get("completion_tokens"))
-        total_tokens = as_int(usage.get("total_tokens"))
-        cached_input_tokens = as_int(
-            first_non_none(
-                as_int(usage.get("prompt_cache_hit_tokens")),
-                as_int(usage.get("cache_read_input_tokens")),
-                as_int(usage.get("cached_tokens")),
-            )
-        )
-        if cached_input_tokens is not None and prompt_tokens is not None:
-            cached_input_tokens = max(0, min(cached_input_tokens, prompt_tokens))
-        uncached_input_tokens = (
-            prompt_tokens - cached_input_tokens
-            if prompt_tokens is not None and cached_input_tokens is not None
-            else prompt_tokens
-        )
-        summary: dict[str, object] = {
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "total_tokens": total_tokens,
-        }
-        if cached_input_tokens is not None:
-            summary["cached_input_tokens"] = cached_input_tokens
-        if uncached_input_tokens is not None:
-            summary["uncached_input_tokens"] = uncached_input_tokens
-        return summary
-    return {}
-
-
-def duration_ms_from_metadata(metadata: dict[str, object]) -> int | None:
-    direct_duration_ms = explicit_duration_ms(metadata)
-    if direct_duration_ms is not None:
-        return direct_duration_ms
-
-    attempts = metadata.get("attempts", [])
-    total_duration_ms = 0
-    found_duration = False
-    for attempt in attempts if isinstance(attempts, list) else []:
-        attempt_duration_ms = explicit_duration_ms(as_dict(attempt))
-        if attempt_duration_ms is None:
-            continue
-        total_duration_ms += attempt_duration_ms
-        found_duration = True
-    return total_duration_ms if found_duration else None
-
-
-def validation_duration_ms(report: dict[str, object]) -> int | None:
-    total_duration_ms = 0
-    found_duration = False
-    for command in report.get("commands_run", []) if isinstance(report.get("commands_run", []), list) else []:
-        command_duration_ms = explicit_duration_ms(as_dict(command))
-        if command_duration_ms is None:
-            continue
-        total_duration_ms += command_duration_ms
-        found_duration = True
-    return total_duration_ms if found_duration else None
-
-
-def successful_attempt_model(metadata: dict[str, object]) -> str:
-    attempts = metadata.get("attempts", [])
-    for attempt in reversed(attempts) if isinstance(attempts, list) else []:
-        attempt_dict = as_dict(attempt)
-        if attempt_dict.get("status") == "completed" and attempt_dict.get("model"):
-            return str(attempt_dict.get("model"))
-    return str(metadata.get("model", ""))
-
-
-def estimate_cost_from_metadata(metadata: dict[str, object], runtime: dict[str, object]) -> tuple[float | None, str | None]:
-    direct_cost = as_float(metadata.get("estimated_cost_usd"))
-    direct_source = metadata.get("pricing_source")
-    if direct_cost is not None:
-        return direct_cost, str(direct_source) if direct_source else None
-
-    usage_summary = usage_summary_from_metadata(metadata)
-    if not usage_summary:
-        return None, None
-
-    model = successful_attempt_model(metadata)
-    pricing = model_pricing(runtime, model)
-    input_rate = as_float(pricing.get("input_tokens"))
-    cached_input_rate = as_float(pricing.get("cached_input_tokens"))
-    output_rate = as_float(pricing.get("output_tokens"))
-    if input_rate is None or cached_input_rate is None or output_rate is None:
-        return None, None
-
-    prompt_tokens = as_int(usage_summary.get("prompt_tokens"))
-    completion_tokens = as_int(usage_summary.get("completion_tokens"))
-    cached_input_tokens = as_int(usage_summary.get("cached_input_tokens")) or 0
-    uncached_input_tokens = as_int(usage_summary.get("uncached_input_tokens"))
-    if uncached_input_tokens is None and prompt_tokens is not None:
-        uncached_input_tokens = max(0, prompt_tokens - cached_input_tokens)
-    if uncached_input_tokens is None and completion_tokens is None:
-        return None, None
-
-    estimated_cost_usd = (
-        ((uncached_input_tokens or 0) * input_rate)
-        + (cached_input_tokens * cached_input_rate)
-        + ((completion_tokens or 0) * output_rate)
-    ) / 1_000_000
-    return round(estimated_cost_usd, 8), str(pricing.get("source")) if pricing.get("source") else None
 
 
 def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
@@ -1374,12 +460,18 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     total_provider_duration_ms = 0
     provider_duration_ms_by_provider: defaultdict[str, int] = defaultdict(int)
     provider_duration_ms_by_tier: defaultdict[str, int] = defaultdict(int)
+    provider_call_cost_status_counts: Counter[str] = Counter()
+    provider_call_cost_status_by_provider: dict[str, Counter[str]] = defaultdict(Counter)
+    provider_call_time_status_counts: Counter[str] = Counter()
+    provider_call_time_status_by_provider: dict[str, Counter[str]] = defaultdict(Counter)
+    provider_identity_counts: Counter[str] = Counter()
     raw_run_cost_time: dict[str, dict[str, object]] = {}
 
     for result in model_call_results:
-        provider = str(result.get("provider", "unknown"))
+        provider = sanitized_provider_identity(result.get("provider", "unknown"))
         tier = str(result.get("tier", "unknown"))
         run_id = str(result.get("_run_id", "unknown"))
+        provider_identity_counts[provider] += 1
         provider_call_counts_by_provider[provider] += 1
         provider_call_counts_by_tier[tier] += 1
         run_cost_time = raw_run_cost_time.setdefault(
@@ -1418,6 +510,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             run_cost_time["has_token_data"] = True
 
         estimated_cost, pricing_source = estimate_cost_from_metadata(result, runtime)
+        call_cost_status = cost_evidence_status(estimated_cost, estimated_cost is not None)
+        provider_call_cost_status_counts[call_cost_status] += 1
+        provider_call_cost_status_by_provider[provider][call_cost_status] += 1
         if estimated_cost is not None:
             total_estimated_cost_usd += estimated_cost
             cost_runs += 1
@@ -1430,6 +525,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 pricing_sources_used[pricing_source] += 1
 
         provider_duration_ms = duration_ms_from_metadata(result)
+        call_time_status = time_evidence_status(provider_duration_ms, provider_duration_ms is not None)
+        provider_call_time_status_counts[call_time_status] += 1
+        provider_call_time_status_by_provider[provider][call_time_status] += 1
         if provider_duration_ms is not None:
             provider_calls_with_time_data += 1
             total_provider_duration_ms += provider_duration_ms
@@ -1441,6 +539,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     total_validation_duration_ms = 0
     validation_runs_with_time_data = 0
     run_cost_time_by_run: dict[str, dict[str, object]] = {}
+    run_cost_status_counts: Counter[str] = Counter()
+    run_provider_time_status_counts: Counter[str] = Counter()
+    run_cost_status_by_run: dict[str, str] = {}
+    run_provider_time_status_by_run: dict[str, str] = {}
     for run in runs:
         run_id = str(run.get("run_id", "unknown"))
         source = raw_run_cost_time.get(run_id, {})
@@ -1469,6 +571,18 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         }
         run["cost_time"] = normalized_cost_time
         run_cost_time_by_run[run_id] = normalized_cost_time
+        run_cost_status = cost_evidence_status(
+            normalized_cost_time.get("estimated_cost_usd"),
+            normalized_cost_time.get("has_cost_data") is True,
+        )
+        run_provider_time_status = time_evidence_status(
+            normalized_cost_time.get("provider_duration_ms"),
+            normalized_cost_time.get("has_provider_time_data") is True,
+        )
+        run_cost_status_counts[run_cost_status] += 1
+        run_provider_time_status_counts[run_provider_time_status] += 1
+        run_cost_status_by_run[run_id] = run_cost_status
+        run_provider_time_status_by_run[run_id] = run_provider_time_status
 
     metrics = {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -1632,6 +746,41 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
                 else 0
             ),
         },
+        "provider_cost_time_evidence": {
+            "provider_calls_scanned": len(model_call_results),
+            "provider_identity_counts": dict(provider_identity_counts),
+            "provider_tier_counts": dict(provider_call_counts_by_tier),
+            "run_cost_evidence_status_counts": dict(run_cost_status_counts),
+            "run_cost_evidence_status": run_cost_status_by_run,
+            "runs_with_zero_cost_data": len(
+                [run_id for run_id, status in run_cost_status_by_run.items() if status == "zero_cost"]
+            ),
+            "zero_cost_run_ids": [
+                run_id for run_id, status in run_cost_status_by_run.items() if status == "zero_cost"
+            ],
+            "runs_missing_cost_data": len(
+                [run_id for run_id, status in run_cost_status_by_run.items() if status == "missing"]
+            ),
+            "missing_cost_data_run_ids": [
+                run_id for run_id, status in run_cost_status_by_run.items() if status == "missing"
+            ],
+            "provider_call_cost_evidence_status_counts": dict(provider_call_cost_status_counts),
+            "cost_evidence_status_by_provider": {
+                provider: dict(counts) for provider, counts in sorted(provider_call_cost_status_by_provider.items())
+            },
+            "run_provider_time_evidence_status_counts": dict(run_provider_time_status_counts),
+            "run_provider_time_evidence_status": run_provider_time_status_by_run,
+            "runs_missing_provider_time_data": len(
+                [run_id for run_id, status in run_provider_time_status_by_run.items() if status == "missing"]
+            ),
+            "missing_provider_time_run_ids": [
+                run_id for run_id, status in run_provider_time_status_by_run.items() if status == "missing"
+            ],
+            "provider_call_time_evidence_status_counts": dict(provider_call_time_status_counts),
+            "time_evidence_status_by_provider": {
+                provider: dict(counts) for provider, counts in sorted(provider_call_time_status_by_provider.items())
+            },
+        },
         "run_cost_time": run_cost_time_by_run,
         "runs_eligible_for_golden_cases": [
             str(run["run_id"]) for run in runs if run["eligible_for_golden_case"]
@@ -1751,6 +900,7 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
     summary_path = out_dir / "run_summary.md"
     dashboard_path = out_dir / "run_dashboard.html"
     metrics_path.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+    provider_cost_time_evidence = as_dict(metrics.get("provider_cost_time_evidence"))
 
     lines = [
         "# Run Analysis Summary",
@@ -1839,7 +989,10 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Cost Tracking",
         "",
-        "Cost tracking is optional provider metadata; zero or empty values mean no provider cost evidence was found.",
+        (
+            "Cost tracking is optional provider metadata. Use the evidence status fields to separate missing cost "
+            "metadata from provider-backed zero-cost or free execution."
+        ),
         f"- Total tokens tracked: {metrics['total_tokens_tracked']}",
         f"- Runs with token data: {metrics['runs_with_token_data']}",
         f"- Average tokens per run: {metrics['average_tokens_per_run']}",
@@ -1849,6 +1002,11 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Average estimated cost per priced run (USD): {metrics['average_estimated_cost_usd_per_priced_run']}",
         f"- Estimated cost by provider: {metrics['estimated_cost_usd_by_provider']}",
         f"- Estimated cost by selected tier: {metrics['estimated_cost_usd_by_selected_tier']}",
+        f"- Run cost evidence statuses: {provider_cost_time_evidence.get('run_cost_evidence_status_counts', {})}",
+        f"- Provider call cost evidence statuses: {provider_cost_time_evidence.get('provider_call_cost_evidence_status_counts', {})}",
+        f"- Cost evidence by provider: {provider_cost_time_evidence.get('cost_evidence_status_by_provider', {})}",
+        f"- Zero-cost run ids: {provider_cost_time_evidence.get('zero_cost_run_ids', [])}",
+        f"- Missing cost data run ids: {provider_cost_time_evidence.get('missing_cost_data_run_ids', [])}",
         "",
         "## Time Tracking",
         "",
@@ -1856,6 +1014,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         f"- Total provider duration (ms): {metrics['time_tracking']['total_provider_duration_ms']}",
         f"- Average provider duration per timed call (ms): {metrics['time_tracking']['average_provider_duration_ms_per_timed_call']}",
         f"- Runs with provider time data: {metrics['time_tracking']['runs_with_provider_time_data']}",
+        f"- Run provider-time evidence statuses: {provider_cost_time_evidence.get('run_provider_time_evidence_status_counts', {})}",
+        f"- Provider call time evidence statuses: {provider_cost_time_evidence.get('provider_call_time_evidence_status_counts', {})}",
+        f"- Time evidence by provider: {provider_cost_time_evidence.get('time_evidence_status_by_provider', {})}",
         f"- Validation runs with time data: {metrics['time_tracking']['validation_runs_with_time_data']}",
         f"- Total validation duration (ms): {metrics['time_tracking']['total_validation_duration_ms']}",
         f"- Average validation duration per timed run (ms): {metrics['time_tracking']['average_validation_duration_ms_per_timed_run']}",
@@ -1921,8 +1082,8 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
         "",
         "## Run Details",
         "",
-        "| Run ID | Outcome | Host | Source | Provider | Model | Profile | Gate | Failure Reasons | Tokens | Estimated Cost | Provider Time | Validation Time |",
-        "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|",
+        "| Run ID | Outcome | Host | Source | Provider | Model | Profile | Gate | Failure Reasons | Tokens | Cost Evidence | Estimated Cost | Provider Time | Validation Time |",
+        "|---|---|---|---|---|---|---|---|---|---:|---|---:|---:|---:|",
     ])
     for run in runs:
         report = as_dict(run.get("report"))
@@ -1935,8 +1096,9 @@ def run_analysis_payload(args: argparse.Namespace) -> dict[str, object]:
             if cost_time.get("has_token_data") is True and as_int(cost_time.get("total_tokens")) is not None
             else "not recorded"
         )
+        cost_status = cost_evidence_status(cost_time.get("estimated_cost_usd"), cost_time.get("has_cost_data") is True)
         lines.append(
-            f"| {run['run_id']} | {public_outcome_bucket(report, decision)} | {run.get('execution_host', 'goose')} | {run.get('response_source', 'unknown')} | {provider} | {model} | {report.get('profile', 'unknown')} | {quality_gate_outcome(decision)} | {run_failure_reason_text(report, decision)} | {token_text} | {format_usd(cost_time.get('estimated_cost_usd'), cost_time.get('has_cost_data') is True)} | {format_duration_ms(cost_time.get('provider_duration_ms'), cost_time.get('has_provider_time_data') is True)} | {format_duration_ms(cost_time.get('validation_duration_ms'), cost_time.get('has_validation_time_data') is True)} |"
+            f"| {run['run_id']} | {public_outcome_bucket(report, decision)} | {run.get('execution_host', 'goose')} | {run.get('response_source', 'unknown')} | {provider} | {model} | {report.get('profile', 'unknown')} | {quality_gate_outcome(decision)} | {run_failure_reason_text(report, decision)} | {token_text} | {cost_status} | {format_usd(cost_time.get('estimated_cost_usd'), cost_time.get('has_cost_data') is True)} | {format_duration_ms(cost_time.get('provider_duration_ms'), cost_time.get('has_provider_time_data') is True)} | {format_duration_ms(cost_time.get('validation_duration_ms'), cost_time.get('has_validation_time_data') is True)} |"
         )
     lines.extend([
         "",

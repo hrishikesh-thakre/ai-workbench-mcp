@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Sequence
 
 
 SCHEMA_VERSION = 1
@@ -460,7 +460,7 @@ def markdown_escape(value: object) -> str:
     return str(value).replace("|", "\\|")
 
 
-def evidence_present_value(evidence: list[object], label: str) -> str:
+def evidence_present_value(evidence: Sequence[object], label: str) -> str:
     for entry in evidence:
         if not isinstance(entry, dict):
             continue

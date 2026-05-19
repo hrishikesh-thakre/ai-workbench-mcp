@@ -27,7 +27,10 @@ acceptance.
 - Renders `runs/pr_gate/pr_comment.md` and `runs/pr_gate/pr_decision.json`.
 - Uploads those files as the `workbench-pr-gate` artifact.
 - Posts or updates one sticky PR comment for same-repository pull requests.
-- Skips sticky comment posting for fork pull requests.
+- Creates or updates one completed check run for same-repository pull requests.
+- Skips sticky comment and check-run posting for fork pull requests.
+- Can optionally generate a source-repository self-acceptance run before
+  rendering when `WORKBENCH_SELF_ACCEPTANCE=true`.
 - Falls back to a blocking missing-evidence or scaffold-evidence result when no real run directory is available.
 
 Green CI is not semantic acceptance. The PR gate can report `accept` only when the referenced Workbench run contains deterministic validation and quality-gate evidence, especially `validation_report.json` and `revision_decision.json`.
@@ -56,10 +59,42 @@ The workflow supports the same evidence selection surface as the existing PR gat
 | `workbench_run_id` / `WORKBENCH_RUN_ID` | Run folder name under `workbench_runs_dir`. |
 | `workbench_fallback_run_dir` / `WORKBENCH_FALLBACK_RUN_DIR` | Optional scaffold evidence folder used only when no real run directory exists. Defaults to `runs/ai_workbench_missing_evidence`. |
 | `ai_workbench_mcp_package` / `AI_WORKBENCH_MCP_PACKAGE` | pip package spec. Defaults to `ai-workbench-mcp==0.6.0a0`. |
+| `workbench_self_acceptance` / `WORKBENCH_SELF_ACCEPTANCE` | Optional source-repository mode. Set to `true` only when this workflow should generate a Workbench acceptance run for the current pull request before rendering. Defaults to `false`. |
+| `workbench_self_acceptance_run_dir` / `WORKBENCH_SELF_ACCEPTANCE_RUN_DIR` | Run folder used by self-acceptance mode. Defaults to `runs/pr_gate_acceptance`. |
 
 You can set inputs through `workflow_dispatch` or `workflow_call`. For normal pull requests, set repository variables or edit the workflow after copying it into the target repository.
 
 If neither a direct run directory nor a `runs_dir` plus `run_id` pair exists, the template calls the renderer with `--fallback-run-dir`. When the fallback path does not exist, the renderer still writes a deterministic `block` decision with missing evidence. When the fallback path contains scaffold evidence, the renderer still blocks because scaffold evidence is visibility evidence, not Workbench acceptance evidence.
+
+## Opt-In Self-Acceptance Evidence
+
+This repository can use the template to validate its own pull requests by
+setting a repository variable:
+
+```text
+WORKBENCH_SELF_ACCEPTANCE=true
+```
+
+When that variable is true on a same-repository pull request and no explicit
+run directory is configured, the render job installs the checked-out source with
+dev dependencies, turns the PR diff into a worktree diff for changed-file policy
+checks, creates `runs/pr_gate_acceptance`, runs the
+`python_package_maintenance` validation profile, runs the quality gate in
+`auto` mode with low risk, and renders the PR gate from that real run directory.
+
+The generated run is uploaded as the `workbench-acceptance-run` artifact. It is
+not committed, and `runs/` remains ignored. Explicit `WORKBENCH_RUN_DIR` or
+`WORKBENCH_RUNS_DIR` plus `WORKBENCH_RUN_ID` still takes precedence over
+self-acceptance mode.
+
+Fork pull requests do not run self-acceptance, even when the repository variable
+is set. They keep the safer artifact-only fallback path and skip write-token
+comment and check-run posting.
+
+Self-acceptance mode is a source-repository convenience, not a replacement for
+Workbench evidence in adopting repositories. External repositories should keep
+the default disabled unless their workflow really can validate the checked-out
+source package with the bundled Workbench profiles.
 
 ## Missing-Evidence Recovery
 
@@ -126,14 +161,29 @@ run_log.jsonl
 
 Only `validation_report.json` and `revision_decision.json` are required to make the acceptance decision. Raw model output is not embedded in the PR comment.
 
-## Comment Safety
+## Write Surface Safety
 
 The workflow is split into two jobs:
 
 - `render-pr-gate` has `contents: read` and uploads artifacts.
 - `post-pr-comment` has `contents: read` plus `pull-requests: write`, and only runs for same-repository pull requests.
+- `post-pr-check` has `contents: read` plus `checks: write`, and only runs for same-repository pull requests.
 
-Fork pull requests render and upload `pr_comment.md` and `pr_decision.json`, but skip sticky comments. The template uses the packaged sticky-comment helper, which adds the `<!-- ai-workbench-pr-gate -->` marker and updates the existing marker comment instead of creating duplicates.
+Fork pull requests render and upload `pr_comment.md` and `pr_decision.json`, but skip sticky comments and check runs. The template uses the packaged sticky-comment helper, which adds the `<!-- ai-workbench-pr-gate -->` marker and updates the existing marker comment instead of creating duplicates. The template does not use `pull_request_target`, `issues: write`, or write-token workarounds for forks.
+
+## Checks API Prototype
+
+The same-repository check-run job reads the uploaded artifacts and creates or updates a completed GitHub check run named `AI Workbench PR Gate` on the pull request head SHA. It uses `pr_decision.json` for machine-readable status and includes the rendered `pr_comment.md` as check output text.
+
+Outcome mapping:
+
+| Workbench outcome | Check-run conclusion |
+|---|---|
+| `accept` | `success` |
+| `needs_review` | `action_required` |
+| `block` | `failure` |
+
+The check run is optional PR presentation, not a new acceptance source. `accept` still requires deterministic Workbench evidence. The workflow does not configure branch protection or merge enforcement; if an adopting repository later makes the check required, only `accept` maps to a successful conclusion.
 
 ## Local Equivalent
 
@@ -164,5 +214,9 @@ python -m ai_workbench_mcp.tools.pr_gate_comment \
   --comment runs/pr_gate/pr_comment.md \
   --decision runs/pr_gate/pr_decision.json
 ```
+
+Same-repository check-run posting uses the GitHub Checks API through `gh api`
+with a payload built from `runs/pr_gate/pr_decision.json` and
+`runs/pr_gate/pr_comment.md`.
 
 Do not commit private `runs/` evidence. A target repository can produce or download a Workbench run earlier in its own workflow, then point this template at that local evidence directory.

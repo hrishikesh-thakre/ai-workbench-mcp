@@ -27,6 +27,16 @@ on:
         required: false
         type: string
         default: "runs/ai_workbench_missing_evidence"
+      workbench_self_acceptance:
+        description: "Set to true to generate a Workbench acceptance run for this source repository pull request before rendering."
+        required: false
+        type: string
+        default: ""
+      workbench_self_acceptance_run_dir:
+        description: "Run directory used by opt-in source-repository self-acceptance mode."
+        required: false
+        type: string
+        default: "runs/pr_gate_acceptance"
   workflow_call:
     inputs:
       ai_workbench_mcp_package:
@@ -54,6 +64,16 @@ on:
         required: false
         type: string
         default: "runs/ai_workbench_missing_evidence"
+      workbench_self_acceptance:
+        description: "Set to true to generate a Workbench acceptance run for this source repository pull request before rendering."
+        required: false
+        type: string
+        default: ""
+      workbench_self_acceptance_run_dir:
+        description: "Run directory used by opt-in source-repository self-acceptance mode."
+        required: false
+        type: string
+        default: "runs/pr_gate_acceptance"
 
 permissions:
   contents: read
@@ -64,6 +84,9 @@ env:
   WORKBENCH_RUNS_DIR: ${{ inputs.workbench_runs_dir || vars.WORKBENCH_RUNS_DIR || '' }}
   WORKBENCH_RUN_ID: ${{ inputs.workbench_run_id || vars.WORKBENCH_RUN_ID || '' }}
   WORKBENCH_FALLBACK_RUN_DIR: ${{ inputs.workbench_fallback_run_dir || vars.WORKBENCH_FALLBACK_RUN_DIR || 'runs/ai_workbench_missing_evidence' }}
+  WORKBENCH_SELF_ACCEPTANCE: ${{ inputs.workbench_self_acceptance || vars.WORKBENCH_SELF_ACCEPTANCE || 'false' }}
+  WORKBENCH_SELF_ACCEPTANCE_RUN_DIR: ${{ inputs.workbench_self_acceptance_run_dir || vars.WORKBENCH_SELF_ACCEPTANCE_RUN_DIR || 'runs/pr_gate_acceptance' }}
+  WORKBENCH_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || '' }}
 
 jobs:
   render-pr-gate:
@@ -76,6 +99,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -83,9 +108,132 @@ jobs:
           python-version: "3.11"
 
       - name: Install AI Workbench MCP
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
-          python -m pip install "$AI_WORKBENCH_MCP_PACKAGE"
+          self_acceptance="$(printf '%s' "${WORKBENCH_SELF_ACCEPTANCE}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${self_acceptance}" == "true" && "${GITHUB_EVENT_NAME}" == "pull_request" && "${WORKBENCH_PR_HEAD_REPO}" == "${GITHUB_REPOSITORY}" ]]; then
+            python -m pip install -e ".[dev]"
+          else
+            python -m pip install "$AI_WORKBENCH_MCP_PACKAGE"
+          fi
+
+      - name: Prepare self-acceptance evidence
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          self_acceptance="$(printf '%s' "${WORKBENCH_SELF_ACCEPTANCE}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "${self_acceptance}" != "true" ]]; then
+            echo "WORKBENCH_SELF_ACCEPTANCE is not true; skipping source-repository self-acceptance."
+            exit 0
+          fi
+          if [[ "${WORKBENCH_PR_HEAD_REPO}" != "${GITHUB_REPOSITORY}" ]]; then
+            echo "Fork pull request detected; skipping source-repository self-acceptance."
+            exit 0
+          fi
+          if [[ -n "${WORKBENCH_RUN_DIR}" || ( -n "${WORKBENCH_RUNS_DIR}" && -n "${WORKBENCH_RUN_ID}" ) ]]; then
+            echo "Explicit Workbench run evidence is configured; skipping self-acceptance evidence generation."
+            exit 0
+          fi
+          if [[ -z "${PR_BASE_SHA}" || -z "${PR_HEAD_SHA}" ]]; then
+            echo "Self-acceptance mode requires pull request base and head SHAs."
+            exit 1
+          fi
+
+          run_dir="${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR:-runs/pr_gate_acceptance}"
+          mkdir -p "${run_dir}"
+
+          git checkout --detach "${PR_HEAD_SHA}"
+          git diff --name-only "${PR_BASE_SHA}" "${PR_HEAD_SHA}" > "${run_dir}/changed_files.txt"
+          if [[ ! -s "${run_dir}/changed_files.txt" ]]; then
+            echo "Self-acceptance mode requires a non-empty pull request diff."
+            exit 1
+          fi
+
+          # The package-maintenance validation profile checks the current worktree.
+          # Resetting to the base commit keeps PR contents as an unstaged diff.
+          git reset --mixed "${PR_BASE_SHA}"
+          git diff --name-only > "${run_dir}/worktree_changed_files.txt"
+
+          cat > "${run_dir}/final_prompt.md" <<'EOF'
+          # Final Prompt
+
+          - Run ID: `pr_gate_acceptance`
+          - Project: `ai_workbench_mcp`
+          - Execution Host: `ci`
+          - Mode: `maintenance`
+          - Task Type: `maintenance`
+          - Risk: `low`
+
+          ## Task Summary
+
+          Prepare source-repository self-acceptance evidence for this pull request's Workbench PR gate while preserving missing-evidence blocking behavior.
+
+          ## Instructions
+
+          Verify the pull request with deterministic package checks, write the evidence files required by Workbench, and render the PR-facing gate artifact only from the accepted evidence.
+          EOF
+
+          {
+            echo "Summary:"
+            echo "Generated complete Workbench acceptance evidence for this pull request using deterministic package validation and the existing PR gate renderer."
+            echo
+            echo "Files touched:"
+            sed 's/^/- /' "${run_dir}/changed_files.txt"
+            echo
+            echo "Validation run:"
+            echo "- python -m pytest -q -p no:cacheprovider -> run by the Workbench validation profile."
+            echo
+            echo "Risks / follow-ups:"
+            echo "- None."
+          } > "${run_dir}/model_response.md"
+
+          python -m ai_workbench_mcp.tools.model_select \
+            --project ai_workbench_mcp \
+            --task-type maintenance \
+            --risk low \
+            --validation-strength strong \
+            --prompt implement_request_change_request \
+            --recipe workbench-python-package-maintenance.yaml \
+            --validation-profile python_package_maintenance \
+            --task-text "Prepare source-repository self-acceptance evidence for a pull request gate without changing the blocking rule." \
+            --out "${run_dir}/model_selection.json"
+
+          python -m ai_workbench_mcp.tools.model_handoff \
+            --project ai_workbench_mcp \
+            --selection "${run_dir}/model_selection.json" \
+            --prompt "${run_dir}/final_prompt.md" \
+            --response-file "${run_dir}/model_response.md" \
+            --out "${run_dir}/model_output.md"
+
+          mapfile -t changed_files < "${run_dir}/changed_files.txt"
+          python -m ai_workbench_mcp.tools.run_log \
+            --run-id "$(basename "${run_dir}")" \
+            --task "Generate source-repository self-acceptance evidence for the pull request gate." \
+            --decision "acceptance_evidence_prepared" \
+            --status completed \
+            --prompt implement_request_change_request \
+            --validation pending \
+            --files-touched "${changed_files[@]}" \
+            --artifacts model_selection.json final_prompt.md model_output.md validation_report.json revision_decision.json \
+            --out "${run_dir}/run_log.jsonl"
+
+          python -m ai_workbench_mcp.tools.validate_run \
+            --project ai_workbench_mcp \
+            --profile python_package_maintenance \
+            --out-dir "${run_dir}"
+
+          python -m ai_workbench_mcp.tools.quality_loop \
+            --project ai_workbench_mcp \
+            --run-dir "${run_dir}" \
+            --mode auto \
+            --risk low
 
       - name: Render PR gate artifact
         shell: bash
@@ -96,6 +244,7 @@ jobs:
           out="runs/pr_gate/pr_comment.md"
           decision="runs/pr_gate/pr_decision.json"
           fallback_run_dir="${WORKBENCH_FALLBACK_RUN_DIR:-runs/ai_workbench_missing_evidence}"
+          self_acceptance="$(printf '%s' "${WORKBENCH_SELF_ACCEPTANCE}" | tr '[:upper:]' '[:lower:]')"
 
           if [[ -n "${WORKBENCH_RUN_DIR}" && -d "${WORKBENCH_RUN_DIR}" ]]; then
             echo "Rendering from WORKBENCH_RUN_DIR=${WORKBENCH_RUN_DIR}"
@@ -108,6 +257,12 @@ jobs:
             python -m ai_workbench_mcp.tools.pr_gate \
               --runs-dir "${WORKBENCH_RUNS_DIR}" \
               --run-id "${WORKBENCH_RUN_ID}" \
+              --out "${out}" \
+              --json-out "${decision}"
+          elif [[ "${self_acceptance}" == "true" && -d "${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}" ]]; then
+            echo "Rendering from opt-in self-acceptance run ${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}"
+            python -m ai_workbench_mcp.tools.pr_gate \
+              --run-dir "${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}" \
               --out "${out}" \
               --json-out "${decision}"
           else
@@ -128,9 +283,18 @@ jobs:
             runs/pr_gate/pr_comment.md
             runs/pr_gate/pr_decision.json
 
+      - name: Upload self-acceptance evidence
+        if: env.WORKBENCH_SELF_ACCEPTANCE == 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: workbench-acceptance-run
+          if-no-files-found: ignore
+          retention-days: 14
+          path: ${{ env.WORKBENCH_SELF_ACCEPTANCE_RUN_DIR }}
+
       - name: Skip fork PR sticky comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: echo "Fork pull request detected; uploaded artifacts and skipped sticky comment."
+        run: echo "Fork pull request detected; uploaded artifacts and skipped sticky comment/check run."
 
   post-pr-comment:
     name: Post same-repo sticky PR comment
@@ -171,3 +335,107 @@ jobs:
             --pr-number "${{ github.event.pull_request.number }}" \
             --comment runs/pr_gate/pr_comment.md \
             --decision runs/pr_gate/pr_decision.json
+
+  post-pr-check:
+    name: Publish same-repo PR check run
+    needs: render-pr-gate
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - name: Download PR gate artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: workbench-pr-gate
+          path: runs/pr_gate
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Create or update PR gate check run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_GATE_CHECK_NAME: AI Workbench PR Gate
+          PR_GATE_DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          decision_path = Path("runs/pr_gate/pr_decision.json")
+          comment_path = Path("runs/pr_gate/pr_comment.md")
+          decision = json.loads(decision_path.read_text(encoding="utf-8"))
+          comment = comment_path.read_text(encoding="utf-8").strip()
+
+          outcome = str(decision.get("outcome") or "block")
+          labels = {"accept": "Accept", "needs_review": "Needs Review", "block": "Block"}
+          conclusions = {"accept": "success", "needs_review": "action_required", "block": "failure"}
+          label = labels.get(outcome, "Block")
+          conclusion = conclusions.get(outcome, "failure")
+          summary = (
+              f"Outcome: {label}. "
+              f"Validation: {decision.get('validation_status', 'unknown')}. "
+              f"Quality gate: {decision.get('quality_gate_status', 'unknown')}. "
+              f"Evidence source: {decision.get('evidence_source', 'unknown')}. "
+              f"Required next action: {decision.get('required_next_action', 'See PR gate artifact.')}"
+          )
+          payload = {
+              "name": os.environ["PR_GATE_CHECK_NAME"],
+              "status": "completed",
+              "conclusion": conclusion,
+              "details_url": os.environ["PR_GATE_DETAILS_URL"],
+              "external_id": f"{os.environ.get('GITHUB_RUN_ID', '')}:{os.environ.get('GITHUB_RUN_ATTEMPT', '')}",
+              "output": {
+                  "title": f"AI Workbench PR Gate: {label}",
+                  "summary": summary,
+                  "text": comment[:60000],
+              },
+          }
+          create_payload = {"head_sha": os.environ["PR_HEAD_SHA"], **payload}
+          Path("runs/pr_gate/check_run_create_payload.json").write_text(
+              json.dumps(create_payload, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          Path("runs/pr_gate/check_run_update_payload.json").write_text(
+              json.dumps(payload, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          print(f"check_run_conclusion={conclusion}")
+          PY
+
+          check_run_id="$(
+            gh api \
+              --method GET \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-runs" \
+              -f "check_name=${PR_GATE_CHECK_NAME}" \
+              --jq '.check_runs[0].id // empty'
+          )"
+
+          if [[ -n "${check_run_id}" ]]; then
+            gh api \
+              --method PATCH \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}" \
+              --input runs/pr_gate/check_run_update_payload.json
+          else
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/${GITHUB_REPOSITORY}/check-runs" \
+              --input runs/pr_gate/check_run_create_payload.json
+          fi

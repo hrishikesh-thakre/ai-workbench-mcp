@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "operation": "workbench_example",
+  "status": "completed",
+  "ok": true,
+  "artifacts": {
+    "report": "runs/example/report.json"
+  },
+  "summary": {
+    "count": 1
+  },
+  "errors": []
+}

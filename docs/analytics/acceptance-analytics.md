@@ -56,6 +56,7 @@ Use these fields in `run_metrics.json` first:
 - `cost_tracking`: provider token and estimated-cost aggregate fields when `model_call_metadata.json` evidence exists.
 - `time_tracking`: provider-call and validation-command duration aggregates when explicit duration evidence exists.
 - `run_cost_time`: per-run cost/time metadata keyed by run id, including booleans that distinguish missing evidence from zero values.
+- `provider_cost_time_evidence`: additive provider-aware status metadata for cost/time evidence. This separates `missing`, `zero_cost`, and `priced` cost evidence without changing the older cost fields.
 
 ## Host And Source Metrics
 
@@ -104,7 +105,7 @@ The selector does not mutate `selected_tier`. `prefer_current_tier` is limited t
 
 ## Cost Tracking
 
-Cost tracking is optional provider metadata. Empty or zero cost fields mean no provider cost evidence was found in the scanned run folders. They do not mean the run was free.
+Cost tracking is optional provider metadata. Empty cost fields mean no provider cost evidence was found in the scanned run folders. A `$0` cost means free or zero-cost execution only when paired with explicit cost evidence.
 
 Cost fields are populated only when real `model_call_metadata.json` artifacts contain token or cost data.
 
@@ -135,6 +136,13 @@ Notes:
 - `estimated_cost_usd` should be provider-reported when available. If it is missing, analytics can estimate cost only from real token metadata plus configured pricing data.
 - `duration_ms` is optional provider-call time evidence. Analytics also accepts explicit `elapsed_ms`, `latency_ms`, `wall_time_ms`, or their `_seconds` equivalents. Attempt-level duration fields can be summed when top-level duration is absent.
 - Missing cost or time fields stay missing in interpretation. They are not treated as free or zero-duration execution.
+
+Analytics writes an additive `provider_cost_time_evidence` object with sanitized aggregate/provider identity data only:
+
+- `run_cost_evidence_status_counts` and `run_cost_evidence_status` classify scanned runs as `missing`, `zero_cost`, or `priced`.
+- `provider_call_cost_evidence_status_counts` and `cost_evidence_status_by_provider` classify provider calls by the same cost evidence statuses.
+- `run_provider_time_evidence_status_counts` and `time_evidence_status_by_provider` classify provider timing evidence as `recorded` or `missing`.
+- `zero_cost_run_ids` and `missing_cost_data_run_ids` make local review explicit without embedding provider logs.
 
 Validation time is separate from provider-call time. It is summed from explicit `duration_ms` fields in `validation_report.json.commands_run`.
 

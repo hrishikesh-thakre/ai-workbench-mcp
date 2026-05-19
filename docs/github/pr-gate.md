@@ -115,7 +115,32 @@ updates a single sticky comment marked with:
 ```
 
 Fork pull requests can still render and upload artifacts, but the template skips
-comment posting.
+comment and check-run write operations.
+
+## Checks API Surface
+
+For same-repository pull requests, the workflow template also creates or updates
+a completed GitHub check run named `AI Workbench PR Gate` from the rendered
+`pr_decision.json` and `pr_comment.md` artifacts. The check run uses the
+workflow `GITHUB_TOKEN` with job-scoped `checks: write` permission.
+
+The prototype maps Workbench outcomes to check-run conclusions this way:
+
+| Workbench outcome | Check-run conclusion | Meaning |
+|---|---|---|
+| `accept` | `success` | Validation passed and the quality gate accepted the run. |
+| `needs_review` | `action_required` | Human review is required before treating the PR as accepted. |
+| `block` | `failure` | Required evidence is missing or the Workbench gate blocked the run. |
+
+The check run is a PR presentation surface. It does not replace
+`validation_report.json`, `revision_decision.json`, or `pr_decision.json`, and
+the template does not configure branch protection or merge enforcement. If a
+repository owner later makes this check required, only `accept` maps to a
+successful conclusion.
+
+Fork pull requests keep the safer fallback path: the render job has read-only
+permissions, uploads deterministic artifacts, and skips both the sticky comment
+and Checks API job. The template does not use `pull_request_target`.
 
 ## Sticky Comment Helper
 
@@ -150,14 +175,24 @@ The template:
 
 - installs `ai-workbench-mcp==0.6.0a0` by default
 - accepts `workbench_run_dir`, or `workbench_runs_dir` plus `workbench_run_id`
+- can optionally generate a source-repository self-acceptance run when
+  `WORKBENCH_SELF_ACCEPTANCE=true`
 - falls back to a blocking missing/scaffold result when no real run directory is
   available
 - uploads `pr_comment.md` and `pr_decision.json` as the `workbench-pr-gate`
   artifact
+- uploads the generated `workbench-acceptance-run` artifact when opt-in
+  self-acceptance mode runs
 - posts one same-repository marker comment when workflow permissions allow it
+- creates or updates one same-repository check run when `checks: write` is available
 
-The template does not run Goose, create a Workbench run, call the GitHub Checks
-API, define merge enforcement policy, or turn CI status into acceptance.
+By default, the template does not run Goose, create a Workbench run, define
+merge enforcement policy, or turn CI status into acceptance. The opt-in
+self-acceptance mode is narrower: it creates a local Workbench run for this
+source repository's same-repository pull request, validates it with the
+package-maintenance profile, runs the quality gate, and renders only from that
+accepted evidence. It stays disabled unless `WORKBENCH_SELF_ACCEPTANCE=true`
+and does not run for fork pull requests.
 
 ## Local Mirror
 

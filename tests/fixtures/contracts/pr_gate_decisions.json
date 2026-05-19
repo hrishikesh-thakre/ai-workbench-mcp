@@ -1,0 +1,128 @@
+{
+  "accepted": {
+    "schema_version": 1,
+    "operation": "workbench_pr_gate",
+    "outcome": "accept",
+    "ok": true,
+    "run_id": "pr-gate-demo-accepted",
+    "evidence_source": "acceptance_run",
+    "source_run_dir": "examples/pr-gate-outcomes/accepted/evidence",
+    "policy_pack": "docs_only",
+    "validation_profile": "docs_only",
+    "policy_pack_selection_mode": "unknown",
+    "validation_status": "passed",
+    "quality_gate_status": "accepted",
+    "reason": "Validation passed and the quality gate accepted the documentation-only run.",
+    "reason_codes": [
+      "docs_only.accepted",
+      "quality_gate.accepted"
+    ],
+    "evidence": [
+      {
+        "label": "validation_report",
+        "path": "validation_report.json",
+        "present": true
+      },
+      {
+        "label": "revision_decision",
+        "path": "revision_decision.json",
+        "present": true
+      },
+      {
+        "label": "model_output",
+        "path": "model_output.md",
+        "present": true
+      },
+      {
+        "label": "run_log",
+        "path": "run_log.jsonl",
+        "present": true
+      }
+    ],
+    "required_next_action": "No Workbench action required before merge."
+  },
+  "needs-review": {
+    "schema_version": 1,
+    "operation": "workbench_pr_gate",
+    "outcome": "needs_review",
+    "ok": true,
+    "run_id": "pr-gate-demo-needs-review",
+    "evidence_source": "acceptance_run",
+    "source_run_dir": "examples/pr-gate-outcomes/needs-review/evidence",
+    "policy_pack": "api_contract_change",
+    "validation_profile": "api_contract_change",
+    "policy_pack_selection_mode": "unknown",
+    "validation_status": "needs_review",
+    "quality_gate_status": "review_required",
+    "reason": "Policy requires contract-owner review before merge.",
+    "reason_codes": [
+      "api_contract_change.review_required",
+      "quality_gate.review_required"
+    ],
+    "evidence": [
+      {
+        "label": "validation_report",
+        "path": "validation_report.json",
+        "present": true
+      },
+      {
+        "label": "revision_decision",
+        "path": "revision_decision.json",
+        "present": true
+      },
+      {
+        "label": "model_output",
+        "path": "model_output.md",
+        "present": true
+      },
+      {
+        "label": "run_log",
+        "path": "run_log.jsonl",
+        "present": true
+      }
+    ],
+    "required_next_action": "Record contract-owner approval, then regenerate the PR gate artifact."
+  },
+  "blocked": {
+    "schema_version": 1,
+    "operation": "workbench_pr_gate",
+    "outcome": "block",
+    "ok": true,
+    "run_id": "pr-gate-demo-blocked",
+    "evidence_source": "acceptance_run",
+    "source_run_dir": "examples/pr-gate-outcomes/blocked/evidence",
+    "policy_pack": "docs_only",
+    "validation_profile": "docs_only",
+    "policy_pack_selection_mode": "unknown",
+    "validation_status": "needs_review",
+    "quality_gate_status": "review_required",
+    "reason": "Source file changed in docs-only policy.",
+    "reason_codes": [
+      "docs_only.source_file_blocked",
+      "quality_gate.blocker_present"
+    ],
+    "evidence": [
+      {
+        "label": "validation_report",
+        "path": "validation_report.json",
+        "present": true
+      },
+      {
+        "label": "revision_decision",
+        "path": "revision_decision.json",
+        "present": true
+      },
+      {
+        "label": "model_output",
+        "path": "model_output.md",
+        "present": true
+      },
+      {
+        "label": "run_log",
+        "path": "run_log.jsonl",
+        "present": true
+      }
+    ],
+    "required_next_action": "Move source-code edits to an implementation profile or remove them, rerun validation, and regenerate the PR gate artifact."
+  }
+}

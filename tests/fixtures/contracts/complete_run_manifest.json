@@ -1,0 +1,32 @@
+{
+  "contract_status": "v0.x-pre-v1",
+  "complete_run_artifacts": [
+    "task_metadata.json",
+    "final_prompt.md",
+    "model_selection.json",
+    "model_output.md",
+    "validation_report.json",
+    "revision_decision.json",
+    "run_log.jsonl"
+  ],
+  "acceptance_required_artifacts": [
+    "validation_report.json",
+    "revision_decision.json"
+  ],
+  "pr_gate_evidence": [
+    ["validation_report", "validation_report.json"],
+    ["revision_decision", "revision_decision.json"],
+    ["model_output", "model_output.md"],
+    ["run_log", "run_log.jsonl"]
+  ],
+  "pr_gate_outcomes": [
+    "accept",
+    "needs_review",
+    "block"
+  ],
+  "pr_gate_evidence_sources": [
+    "acceptance_run",
+    "fallback_scaffold",
+    "missing"
+  ]
+}
