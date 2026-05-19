@@ -51,10 +51,59 @@ from ai_workbench_mcp.tools.policy_packs import (
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_V02_BASELINE = ROOT / "docs" / "contracts" / "v0.2-contract-baseline.md"
 CONTRACT_V03_BASELINE = ROOT / "docs" / "contracts" / "v0.3-contract-baseline.md"
+CONTRACT_FIXTURES = ROOT / "tests" / "fixtures" / "contracts"
+ANALYTICS_CONTRACT_KEYS = (
+    "runs_total",
+    "runs_passed",
+    "runs_failed",
+    "runs_needs_review",
+    "evidence_scope",
+    "excluded_runs_total",
+    "workflow_signoff_pass_rate",
+    "workflow_needs_review_rate",
+    "average_confidence",
+    "accepted_runs_total",
+    "failed_runs_total",
+    "review_required_runs_total",
+    "other_runs_total",
+    "execution_host_counts",
+    "response_source_counts",
+    "accepted_runs_by_recipe",
+    "accepted_runs_by_validation_profile",
+    "accepted_runs_by_selected_tier",
+    "accepted_runs_by_execution_host",
+    "accepted_runs_by_response_source",
+    "model_tier_usage",
+    "validation_profiles_used",
+    "quality_gate_outcomes",
+    "outcome_counts",
+    "cost_tracking",
+    "time_tracking",
+    "run_cost_time",
+    "workflow_kpis",
+)
 
 
 def read_jsonl(path: Path) -> list[dict[str, object]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def load_contract_fixture(name: str) -> dict[str, object]:
+    return json.loads((CONTRACT_FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def normalize_contract_fixture_paths(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: normalize_contract_fixture_paths(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [normalize_contract_fixture_paths(item) for item in value]
+    if isinstance(value, str):
+        return value.replace("\\", "/")
+    return value
+
+
+def analytics_contract_projection(metrics: dict[str, object]) -> dict[str, object]:
+    return {key: metrics[key] for key in ANALYTICS_CONTRACT_KEYS}
 
 
 class ContractEnvelopeTests(unittest.TestCase):
@@ -78,6 +127,7 @@ class ContractEnvelopeTests(unittest.TestCase):
         self.assertEqual(response["artifacts"]["report"], str(Path("runs/example/report.json")))
         self.assertEqual(response["errors"], [])
         self.assertEqual(json.loads(json.dumps(response))["summary"]["count"], 1)
+        self.assertEqual(normalize_contract_fixture_paths(response), load_contract_fixture("response_envelope.json"))
 
     def test_error_envelope_marks_response_not_ok(self) -> None:
         response = error_envelope(
@@ -89,6 +139,7 @@ class ContractEnvelopeTests(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["errors"][0]["code"], "missing_artifact")
+        self.assertEqual(response, load_contract_fixture("error_envelope.json"))
 
 
 class ContractDocumentationTests(unittest.TestCase):
@@ -222,6 +273,11 @@ class ContractDocumentationTests(unittest.TestCase):
             "ai-workbench-mcp==0.6.0a0",
             "ai-workbench-bootstrap --target .",
             "ai-workbench-bootstrap-assets",
+            "Machine-Readable Contract Fixtures",
+            "tests/fixtures/contracts/response_envelope.json",
+            "tests/fixtures/contracts/pr_gate_decisions.json",
+            "tests/fixtures/contracts/analytics_single_accepted_run_projection.json",
+            "pre-v1 regression guards",
             "Deliberately Not Stable Yet",
         ]
 
@@ -250,6 +306,14 @@ class ContractDocumentationTests(unittest.TestCase):
                 self.assertIn(key, text)
 
     def test_v03_contract_constants_match_landed_implementations(self) -> None:
+        manifest = load_contract_fixture("complete_run_manifest.json")
+        self.assertEqual(manifest["contract_status"], "v0.x-pre-v1")
+        self.assertEqual(manifest["complete_run_artifacts"], list(V03_COMPLETE_RUN_ARTIFACTS))
+        self.assertEqual(manifest["acceptance_required_artifacts"], list(V03_ACCEPTANCE_REQUIRED_ARTIFACTS))
+        self.assertEqual(manifest["pr_gate_evidence"], [list(item) for item in V03_PR_GATE_EVIDENCE])
+        self.assertEqual(manifest["pr_gate_outcomes"], list(V03_PR_GATE_OUTCOMES))
+        self.assertEqual(manifest["pr_gate_evidence_sources"], list(V03_PR_GATE_EVIDENCE_SOURCES))
+
         self.assertEqual(V03_PR_GATE_EVIDENCE, STANDARD_EVIDENCE)
         self.assertEqual(V03_PR_GATE_OUTCOMES, tuple(OUTCOME_LABELS))
         self.assertEqual(V03_PR_GATE_EVIDENCE_SOURCES, ("acceptance_run", "fallback_scaffold", "missing"))
@@ -293,6 +357,7 @@ class ContractDocumentationTests(unittest.TestCase):
             "blocked": "block",
         }
         expected_evidence = dict(V03_PR_GATE_EVIDENCE)
+        fixture = load_contract_fixture("pr_gate_decisions.json")
 
         for slug, expected_outcome in demos.items():
             with self.subTest(demo=slug):
@@ -300,6 +365,7 @@ class ContractDocumentationTests(unittest.TestCase):
                 decision = json.loads((demo_dir / "pr_decision.json").read_text(encoding="utf-8"))
                 comment = (demo_dir / "pr_comment.md").read_text(encoding="utf-8")
 
+                self.assertEqual(decision, fixture[slug])
                 self.assertTrue(expected_fields.issubset(decision))
                 self.assertEqual(decision["schema_version"], SCHEMA_VERSION)
                 self.assertEqual(decision["operation"], PR_GATE_OPERATION)
@@ -700,8 +766,59 @@ class OperationContractTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (run_dir / "task_metadata.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "run1",
+                        "project": "ai_workbench_mcp",
+                        "task_type": "implementation",
+                        "prompt": "implement_request_change_request",
+                        "recipe": "workbench-engineering-acceptance.yaml",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "model_output.md").write_text(
+                "\n".join(
+                    [
+                        "# Model Output",
+                        "",
+                        "## Execution Metadata",
+                        "",
+                        "- Response Source: `goose`",
+                        "- Status: `response_captured`",
+                        "",
+                        "## Normalized Response",
+                        "",
+                        "Summary:",
+                        "Captured sample response.",
+                        "",
+                        "Files touched:",
+                        "- src/example.py",
+                        "",
+                        "Validation run:",
+                        "- pytest -> passed",
+                        "",
+                        "Risks / follow-ups:",
+                        "- None.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
             (run_dir / "validation_report.json").write_text(
-                json.dumps({"overall_status": "passed", "confidence": 0.9}),
+                json.dumps(
+                    {
+                        "overall_status": "passed",
+                        "sign_off_ready": True,
+                        "confidence": 0.9,
+                        "profile": "run_signoff",
+                        "missing_context_notes": {"needs_review": [], "info": []},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (run_dir / "revision_decision.json").write_text(
+                json.dumps({"final_status": "accepted", "loop_type": "none"}),
                 encoding="utf-8",
             )
             out_dir = root / "reports"
@@ -734,6 +851,10 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(written["runs_total"], 1)
         self.assertEqual(written["evidence_scope"], "all")
         self.assertEqual(written["excluded_runs_total"], 0)
+        self.assertEqual(
+            analytics_contract_projection(written),
+            load_contract_fixture("analytics_single_accepted_run_projection.json"),
+        )
         self.assertEqual(response["summary"]["runs_total"], 1)
         self.assertEqual(response["summary"]["evidence_scope"], "all")
         self.assertEqual(response["summary"]["runs_passed"], 1)

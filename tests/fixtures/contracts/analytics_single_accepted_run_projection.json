@@ -1,0 +1,141 @@
+{
+  "runs_total": 1,
+  "runs_passed": 1,
+  "runs_failed": 0,
+  "runs_needs_review": 0,
+  "evidence_scope": "all",
+  "excluded_runs_total": 0,
+  "workflow_signoff_pass_rate": 1.0,
+  "workflow_needs_review_rate": 0.0,
+  "average_confidence": 0.9,
+  "accepted_runs_total": 1,
+  "failed_runs_total": 0,
+  "review_required_runs_total": 0,
+  "other_runs_total": 0,
+  "execution_host_counts": {
+    "goose": 1
+  },
+  "response_source_counts": {
+    "goose": 1
+  },
+  "accepted_runs_by_recipe": {
+    "workbench-engineering-acceptance.yaml": 1
+  },
+  "accepted_runs_by_validation_profile": {
+    "run_signoff": 1
+  },
+  "accepted_runs_by_selected_tier": {
+    "local_coding": 1
+  },
+  "accepted_runs_by_execution_host": {
+    "goose": 1
+  },
+  "accepted_runs_by_response_source": {
+    "goose": 1
+  },
+  "model_tier_usage": {
+    "local_coding": 1
+  },
+  "validation_profiles_used": {
+    "run_signoff": 1
+  },
+  "quality_gate_outcomes": {
+    "accepted": 1
+  },
+  "outcome_counts": {
+    "accepted": 1
+  },
+  "cost_tracking": {
+    "average_estimated_cost_usd_per_priced_run": 0.0,
+    "average_tokens_per_run": 0,
+    "estimated_cost_usd_by_provider": {},
+    "estimated_cost_usd_by_selected_tier": {},
+    "pricing_sources_used": {},
+    "provider_call_counts_by_provider": {},
+    "provider_call_counts_by_tier": {},
+    "provider_calls_total": 0,
+    "provider_calls_with_time_data": 0,
+    "runs_with_cost_data": 0,
+    "runs_with_cost_data_ids": [],
+    "runs_with_provider_time_data": 0,
+    "runs_with_token_data": 0,
+    "total_estimated_cost_usd": 0.0,
+    "total_tokens_tracked": 0
+  },
+  "time_tracking": {
+    "average_provider_duration_ms_per_timed_call": 0,
+    "average_validation_duration_ms_per_timed_run": 0,
+    "provider_calls_with_time_data": 0,
+    "provider_duration_ms_by_provider": {},
+    "provider_duration_ms_by_selected_tier": {},
+    "runs_with_provider_time_data": 0,
+    "total_provider_duration_ms": 0,
+    "total_validation_duration_ms": 0,
+    "validation_runs_with_time_data": 0
+  },
+  "run_cost_time": {
+    "run1": {
+      "estimated_cost_usd": 0.0,
+      "has_cost_data": false,
+      "has_provider_time_data": false,
+      "has_token_data": false,
+      "has_validation_time_data": false,
+      "models": {},
+      "provider_calls": 0,
+      "provider_duration_ms": 0,
+      "providers": {},
+      "tiers": {},
+      "total_tokens": 0,
+      "validation_duration_ms": 0
+    }
+  },
+  "workflow_kpis": {
+    "acceptance_rate": 1.0,
+    "accepted_runs_by_execution_host": {
+      "goose": 1
+    },
+    "accepted_runs_by_recipe": {
+      "workbench-engineering-acceptance.yaml": 1
+    },
+    "accepted_runs_by_response_source": {
+      "goose": 1
+    },
+    "accepted_runs_by_selected_tier": {
+      "local_coding": 1
+    },
+    "accepted_runs_by_validation_profile": {
+      "run_signoff": 1
+    },
+    "accepted_runs_total": 1,
+    "average_confidence": 0.9,
+    "evidence_scope": "all",
+    "excluded_runs_by_reason": {},
+    "excluded_runs_total": 0,
+    "execution_host_counts": {
+      "goose": 1
+    },
+    "failed_runs_total": 0,
+    "failure_reasons": {},
+    "golden_case_count": 0,
+    "manual_handoff_count": 0,
+    "outcome_counts": {
+      "accepted": 1
+    },
+    "quality_gate_outcomes": {
+      "accepted": 1
+    },
+    "response_captured_count": 1,
+    "response_source_counts": {
+      "goose": 1
+    },
+    "review_loop_triggers": {},
+    "review_required_runs_total": 0,
+    "runs_eligible_for_golden_cases": 0,
+    "runs_failed": 0,
+    "runs_needs_review": 0,
+    "runs_passed": 1,
+    "runs_total": 1,
+    "workflow_needs_review_rate": 0.0,
+    "workflow_signoff_pass_rate": 1.0
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "operation": "workbench_validate_run",
+  "status": "error",
+  "ok": false,
+  "artifacts": {},
+  "summary": {},
+  "errors": [
+    {
+      "code": "missing_artifact",
+      "message": "validation_report.json was not found."
+    }
+  ]
+}
