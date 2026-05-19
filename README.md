@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.6.0a0` is published on PyPI with exact-version install proof. The latest historical published package before this release was `ai-workbench-mcp==0.3.0a0`, with MCP Registry publication complete for `0.3.0a0`; the v0.6 MCP Registry update remains a separate approval gate.
+Current repo work is v0.6 package/release readiness for external-repo PR gate adoption hardening on top of the v0.3 Semantic PR Acceptance Alpha and the v0.5 safe policy-pack selection work. `ai-workbench-mcp==0.6.0a0` is published on PyPI with exact-version install proof, and MCP Registry publication is complete for `0.6.0a0`. The latest historical published package before this release was `ai-workbench-mcp==0.3.0a0`.
 
 ## Before
 

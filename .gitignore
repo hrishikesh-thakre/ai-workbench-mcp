@@ -10,3 +10,5 @@ dist/
 .env.*
 !.env.example
 configs/model_registry.local.yaml
+.mcpregistry_github_token
+.mcpregistry_registry_token

@@ -191,7 +191,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn(expected_marker, readme_text)
         self.assertEqual(readme_text.count("mcp-name:"), 1)
 
-    def test_v06_release_note_records_pypi_proof_without_registry_publication(self) -> None:
+    def test_v06_release_note_records_pypi_and_registry_proof(self) -> None:
         metadata = json.loads(SERVER_JSON.read_text(encoding="utf-8"))
         pyproject = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
         readme_text = README.read_text(encoding="utf-8")
@@ -204,13 +204,14 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("Release note with package upload proof.", v03_release_text)
         self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", v03_release_text)
         self.assertIn("MCP Registry publication completed for `0.3.0a0`", v03_release_text)
-        self.assertIn("Publication status: TestPyPI upload, PyPI upload, and exact-version install", v06_release_text)
+        self.assertIn("Publication status: TestPyPI upload, PyPI upload, exact-version install proof", v06_release_text)
+        self.assertIn("and MCP Registry publication completed on", v06_release_text)
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.6.0a0/", v06_release_text)
-        self.assertIn("Do not", v06_release_text)
-        self.assertIn("explicit release approval", v06_release_text)
+        self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", v06_release_text)
+        self.assertIn("with latest status", v06_release_text)
         self.assertIn("`ai-workbench-mcp==0.6.0a0` is published on PyPI with exact-version install proof", readme_text)
+        self.assertIn("MCP Registry publication is complete for `0.6.0a0`", readme_text)
         self.assertIn("latest historical published package before this release was `ai-workbench-mcp==0.3.0a0`", readme_text)
-        self.assertIn("the v0.6 MCP Registry update remains a separate approval gate", readme_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.6.0a0", readme_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
@@ -218,6 +219,8 @@ class PublicHygieneTests(unittest.TestCase):
         example_text = MODEL_REGISTRY_EXAMPLE.read_text(encoding="utf-8")
 
         self.assertIn("configs/model_registry.local.yaml", gitignore_text)
+        self.assertIn(".mcpregistry_github_token", gitignore_text)
+        self.assertIn(".mcpregistry_registry_token", gitignore_text)
         self.assertTrue(MODEL_REGISTRY_EXAMPLE.is_file())
         for tier in ("local_coding", "cheap_cloud", "mid_cloud", "frontier"):
             self.assertIn(f"  {tier}:", example_text)
@@ -318,13 +321,13 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn('"ai-workbench-mcp==0.6.0a0"', pypi_text)
         self.assertIn("python -m pip install ai-workbench-mcp==0.6.0a0", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
+        self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.6.0a0`", pypi_text)
         self.assertIn("MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0`", pypi_text)
-        self.assertIn("MCP Registry update for `io.github.hrishikesh-thakre/ai-workbench-mcp`", pypi_text)
-        self.assertIn("version `0.6.0a0` is pending registry validation/publication and explicit", pypi_text)
-        self.assertIn("mcp-publisher validate server.json", pypi_text)
+        self.assertIn("mcp-publisher publish --file server.json --dry-run", pypi_text)
         self.assertIn("https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hrishikesh-thakre%2Fai-workbench-mcp", pypi_text)
-        self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0` or `0.3.0a0`.", pypi_text)
+        self.assertIn("Do not rerun `mcp-publisher publish` for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.", pypi_text)
         self.assertNotIn("MCP Registry submission remains pending.", pypi_text)
+        self.assertNotIn("pending registry validation/publication", pypi_text)
         self.assertNotIn("has not been published to PyPI yet", pypi_text)
         self.assertNotIn("Real PyPI remains pending.", pypi_text)
         self.assertIn("Only run this after", pypi_text)

@@ -1,9 +1,7 @@
 # MCP Registry Proof
 
-Status: `0.3.0a0` registry publication recorded as complete; `0.6.0a0` PyPI
-proof complete; registry update pending validation/publication and explicit
-approval
-Latest published registry version: `0.3.0a0`
+Status: `0.6.0a0` registry publication recorded as complete.
+Latest published registry version: `0.6.0a0`
 Target metadata version: `0.6.0a0`
 Date verified in repo docs: 2026-05-19
 
@@ -80,12 +78,21 @@ published wheel.
 | Version | Registry status | Verified |
 |---|---|---|
 | `0.2.0a0` | active, not latest | 2026-05-16 |
-| `0.3.0a0` | active, latest | 2026-05-18 |
-| `0.6.0a0` | PyPI proof complete; registry pending validation/publication and explicit approval | PyPI 2026-05-19 |
+| `0.3.0a0` | active, not latest | 2026-05-18 |
+| `0.6.0a0` | active, latest | 2026-05-19 |
+
+## v0.6 Publication Proof
+
+The v0.6 registry update was published with `mcp-publisher 1.7.9` after GitHub
+OAuth authentication. The registry API returned:
+
+```text
+0.6.0a0 | ai-workbench-mcp | 0.6.0a0 | latest=true
+```
 
 ## Maintenance Rule
 
-Do not rerun registry publication for `0.2.0a0` or `0.3.0a0`.
+Do not rerun registry publication for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.
 
 Future registry updates require:
 

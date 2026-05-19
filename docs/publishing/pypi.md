@@ -10,8 +10,8 @@ completed on 2026-05-19.
 
 The latest historical published package before this release was
 `ai-workbench-mcp==0.3.0a0`, exact-version install verified on TestPyPI and
-PyPI as of 2026-05-18. MCP Registry publication for `0.3.0a0` completed on
-2026-05-18. The latest historical verified publication before the v0.3 release
+PyPI as of 2026-05-18. MCP Registry publication for `0.6.0a0` completed on
+2026-05-19. The latest historical verified publication before the v0.3 release
 was `ai-workbench-mcp==0.2.0a0`.
 
 This guide records the package boundary and release checklist. Recheck the project name and version on PyPI immediately before any future upload because PyPI versions are immutable.
@@ -245,9 +245,7 @@ python -m pip install ai-workbench-mcp==0.6.0a0
 
 ## MCP Registry Prep
 
-Status: MCP Registry update for `io.github.hrishikesh-thakre/ai-workbench-mcp`
-version `0.6.0a0` is pending registry validation/publication and explicit
-approval.
+Status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.6.0a0` on 2026-05-19.
 
 Historical status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.3.0a0` on 2026-05-18.
 
@@ -263,7 +261,7 @@ The MCP Registry metadata is prepared in `server.json`. The public proof note is
 
 Registry publication remains separate from package release. For the PyPI package path, keep `server.json.version` and `server.json.packages[0].version` aligned with `pyproject.toml` `project.version`, and keep the hidden README `mcp-name` marker exactly matched to `server.json.name`.
 
-Do not rerun `mcp-publisher publish` for `0.2.0a0` or `0.3.0a0`. The v0.6
-registry update requires the published `0.6.0a0` package version,
-`mcp-publisher validate server.json`, explicit approval, and
-`mcp-publisher publish server.json`. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.
+Do not rerun `mcp-publisher publish` for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.
+Future registry updates require a version bump, a published package version,
+`mcp-publisher publish --file server.json --dry-run`, explicit approval, and
+`mcp-publisher publish --file server.json`. Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.
