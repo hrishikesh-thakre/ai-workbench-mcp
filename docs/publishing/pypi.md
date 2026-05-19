@@ -8,15 +8,19 @@ This guide records the package boundary and release checklist. Recheck the proje
 
 ## Current Package Boundary
 
-The prepared `0.3.0a0` source build installs the `ai_workbench_mcp` package, the `ai-workbench-mcp` console script, and the `ai-workbench-bootstrap-assets` console script.
+The published `0.3.0a0` package installs the `ai_workbench_mcp` package, the `ai-workbench-mcp` console script, and the `ai-workbench-bootstrap-assets` console script.
+
+The current source tree adds the v0.6 adoption command `ai-workbench-bootstrap`. It has not been published as a new package version in this branch.
 
 Historical note: the published `0.2.0a0` wheel is code/server only. It installs the `ai_workbench_mcp` package and the `ai-workbench-mcp` console script.
 
-The source tree includes a package-resource pass for the `0.3.0a0` build. New source builds include bootstrappable defaults under `ai_workbench_mcp/assets/`:
+The source tree includes a package-resource pass. New source builds include bootstrappable defaults under `ai_workbench_mcp/assets/`:
 
 - `configs/`, including `policy_packs.yaml`, `validation_profiles.yaml`, project defaults, model selection defaults, routing feedback policy, and quality-loop defaults.
 - `prompts/approved/`, including the public approved prompt catalog.
 - `recipes/`, including the Goose acceptance and smoke recipes.
+- `github/workflows/ai-workbench-pr-gate.yml`, the external PR gate workflow template.
+- `docs/ai-workbench-pr-gate.md`, the bootstrapped target-repository setup note.
 
 The wheel does not include `examples/`, `evals/`, committed sample evidence, local `runs/`, or provider setup. Full Goose recipe workflows can still be run from a checked-out repository, but installed-package users can now materialize the default repo-style assets when they do not have a checkout:
 
@@ -30,11 +34,19 @@ The console-script equivalent is:
 ai-workbench-bootstrap-assets --target-dir .
 ```
 
-The bootstrap command writes `configs/`, `prompts/`, and `recipes/` under the target directory. Existing files are left untouched unless `--force` is supplied:
+The compatibility bootstrap command writes `configs/`, `prompts/`, and `recipes/` under the target directory. Existing files are left untouched unless `--force` is supplied:
 
 ```powershell
 python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir . --force
 ```
+
+For the v0.6 external-repository adoption path in the current source tree, use:
+
+```powershell
+ai-workbench-bootstrap --target .
+```
+
+That command writes `configs/`, `prompts/`, `recipes/`, `.github/workflows/ai-workbench-pr-gate.yml`, `docs/ai-workbench-pr-gate.md`, and ensures `.gitignore` contains `runs/`.
 
 To inspect the packaged asset plan without writing files:
 
@@ -82,6 +94,7 @@ Smoke the wheel:
 python -m pip install --force-reinstall (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
 python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir $env:TEMP\ai-workbench-mcp-assets-smoke --groups configs --force
+ai-workbench-bootstrap --target $env:TEMP\ai-workbench-mcp-bootstrap-smoke --force
 ```
 
 Fresh virtual environment smoke:
@@ -92,8 +105,10 @@ python -m venv $env:TEMP\ai-workbench-mcp-wheel-smoke
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-mcp.exe').exists() or (scripts/'ai-workbench-mcp').exists()"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-bootstrap.exe').exists() or (scripts/'ai-workbench-bootstrap').exists()"
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-bootstrap-assets.exe').exists() or (scripts/'ai-workbench-bootstrap-assets').exists()"
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m ai_workbench_mcp.tools.bootstrap_assets --target-dir "$env:TEMP\ai-workbench-mcp-wheel-assets" --groups configs --force
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\ai-workbench-bootstrap.exe" --target "$env:TEMP\ai-workbench-mcp-wheel-bootstrap" --force
 ```
 
 Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP server entrypoint, not a normal help-printing CLI.

@@ -10,13 +10,21 @@ decision, and renders the PR-facing result.
 
 ## What You Are Adding
 
-Copy the PR gate workflow template into your repository:
+Install the package once and bootstrap the repository assets:
+
+```bash
+pipx install ai-workbench-mcp
+ai-workbench-bootstrap --target .
+```
+
+Bootstrap writes the AI Workbench starter assets into the target repository,
+including the PR gate workflow template:
 
 ```text
 .github/workflows/ai-workbench-pr-gate.yml
 ```
 
-The template:
+The bootstrapped workflow:
 
 - installs AI Workbench MCP from the workflow default, unless you override the
   `ai_workbench_mcp_package` input
@@ -29,21 +37,31 @@ The template:
 The template does not run Goose, create Workbench evidence, call provider APIs,
 or turn green CI into semantic acceptance.
 
-## Minimal Path
+## Bootstrap Path
 
-1. Copy the upstream PR gate workflow template into your repository at:
+1. From the root of the repository that should receive the PR gate, install and
+   run the bootstrap command:
+
+   ```bash
+   pipx install ai-workbench-mcp
+   ai-workbench-bootstrap --target .
+   ```
+
+2. Confirm the workflow now exists:
 
    ```text
    .github/workflows/ai-workbench-pr-gate.yml
    ```
 
-2. Keep local Workbench evidence out of git:
+3. Keep local Workbench evidence out of git:
 
    ```gitignore
    runs/
    ```
 
-3. Produce a real Workbench run for the PR with the normal Goose-first flow:
+## First PR Flow
+
+1. Produce a real Workbench run for the PR with the normal Goose-first flow:
 
    ```text
    Goose recipe or Goose task
@@ -55,14 +73,15 @@ or turn green CI into semantic acceptance.
      -> workbench_quality_gate
    ```
 
-4. Make that run directory available before the workflow's
+2. Keep `runs/` ignored. Do not commit the raw evidence folder. Instead, make
+   the run directory available before the workflow's
    `Render PR gate artifact` step. Common options are:
 
    - generate the run earlier in the same job
    - download a private CI artifact that contains the run folder
    - pass a run folder created by a trusted upstream workflow
 
-5. Point the workflow at the run with either a direct path:
+3. Point the workflow at the run with either a direct path:
 
    ```text
    WORKBENCH_RUN_DIR=runs/<run_id>
@@ -81,9 +100,30 @@ or turn green CI into semantic acceptance.
    workflow default, or set it only when you intentionally want a different
    package spec.
 
-6. Open or update a pull request and inspect the uploaded
-   `workbench-pr-gate` artifact. Same-repository PRs also get a sticky comment
-   when workflow permissions allow it.
+4. Open or update the pull request. Read the sticky PR comment when it appears,
+   and always inspect the uploaded `workbench-pr-gate` artifact. The artifact
+   contains:
+
+   ```text
+   runs/pr_gate/pr_comment.md
+   runs/pr_gate/pr_decision.json
+   ```
+
+   Same-repository PRs get a sticky comment when workflow permissions allow it.
+   Fork PRs still upload the artifact but skip comment posting.
+
+## Manual Fallback
+
+If bootstrap is unavailable in your environment, copy the upstream workflow
+template into your repository manually:
+
+```text
+.github/workflows/ai-workbench-pr-gate.yml
+```
+
+Then continue from the `runs/` ignore rule and evidence steps above. Manual
+copy-paste is a fallback path; the preferred setup is package install plus
+bootstrap so future starter assets are created consistently.
 
 ## Acceptance Rule
 
@@ -105,9 +145,69 @@ quality-gate decisions, and scaffold-only fallback evidence all block. Scaffold
 fallback is useful for proving the workflow is wired, but it is not semantic
 acceptance and must not be treated as permission to merge.
 
+## Missing-Evidence Troubleshooting
+
+If the PR comment or `pr_decision.json` reports `block`, `missing`,
+`fallback_scaffold`, or `pr_gate.acceptance_evidence_missing`, recover by
+pointing the workflow at a real Workbench acceptance run. Do not fix this by
+using scaffold evidence as an acceptance shortcut.
+
+1. Re-run bootstrap if the workflow or starter assets are missing:
+
+   ```bash
+   pipx install ai-workbench-mcp
+   ai-workbench-bootstrap --target .
+   ```
+
+2. Confirm the run folder exists and has the two acceptance artifacts:
+
+   ```bash
+   WORKBENCH_RUN_DIR=runs/<run_id>
+   test -f "$WORKBENCH_RUN_DIR/validation_report.json"
+   test -f "$WORKBENCH_RUN_DIR/revision_decision.json"
+   ```
+
+3. Re-render the PR gate locally from a direct run directory:
+
+   ```bash
+   mkdir -p runs/pr_gate
+   python -m ai_workbench_mcp.tools.pr_gate \
+     --run-dir "$WORKBENCH_RUN_DIR" \
+     --out runs/pr_gate/pr_comment.md \
+     --json-out runs/pr_gate/pr_decision.json
+   ```
+
+4. Or re-render from a parent directory plus run id:
+
+   ```bash
+   WORKBENCH_RUNS_DIR=runs
+   WORKBENCH_RUN_ID=<run_id>
+   mkdir -p runs/pr_gate
+   python -m ai_workbench_mcp.tools.pr_gate \
+     --runs-dir "$WORKBENCH_RUNS_DIR" \
+     --run-id "$WORKBENCH_RUN_ID" \
+     --out runs/pr_gate/pr_comment.md \
+     --json-out runs/pr_gate/pr_decision.json
+   ```
+
+5. Use fallback rendering only to prove the workflow can write artifacts:
+
+   ```bash
+   WORKBENCH_FALLBACK_RUN_DIR=runs/ai_workbench_missing_evidence
+   mkdir -p runs/pr_gate
+   python -m ai_workbench_mcp.tools.pr_gate \
+     --fallback-run-dir "$WORKBENCH_FALLBACK_RUN_DIR" \
+     --out runs/pr_gate/pr_comment.md \
+     --json-out runs/pr_gate/pr_decision.json
+   ```
+
+   This path is expected to block. Missing evidence and scaffold evidence are not semantic acceptance; they are visibility signals only.
+
 ## Quick Checklist
 
-- The workflow template is copied to `.github/workflows/ai-workbench-pr-gate.yml`.
+- `pipx install ai-workbench-mcp` and `ai-workbench-bootstrap --target .` have
+  been run, or the workflow was copied manually as a fallback.
+- The workflow template exists at `.github/workflows/ai-workbench-pr-gate.yml`.
 - `runs/` is ignored and raw Workbench evidence is not committed.
 - Goose or a trusted Workbench-producing job creates a real run for the PR.
 - The run folder is present in CI before the PR gate render step.

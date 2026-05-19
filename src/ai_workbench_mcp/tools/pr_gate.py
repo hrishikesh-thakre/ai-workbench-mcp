@@ -23,6 +23,17 @@ STANDARD_EVIDENCE = (
 )
 ACCEPTANCE_EVIDENCE_MISSING_CODE = "pr_gate.acceptance_evidence_missing"
 ACCEPTANCE_EVIDENCE_MISSING_REASON = "No complete Workbench acceptance evidence found for this PR."
+ACCEPTANCE_EVIDENCE_MISSING_DISPLAY_REASON = "No Workbench acceptance evidence found for this PR."
+ACCEPTANCE_EVIDENCE_MISSING_NEXT_ACTION = (
+    "Provide a complete Workbench acceptance run with validation_report.json and "
+    "revision_decision.json, then regenerate the PR gate artifact."
+)
+ACCEPTANCE_EVIDENCE_RECOVERY_STEPS = (
+    "python -m ai_workbench_mcp.tools.validate_run --project <project> --profile <validation_profile> --out-dir runs/<run_id>",
+    "python -m ai_workbench_mcp.tools.quality_loop --project <project> --run-dir runs/<run_id> --mode auto",
+    "python -m ai_workbench_mcp.tools.pr_gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+)
+ACCEPTANCE_EVIDENCE_RECOVERY_ARTIFACTS = tuple(file_name for _label, file_name in STANDARD_EVIDENCE)
 SCAFFOLD_PROFILES = {"scaffold"}
 
 
@@ -239,6 +250,10 @@ def append_reason_code(codes: list[str], code: str) -> list[str]:
     return codes
 
 
+def acceptance_evidence_recovery_steps() -> list[str]:
+    return list(ACCEPTANCE_EVIDENCE_RECOVERY_STEPS)
+
+
 def reason_sources_from(*payloads: dict[str, object]) -> list[dict[str, object]]:
     sources: list[dict[str, object]] = []
     for payload in payloads:
@@ -328,10 +343,8 @@ def acceptance_evidence_missing_decision(
         "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
         "reason_codes": reason_codes,
         "evidence": evidence,
-        "required_next_action": (
-            "Provide a complete Workbench acceptance run with validation_report.json and "
-            "revision_decision.json, then regenerate the PR gate artifact."
-        ),
+        "recovery_steps": acceptance_evidence_recovery_steps(),
+        "required_next_action": ACCEPTANCE_EVIDENCE_MISSING_NEXT_ACTION,
     }
 
 
@@ -356,6 +369,7 @@ def decision_from_evidence(
     quality_gate_status = str(decision.get("final_status", "unknown"))
     reason_codes = reason_codes_from(report, decision)
     source_label = source_run_dir or safe_source_label(run_dir)
+    missing_acceptance_artifact = not validation_read.present or not decision_read.present
 
     if validation_read.error is None and is_scaffold_only_evidence(report, evidence_source):
         return acceptance_evidence_missing_decision(
@@ -370,6 +384,9 @@ def decision_from_evidence(
         outcome = "block"
         reason = " ".join(blocking_problems)
         next_action = default_next_action(outcome)
+        if missing_acceptance_artifact:
+            reason_codes = append_reason_code(reason_codes, ACCEPTANCE_EVIDENCE_MISSING_CODE)
+            next_action = ACCEPTANCE_EVIDENCE_MISSING_NEXT_ACTION
     elif validation_status == "passed" and report.get("sign_off_ready") is True and quality_gate_status == "accepted":
         outcome = "accept"
         reason = first_reason_summary(decision, report) or "Validation passed and the quality gate accepted the run."
@@ -403,7 +420,7 @@ def decision_from_evidence(
         reason = "Workbench evidence did not contain an accepted validation and quality-gate pair."
         next_action = default_next_action(outcome)
 
-    return {
+    payload = {
         "schema_version": SCHEMA_VERSION,
         "operation": OPERATION,
         "outcome": outcome,
@@ -421,6 +438,9 @@ def decision_from_evidence(
         "evidence": evidence,
         "required_next_action": next_action,
     }
+    if missing_acceptance_artifact:
+        payload["recovery_steps"] = acceptance_evidence_recovery_steps()
+    return payload
 
 
 def fallback_decision_from_evidence(selection: EvidenceSelection) -> dict[str, object]:
@@ -452,38 +472,55 @@ def evidence_present_value(evidence: list[object], label: str) -> str:
 def render_comment(decision: dict[str, object]) -> str:
     outcome = str(decision.get("outcome", "block"))
     reason_codes = [str(code) for code in list_from(decision.get("reason_codes"))]
+    recovery_steps = [str(step) for step in list_from(decision.get("recovery_steps"))]
     evidence = [entry for entry in list_from(decision.get("evidence")) if isinstance(entry, dict)]
     validation_present = evidence_present_value(evidence, "validation_report")
     revision_present = evidence_present_value(evidence, "revision_decision")
+    why = (
+        ACCEPTANCE_EVIDENCE_MISSING_DISPLAY_REASON
+        if ACCEPTANCE_EVIDENCE_MISSING_CODE in reason_codes
+        else str(decision.get("reason", "unknown"))
+    )
     lines = [
         f"# AI Workbench PR Gate: {display_outcome(outcome)}",
         "",
         f"Decision: {display_outcome(outcome)}",
-        f"Why: {decision.get('reason', 'unknown')}",
+        f"Why: {why}",
         f"Required next action: {decision.get('required_next_action', default_next_action(outcome))}",
         f"Evidence present: validation_report {validation_present}, revision_decision {revision_present}",
         "",
-        "## Details",
-        "",
-        f"**Run ID:** `{decision.get('run_id', 'unknown')}`",
-        f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
-        f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
-        f"**Policy pack:** `{markdown_escape(decision.get('policy_pack', 'unknown'))}`",
-        f"**Validation profile:** `{markdown_escape(decision.get('validation_profile', 'unknown'))}`",
-        f"**Selection mode:** `{markdown_escape(decision.get('policy_pack_selection_mode', 'unknown'))}`",
-        "",
-        "## Status",
-        "",
-        "| Check | Status |",
-        "|---|---|",
-        f"| Validation | `{markdown_escape(decision.get('validation_status', 'unknown'))}` |",
-        f"| Quality gate | `{markdown_escape(decision.get('quality_gate_status', 'unknown'))}` |",
-        "",
-        "## Evidence",
-        "",
-        "| Artifact | Path | Present |",
-        "|---|---|---|",
     ]
+    if recovery_steps:
+        lines.extend(["## Recovery", "", "```bash"])
+        lines.extend(recovery_steps)
+        lines.extend(["```", "", "Required/exportable artifacts:"])
+        lines.extend(f"- `{artifact}`" for artifact in ACCEPTANCE_EVIDENCE_RECOVERY_ARTIFACTS)
+        lines.append("")
+
+    lines.extend(
+        [
+            "## Details",
+            "",
+            f"**Run ID:** `{decision.get('run_id', 'unknown')}`",
+            f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
+            f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
+            f"**Policy pack:** `{markdown_escape(decision.get('policy_pack', 'unknown'))}`",
+            f"**Validation profile:** `{markdown_escape(decision.get('validation_profile', 'unknown'))}`",
+            f"**Selection mode:** `{markdown_escape(decision.get('policy_pack_selection_mode', 'unknown'))}`",
+            "",
+            "## Status",
+            "",
+            "| Check | Status |",
+            "|---|---|",
+            f"| Validation | `{markdown_escape(decision.get('validation_status', 'unknown'))}` |",
+            f"| Quality gate | `{markdown_escape(decision.get('quality_gate_status', 'unknown'))}` |",
+            "",
+            "## Evidence",
+            "",
+            "| Artifact | Path | Present |",
+            "|---|---|---|",
+        ]
+    )
     for entry in evidence:
         present = "yes" if entry.get("present") is True else "no"
         lines.append(f"| {markdown_escape(entry.get('label', 'unknown'))} | `{markdown_escape(entry.get('path', 'unknown'))}` | {present} |")

@@ -102,10 +102,10 @@ class PublicHygieneTests(unittest.TestCase):
 
     def test_operating_docs_are_aligned_to_release_branch_state(self) -> None:
         expected_status_by_path = {
-            ROOT / "docs" / "ai" / "START_HERE.md": "Status: v0.3 semantic PR acceptance alpha release branch",
+            ROOT / "docs" / "ai" / "START_HERE.md": "Status: v0.6 external-repo PR gate adoption hardening branch",
             ROOT / "docs" / "ai" / "DECISIONS.md": "Status: v0.2 alpha release candidate",
             ROOT / "docs" / "ai" / "PROJECT_MAP.md": "Status: v0.2 alpha release candidate",
-            ROOT / "docs" / "ai" / "ROADMAP_STATUS.md": "Status: v0.3 semantic PR acceptance alpha release branch",
+            ROOT / "docs" / "ai" / "ROADMAP_STATUS.md": "Status: v0.6 external-repo PR gate adoption hardening branch",
         }
         for path in OPERATING_DOCS:
             with self.subTest(path=path.relative_to(ROOT)):
@@ -200,7 +200,7 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("Release note with package upload proof.", release_text)
         self.assertIn("Published Python package version: `ai-workbench-mcp==0.3.0a0`", release_text)
         self.assertIn("MCP Registry publication completed for `0.3.0a0`", release_text)
-        self.assertIn("`ai-workbench-mcp==0.3.0a0` is published and exact-version install verified", readme_text)
+        self.assertIn("`ai-workbench-mcp==0.3.0a0` remains the latest published package", readme_text)
 
     def test_model_registry_local_override_is_ignored_and_documented(self) -> None:
         gitignore_text = GITIGNORE.read_text(encoding="utf-8")
@@ -274,7 +274,9 @@ class PublicHygieneTests(unittest.TestCase):
         self.assertIn("python -m pip install --force-reinstall", pypi_text)
         self.assertIn("Fresh virtual environment smoke", pypi_text)
         self.assertIn("scripts/'ai-workbench-mcp.exe'", pypi_text)
+        self.assertIn("scripts/'ai-workbench-bootstrap.exe'", pypi_text)
         self.assertIn("scripts/'ai-workbench-bootstrap-assets.exe'", pypi_text)
+        self.assertIn("ai-workbench-bootstrap --target .", pypi_text)
         self.assertIn("Do not run `ai-workbench-mcp` directly as a smoke command.", pypi_text)
         self.assertIn("external_launch_execution_prep.md", pypi_text)
         self.assertIn("python -m pip install -e \".[dev,publish]\"", pypi_text)

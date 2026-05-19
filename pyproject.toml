@@ -23,6 +23,7 @@ Documentation = "https://github.com/hrishikesh-thakre/ai-workbench-mcp#readme"
 
 [project.scripts]
 ai-workbench-mcp = "ai_workbench_mcp.server:main"
+ai-workbench-bootstrap = "ai_workbench_mcp.tools.bootstrap_assets:bootstrap_main"
 ai-workbench-bootstrap-assets = "ai_workbench_mcp.tools.bootstrap_assets:main"
 
 [project.optional-dependencies]

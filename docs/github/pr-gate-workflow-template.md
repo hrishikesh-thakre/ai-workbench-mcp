@@ -6,7 +6,19 @@ This page documents the copy-paste workflow template at:
 .github/workflows/ai-workbench-pr-gate.yml
 ```
 
-The template renders PR-facing AI Workbench artifacts in any repository that can install the published Python package. It does not run Goose, create a Workbench run by itself, or treat CI status as acceptance.
+Most external repositories should install the package and bootstrap the workflow
+instead of copying this file by hand:
+
+```bash
+pipx install ai-workbench-mcp
+ai-workbench-bootstrap --target .
+```
+
+Use this page when you need to review the bootstrapped workflow behavior or use
+the manual copy-paste fallback. The template renders PR-facing AI Workbench
+artifacts in any repository that can install the published Python package. It
+does not run Goose, create a Workbench run by itself, or treat CI status as
+acceptance.
 
 ## What The Template Does
 
@@ -19,6 +31,19 @@ The template renders PR-facing AI Workbench artifacts in any repository that can
 - Falls back to a blocking missing-evidence or scaffold-evidence result when no real run directory is available.
 
 Green CI is not semantic acceptance. The PR gate can report `accept` only when the referenced Workbench run contains deterministic validation and quality-gate evidence, especially `validation_report.json` and `revision_decision.json`.
+
+## First PR Usage
+
+After bootstrapping the workflow, the first PR should point at one real
+Workbench run produced for that PR:
+
+1. Keep `runs/` ignored and do not commit raw evidence.
+2. Produce or attach the run folder before the `Render PR gate artifact` step.
+3. Set `WORKBENCH_RUN_DIR`, or set `WORKBENCH_RUNS_DIR` plus
+   `WORKBENCH_RUN_ID`.
+4. Read the sticky PR comment when same-repository permissions allow it, and
+   inspect the uploaded `workbench-pr-gate` artifact for `pr_comment.md` and
+   `pr_decision.json`.
 
 ## Evidence Inputs
 
@@ -35,6 +60,58 @@ The workflow supports the same evidence selection surface as the existing PR gat
 You can set inputs through `workflow_dispatch` or `workflow_call`. For normal pull requests, set repository variables or edit the workflow after copying it into the target repository.
 
 If neither a direct run directory nor a `runs_dir` plus `run_id` pair exists, the template calls the renderer with `--fallback-run-dir`. When the fallback path does not exist, the renderer still writes a deterministic `block` decision with missing evidence. When the fallback path contains scaffold evidence, the renderer still blocks because scaffold evidence is visibility evidence, not Workbench acceptance evidence.
+
+## Missing-Evidence Recovery
+
+When `pr_decision.json` reports `evidence_source` as `missing` or
+`fallback_scaffold`, or includes `pr_gate.acceptance_evidence_missing`, the
+workflow did not receive semantic Workbench acceptance evidence. Recover by
+providing a real run directory with `validation_report.json` and
+`revision_decision.json`.
+
+Bootstrap the workflow assets again if the target repository is missing them:
+
+```bash
+pipx install ai-workbench-mcp
+ai-workbench-bootstrap --target .
+```
+
+Render from an explicit run directory:
+
+```bash
+WORKBENCH_RUN_DIR=runs/<run_id>
+mkdir -p runs/pr_gate
+python -m ai_workbench_mcp.tools.pr_gate \
+  --run-dir "$WORKBENCH_RUN_DIR" \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+Or render from a parent directory plus run id:
+
+```bash
+WORKBENCH_RUNS_DIR=runs
+WORKBENCH_RUN_ID=<run_id>
+mkdir -p runs/pr_gate
+python -m ai_workbench_mcp.tools.pr_gate \
+  --runs-dir "$WORKBENCH_RUNS_DIR" \
+  --run-id "$WORKBENCH_RUN_ID" \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+Fallback rendering is only a wiring check:
+
+```bash
+WORKBENCH_FALLBACK_RUN_DIR=runs/ai_workbench_missing_evidence
+mkdir -p runs/pr_gate
+python -m ai_workbench_mcp.tools.pr_gate \
+  --fallback-run-dir "$WORKBENCH_FALLBACK_RUN_DIR" \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
+```
+
+That fallback command should still produce `block`. Missing evidence and scaffold evidence are not semantic acceptance.
 
 ## Required Run Artifacts
 

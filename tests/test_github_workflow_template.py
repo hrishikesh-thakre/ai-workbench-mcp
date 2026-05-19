@@ -137,6 +137,12 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "same-repository pull requests",
             "Fork pull requests",
             "Green CI is not semantic acceptance",
+            "pipx install ai-workbench-mcp",
+            "ai-workbench-bootstrap --target .",
+            "WORKBENCH_RUN_DIR",
+            "WORKBENCH_RUNS_DIR",
+            "pr_gate.acceptance_evidence_missing",
+            "Missing evidence and scaffold evidence are not semantic acceptance",
         ):
             self.assertIn(phrase, text)
 

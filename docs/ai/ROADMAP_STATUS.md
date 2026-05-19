@@ -1,8 +1,8 @@
 # ROADMAP_STATUS
 
 Owner: AI Workbench MCP
-Status: v0.3 semantic PR acceptance alpha release branch
-Active milestone: v0.3 Semantic PR Acceptance Alpha
+Status: v0.6 external-repo PR gate adoption hardening branch
+Active milestone: v0.6 External Repo PR Gate Adoption Hardening
 Created: 2026-05-12
 
 ## Purpose
@@ -41,6 +41,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | v0.3 package bootstrap assets | Current alpha | Source tree includes bootstrap assets and `ai-workbench-bootstrap-assets` for configs, prompts, and recipes; package metadata and workflow defaults are prepared for `0.3.0a0` |
 | v0.3 PR gate outcome demos | Current alpha | Sanitized fixtures under `examples/pr-gate-outcomes/` and proof docs show `accept`, `needs_review`, and `block` decisions without committing private `runs/` evidence |
 | v0.3 external sample repo proof | Complete | Public toy repository `hrishikesh-thakre/toy-ai-workbench-pr-gate` proves the copied workflow installs `ai-workbench-mcp==0.3.0a0`, renders same-repo PR artifacts/comments, and dispatches `accept`, `needs_review`, `block`, and scaffold-fallback `block` outcomes |
+| v0.6 External Repo PR Gate Adoption Hardening | Current | Source tree adds `ai-workbench-bootstrap --target .`, packaged PR-gate adoption assets, clearer missing-evidence recovery steps, and bootstrap-first external setup docs without changing acceptance semantics or publishing a new package version |
 | Single-file evidence dashboard | Public-readiness hardening | `workbench_analyze_runs` writes `run_dashboard.html` for local scanning without embedding raw model output or provider logs |
 | Golden-case eval harness | Public-readiness hardening | Local file-based harness scores sanitized accepted evidence baselines without provider calls or routing-policy mutation |
 | PyPI and package plumbing | Registry published | Historical package build checks, wheel smoke, TestPyPI install, exact-version PyPI install, and MCP Registry publication passed for `0.2.0a0`; `0.3.0a0` build, wheel smoke, TestPyPI upload/install, PyPI upload/install, and MCP Registry publication passed |
@@ -198,4 +199,4 @@ Out of scope:
 
 ## Current Next Step
 
-The public external sample repository proof is complete at `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate`. v0.5 safe policy-pack auto-selection now connects policy-pack selection to validation-profile setup evidence without changing acceptance semantics. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback and policy-pack selection advisory for acceptance purposes. Do not broaden this into GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry.
+The current pass is v0.6 external-repo PR gate adoption hardening. Make the already-proven PR gate easier to install and recover by using `ai-workbench-bootstrap --target .`, bootstrap-first docs, and explicit missing-evidence recovery steps. The public external sample repository proof remains complete at `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate`. v0.5 safe policy-pack auto-selection connects policy-pack selection to validation-profile setup evidence without changing acceptance semantics. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback and policy-pack selection advisory for acceptance purposes. Do not broaden this into GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry; no v0.6 package has been published in this branch.

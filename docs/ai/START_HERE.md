@@ -1,8 +1,8 @@
 # START_HERE
 
 Owner: AI Workbench MCP
-Status: v0.3 semantic PR acceptance alpha release branch
-Active milestone: v0.3 Semantic PR Acceptance Alpha. `0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`. The external sample repository proof is complete in [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate).
+Status: v0.6 external-repo PR gate adoption hardening branch
+Active milestone: v0.6 External Repo PR Gate Adoption Hardening. `0.3.0a0` remains the latest published package and is exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`. The external sample repository proof is complete in [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate).
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -155,15 +155,16 @@ The public repo should look like a Goose-compatible acceptance extension, not an
 
 Phase 5 evidence collection is complete. The closeout report in `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls. Use that evidence to plan bounded routing-policy experiments; do not broadly auto-route or remove quality gates from the closeout report alone.
 
-The current product pass is not more general dogfooding, more recipes, GEPA, extra host integrations, provider plumbing, Checks API enforcement, or Codex cloud export. It is the v0.3 semantic PR acceptance alpha:
+The current product pass is not more general dogfooding, more recipes, GEPA, extra host integrations, provider plumbing, Checks API enforcement, or Codex cloud export. It is v0.6 external-repo PR gate adoption hardening on top of the v0.3 semantic PR acceptance alpha:
 
 - make GitHub PR acceptance consume real Workbench run evidence
 - report exactly one of `accept`, `needs_review`, or `block`
 - block scaffold-only fallback evidence with clear next action
 - keep five first-class policy packs clear and usable
 - expose an advisory policy-pack selector without changing validation behavior
-- provide a copy-paste GitHub workflow template
-- provide a one-page external repository setup guide
+- provide a one-command external-repo bootstrap path
+- provide a copy-paste GitHub workflow template as the manual fallback
+- provide bootstrap-first external repository setup guidance
 - prove the copied workflow in a separate public toy repository without committing private `runs/` evidence
 - publish sanitized outcome demos without committing private `runs/` evidence
 - keep routing feedback advisory
