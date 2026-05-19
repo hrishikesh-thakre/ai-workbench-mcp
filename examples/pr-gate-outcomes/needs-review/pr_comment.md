@@ -10,6 +10,7 @@ Evidence present: validation_report yes, revision_decision yes
 **Run ID:** `pr-gate-demo-needs-review`
 **Evidence source:** `acceptance_run`
 **Source run dir:** `examples/pr-gate-outcomes/needs-review/evidence`
+**Policy pack:** `api_contract_change`
 
 ## Status
 

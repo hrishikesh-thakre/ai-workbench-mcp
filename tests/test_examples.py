@@ -23,6 +23,7 @@ PHASE5_BATCH6_REPORT = ROOT / "docs" / "dogfooding" / "phase5-batch6-report.md"
 PHASE5_FINAL_REPORT = ROOT / "docs" / "dogfooding" / "phase5-final-report.md"
 TARGETED_DOCS_ONLY_PLAN = ROOT / "docs" / "dogfooding" / "targeted-evidence-docs-only-current-tier-plan.md"
 TARGETED_DOCS_ONLY_REPORT = ROOT / "docs" / "dogfooding" / "targeted-docs-only-current-tier-report.md"
+POLICY_PACK_VALIDATION_REPORT = ROOT / "docs" / "dogfooding" / "v0.4-policy-pack-validation-report.md"
 DOCS_ONLY_ROUTING_DESIGN = ROOT / "docs" / "routing" / "docs-only-current-tier-policy-design.md"
 GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
@@ -36,6 +37,8 @@ PROOF_PACK = ROOT / "docs" / "proof" / "proof-pack-v0.2.md"
 GEMINI_FIXTURE_PROOF = ROOT / "docs" / "proof" / "gemini-fixture-accepted-run.md"
 CODEX_FIXTURE_PROOF = ROOT / "docs" / "proof" / "codex-fixture-accepted-run.md"
 PR_GATE_OUTCOME_PROOF = ROOT / "docs" / "proof" / "pr-gate-outcome-demos.md"
+POLICY_PACK_DOCS = ROOT / "docs" / "policy-packs"
+POLICY_PACK_SCORECARD = ROOT / "docs" / "evals" / "policy-pack-quality-scorecard.md"
 CODEX_SETUP = ROOT / "docs" / "codex" / "setup.md"
 CODEX_WORKFLOW = ROOT / "docs" / "codex" / "acceptance-workflow.md"
 CODEX_HANDOFF = ROOT / "docs" / "codex" / "live-test-handoff.md"
@@ -181,6 +184,7 @@ class PublicExamplesTests(unittest.TestCase):
             "accepted": {
                 "title": "Accept",
                 "outcome": "accept",
+                "policy_pack": "docs_only",
                 "validation_status": "passed",
                 "quality_gate_status": "accepted",
                 "reason_codes": ["docs_only.accepted", "quality_gate.accepted"],
@@ -188,6 +192,7 @@ class PublicExamplesTests(unittest.TestCase):
             "needs-review": {
                 "title": "Needs Review",
                 "outcome": "needs_review",
+                "policy_pack": "api_contract_change",
                 "validation_status": "needs_review",
                 "quality_gate_status": "review_required",
                 "reason_codes": ["api_contract_change.review_required", "quality_gate.review_required"],
@@ -195,6 +200,7 @@ class PublicExamplesTests(unittest.TestCase):
             "blocked": {
                 "title": "Block",
                 "outcome": "block",
+                "policy_pack": "docs_only",
                 "validation_status": "needs_review",
                 "quality_gate_status": "review_required",
                 "reason_codes": ["docs_only.source_file_blocked", "quality_gate.blocker_present"],
@@ -223,6 +229,7 @@ class PublicExamplesTests(unittest.TestCase):
                 self.assertEqual(decision["outcome"], expected_values["outcome"])
                 self.assertEqual(decision["evidence_source"], "acceptance_run")
                 self.assertEqual(decision["source_run_dir"], f"examples/pr-gate-outcomes/{name}/evidence")
+                self.assertEqual(decision["policy_pack"], expected_values["policy_pack"])
                 self.assertEqual(decision["validation_status"], expected_values["validation_status"])
                 self.assertEqual(decision["quality_gate_status"], expected_values["quality_gate_status"])
                 self.assertEqual(decision["reason_codes"], expected_values["reason_codes"])
@@ -230,6 +237,7 @@ class PublicExamplesTests(unittest.TestCase):
                 self.assertEqual(quality_decision["final_status"], expected_values["quality_gate_status"])
                 self.assertIn(f"# AI Workbench PR Gate: {expected_values['title']}", comment)
                 self.assertIn(f"Decision: {expected_values['title']}", comment)
+                self.assertIn(f"**Policy pack:** `{expected_values['policy_pack']}`", comment)
                 self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
                 self.assertIn("This artifact is generated from Workbench evidence only.", comment)
 
@@ -316,6 +324,46 @@ class PublicExamplesTests(unittest.TestCase):
         ):
             self.assertIn(decisive_field, text)
 
+    def test_policy_pack_product_docs_and_scorecard_cover_core_packs(self) -> None:
+        self.assertTrue((POLICY_PACK_DOCS / "index.md").is_file())
+        self.assertTrue(POLICY_PACK_SCORECARD.is_file())
+        self.assertTrue(POLICY_PACK_VALIDATION_REPORT.is_file())
+        scorecard = POLICY_PACK_SCORECARD.read_text(encoding="utf-8")
+        validation_report = POLICY_PACK_VALIDATION_REPORT.read_text(encoding="utf-8")
+        self.assertIn("not an acceptance gate", scorecard)
+        self.assertIn("sanitized productization evidence summary", validation_report)
+
+        pages = {
+            "docs_only": "docs-only.md",
+            "low_risk_bug_fix": "low-risk-bug-fix.md",
+            "test_fix": "test-fix.md",
+            "api_contract_change": "api-contract-change.md",
+            "security_privacy_sensitive": "security-privacy-sensitive.md",
+        }
+        required_headings = (
+            "## Use when",
+            "## Do not use when",
+            "## Accept condition",
+            "## Needs review condition",
+            "## Block condition",
+            "## Required evidence",
+            "## Example PR comment",
+            "## Minimal command",
+            "## Common failure modes",
+            "## Compact examples",
+        )
+
+        for pack_name, page_name in pages.items():
+            with self.subTest(policy_pack=pack_name):
+                text = (POLICY_PACK_DOCS / page_name).read_text(encoding="utf-8")
+                self.assertIn(pack_name, text)
+                self.assertIn(pack_name, scorecard)
+                self.assertIn(pack_name, validation_report)
+                for heading in required_headings:
+                    self.assertIn(heading, text)
+                self.assertIn("validation_report.json", text)
+                self.assertIn("revision_decision.json", text)
+
     def test_readme_product_page_references_quickstart_tools_recipe_and_sample_run(self) -> None:
         text = README.read_text(encoding="utf-8")
 
@@ -339,9 +387,10 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("Acceptance is decided by the selected validation profile and quality gate.", text)
         self.assertIn("The agent performs. Workbench accepts. MCP connects them.", text)
         self.assertIn("docs/concepts/how-acceptance-works.md", text)
-        self.assertIn("## Six MCP Tools", text)
+        self.assertIn("## Seven MCP Tools", text)
         self.assertIn("## Workflow", text)
         self.assertIn("workbench_open_run", text)
+        self.assertIn("workbench_select_policy_pack", text)
         self.assertIn("workbench_select_model", text)
         self.assertIn("workbench_record_execution", text)
         self.assertIn("workbench_validate_run", text)
@@ -370,6 +419,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/proof/codex-fixture-accepted-run.md", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
         self.assertIn("docs/analytics/event-ledger.md", text)
+        self.assertIn("docs/policy-packs/", text)
+        self.assertIn("docs/dogfooding/v0.4-policy-pack-validation-report.md", text)
         self.assertIn("docs/configuration/model-registry.md", text)
         self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
         self.assertIn("docs/github/pr-gate.md", text)

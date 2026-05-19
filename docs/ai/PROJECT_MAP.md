@@ -46,6 +46,7 @@ runs/<run_id>/
 | `src/ai_workbench_mcp/tools/pr_gate.py` | PR-facing decision and comment renderer for Workbench acceptance evidence |
 | `src/ai_workbench_mcp/tools/pr_gate_comment.py` | Marker-based GitHub PR comment helper for same-repository PRs |
 | `src/ai_workbench_mcp/tools/policy_packs.py` | First-class policy-pack catalog loader for validation profiles |
+| `src/ai_workbench_mcp/tools/policy_pack_select.py` | Advisory policy-pack selector from task metadata |
 | `src/ai_workbench_mcp/tools/bootstrap_assets.py` | Bootstrap helper for materializing packaged configs, prompts, and recipes |
 | `src/ai_workbench_mcp/tools/model_handoff.py` | Captures external output into Workbench evidence format |
 | `src/ai_workbench_mcp/tools/context_scout.py` | Deterministic context/evidence packet builder |
@@ -68,6 +69,8 @@ runs/<run_id>/
 | `docs/contracts/v0.2-contract-baseline.md` | Current non-v1-stable contract baseline for run evidence, MCP envelopes, analytics, policies, and PR gate artifacts |
 | `docs/codex/` | Codex local/IDE setup, acceptance workflow, live-test handoff, AGENTS.md snippet, and cloud limitations |
 | `docs/evals/golden-case-harness.md` | Golden-case eval harness guide |
+| `docs/evals/policy-pack-quality-scorecard.md` | Internal policy-pack quality scorecard; not an acceptance gate |
+| `docs/policy-packs/` | Product-facing docs for the five core policy packs |
 | `docs/publishing/pypi.md` | PyPI publishing prep and current wheel boundary |
 | `docs/github/repository-topics.md` | GitHub topic setup guide |
 | `docs/github/create-launch-issues.md` | Launch issue creation commands |
@@ -84,6 +87,7 @@ runs/<run_id>/
 | MCP Tool | Backing Logic |
 |---|---|
 | `workbench_open_run` | `ai_workbench_mcp.tools.context_scout` plus task metadata, final prompt, and initial run log |
+| `workbench_select_policy_pack` | `ai_workbench_mcp.tools.policy_pack_select`; advisory only and does not mutate validation behavior |
 | `workbench_select_model` | `ai_workbench_mcp.tools.model_select` |
 | `workbench_record_execution` | `ai_workbench_mcp.tools.model_handoff` plus runtime metadata capture |
 | `workbench_validate_run` | `ai_workbench_mcp.tools.validate_run` |

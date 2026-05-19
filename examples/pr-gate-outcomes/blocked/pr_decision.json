@@ -6,6 +6,7 @@
   "run_id": "pr-gate-demo-blocked",
   "evidence_source": "acceptance_run",
   "source_run_dir": "examples/pr-gate-outcomes/blocked/evidence",
+  "policy_pack": "docs_only",
   "validation_status": "needs_review",
   "quality_gate_status": "review_required",
   "reason": "Source file changed in docs-only policy.",

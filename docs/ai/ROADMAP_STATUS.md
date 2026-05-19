@@ -18,12 +18,12 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Private run history removal | Done | `runs/` is gitignored and not copied |
 | Cline/VSCodium removal | Done | Not copied into this repo |
 | Local path removal | Done | Search found no private target-repo or editor-fork references |
-| Goose MCP server | Alpha complete | Six Workbench tools exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
+| Goose MCP server | Alpha complete | Six acceptance-lifecycle tools plus the advisory policy-pack selector are exposed through a stdio FastMCP server; real MCP and console-script discovery smokes passed |
 | Goose recipe MVP | Alpha complete | Engineering acceptance recipe uses run setup, execution capture, validation, quality gate, and analysis; local Gemma 4 six-tool smoke passed |
 | Core JSON response contracts | Alpha stable | Contract envelopes added; direct callable model selection, validation, quality gate, run analysis, and evidence lifecycle added; `docs/contracts/v0.2-contract-baseline.md` records the current non-v1-stable contract baseline |
 | Validation of extracted tests | Passed | Full pytest suite passed during Phase 5 analytics hardening |
 | Scaffold validation | Passed | `python tools\validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs\phase5_analytics_scaffold` passed |
-| Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates and the six-tool recipe flow |
+| Public README/install flow | Alpha ready | README is positioned around evidence-backed acceptance gates, the six-tool recipe flow, and advisory policy-pack selection |
 | Public examples | Done | Tiny Python fix, Goose/Codex tool smokes, Goose recipe smoke, focused workflow commands, and sanitized sample runs are committed |
 | Execution capture idempotency | Done | Repeated `workbench_record_execution` calls return success without overwriting `model_output.md` or duplicating `run_log.jsonl` entries |
 | v0.2 recipe and policy discovery | Release candidate | Folder-level recipe discovery and validation-profile reference tests cover docs-only, Python package maintenance, test-fix, and low-risk coding profiles |
@@ -35,6 +35,7 @@ Track the extraction from private AI Workbench lab repo to a public Goose-first 
 | Public CI gate prototype | Historical prototype | GitHub Actions repo self-validation runs install, tests, scaffold validation, PR gate artifact rendering, guarded same-repo sticky PR comments, and diff hygiene; this remains visibility evidence rather than semantic acceptance |
 | v0.3 Semantic PR Acceptance Alpha | Current alpha | PR gate consumes real Workbench evidence, reports exactly one of `accept`, `needs_review`, or `block`, and blocks scaffold-only fallback evidence with required next action |
 | v0.3 first-class policy packs | Current alpha | Five core policy packs live in `configs/policy_packs.yaml` and are loaded into validation profiles: `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive` |
+| v0.4 Policy Pack Productization | In progress | Policy-pack product docs, advisory selector, PR-gate policy-pack display, internal scorecard, and per-pack validation summary are being added without changing acceptance semantics |
 | v0.3 copy-paste PR workflow | Current alpha | `.github/workflows/ai-workbench-pr-gate.yml` documents a reusable GitHub workflow that renders PR gate artifacts and same-repository sticky comments from Workbench evidence |
 | v0.3 package bootstrap assets | Current alpha | Source tree includes bootstrap assets and `ai-workbench-bootstrap-assets` for configs, prompts, and recipes; package metadata and workflow defaults are prepared for `0.3.0a0` |
 | v0.3 PR gate outcome demos | Current alpha | Sanitized fixtures under `examples/pr-gate-outcomes/` and proof docs show `accept`, `needs_review`, and `block` decisions without committing private `runs/` evidence |
@@ -196,4 +197,4 @@ Out of scope:
 
 ## Current Next Step
 
-The public external sample repository proof is complete at `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate`. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback advisory. Do not broaden this milestone to GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry.
+The public external sample repository proof is complete at `https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate`. The next productization pass is v0.4 policy-pack clarity: product docs, advisory selection, PR-gate policy-pack display, an internal scorecard, and sanitized per-pack validation summary. Use `docs/concepts/how-acceptance-works.md` when explaining why validation profiles and quality gates decide acceptance. Keep routing feedback and policy-pack selection advisory. Do not broaden this milestone to GEPA, medium-risk auto-routing, extra host integrations, Checks API enforcement, provider plumbing, or Codex cloud evidence export. Use `task_test_command` for every `low_risk_bug_fix` and `test_fix` run. Keep the package story explicit: `0.3.0a0` is published and exact-version install verified on TestPyPI, PyPI, and MCP Registry.

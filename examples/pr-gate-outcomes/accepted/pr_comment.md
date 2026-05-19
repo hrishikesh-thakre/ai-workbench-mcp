@@ -10,6 +10,7 @@ Evidence present: validation_report yes, revision_decision yes
 **Run ID:** `pr-gate-demo-accepted`
 **Evidence source:** `acceptance_run`
 **Source run dir:** `examples/pr-gate-outcomes/accepted/evidence`
+**Policy pack:** `docs_only`
 
 ## Status
 

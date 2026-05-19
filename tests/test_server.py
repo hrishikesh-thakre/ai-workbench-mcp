@@ -42,6 +42,7 @@ class ServerRegistrationTests(unittest.TestCase):
             {
                 "workbench_open_run",
                 "workbench_select_model",
+                "workbench_select_policy_pack",
                 "workbench_record_execution",
                 "workbench_validate_run",
                 "workbench_quality_gate",
@@ -75,7 +76,7 @@ class ServerRegistrationTests(unittest.TestCase):
             created = server.create_server()
 
         self.assertEqual(created.name, "AI Workbench MCP")
-        self.assertEqual(len(created.tools), 6)
+        self.assertEqual(len(created.tools), 7)
 
 
 class ServerToolHandlerTests(unittest.TestCase):
@@ -176,6 +177,31 @@ class ServerToolHandlerTests(unittest.TestCase):
             recipe=None,
             validation_profile=None,
             routing_feedback_path=None,
+        )
+
+    def test_workbench_select_policy_pack_returns_core_envelope(self) -> None:
+        expected = envelope("workbench_select_policy_pack", status="selected")
+
+        with (
+            patch("ai_workbench_mcp.server.core.select_policy_pack", return_value=expected) as select_policy_pack,
+            patch("ai_workbench_mcp.core.run_tool", side_effect=AssertionError("run_tool not expected")),
+            patch("ai_workbench_mcp.core.subprocess.run", side_effect=AssertionError("subprocess not expected")),
+        ):
+            response = self.tools["workbench_select_policy_pack"](
+                task_text="Fix failing test for MCP contract response.",
+                task_type="test",
+                changed_files=["tests/test_contracts.py"],
+                prompt="bug_root_cause_investigation",
+                risk="medium",
+            )
+
+        self.assertEqual(response, expected)
+        select_policy_pack.assert_called_once_with(
+            task_text="Fix failing test for MCP contract response.",
+            task_type="test",
+            changed_files=["tests/test_contracts.py"],
+            prompt="bug_root_cause_investigation",
+            risk="medium",
         )
 
     def test_workbench_record_execution_returns_core_envelope(self) -> None:

@@ -191,9 +191,11 @@ Why:
 
 - PR comments and downstream surfaces need machine-readable policy metadata to explain decisions without parsing prose.
 - Existing recipes and examples already refer to validation profile names, so preserving those names avoids churn.
+- Task metadata can be used to recommend a policy pack, but recommendation must remain advisory until validation and the quality gate run.
 
 Implications:
 
 - Sign-off profiles remain command-backed.
 - Unknown or additive policy metadata should be displayed or tolerated by consumers rather than rejected.
 - First-class policy metadata does not weaken the acceptance rule: validation and quality-gate evidence still decide whether a run is accepted.
+- The advisory selector may prefill or explain policy choice, but it must not silently mutate `validation_profile`, model routing, or PR acceptance.

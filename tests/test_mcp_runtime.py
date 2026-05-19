@@ -16,6 +16,7 @@ SRC_DIR = ROOT / "src"
 EXPECTED_TOOLS = {
     "workbench_open_run",
     "workbench_select_model",
+    "workbench_select_policy_pack",
     "workbench_record_execution",
     "workbench_validate_run",
     "workbench_quality_gate",
@@ -118,6 +119,20 @@ class McpRuntimeSmokeTests(unittest.TestCase):
                         )
                         self.assertEqual(selected["operation"], "workbench_select_model")
                         self.assertTrue(selected["ok"])
+
+                        policy_pack = payload_from_tool_result(
+                            await session.call_tool(
+                                "workbench_select_policy_pack",
+                                arguments={
+                                    "task_text": "Runtime-smoke a docs-only policy selector.",
+                                    "changed_files": ["docs/runtime-smoke.md"],
+                                    "risk": "low",
+                                },
+                            )
+                        )
+                        self.assertEqual(policy_pack["operation"], "workbench_select_policy_pack")
+                        self.assertTrue(policy_pack["ok"])
+                        self.assertEqual(policy_pack["summary"]["recommended_policy_pack"], "docs_only")
 
                         recorded = payload_from_tool_result(
                             await session.call_tool(

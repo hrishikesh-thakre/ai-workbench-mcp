@@ -6,6 +6,7 @@
   "run_id": "pr-gate-demo-needs-review",
   "evidence_source": "acceptance_run",
   "source_run_dir": "examples/pr-gate-outcomes/needs-review/evidence",
+  "policy_pack": "api_contract_change",
   "validation_status": "needs_review",
   "quality_gate_status": "review_required",
   "reason": "Policy requires contract-owner review before merge.",

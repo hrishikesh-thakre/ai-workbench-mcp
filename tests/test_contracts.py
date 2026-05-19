@@ -22,12 +22,14 @@ from ai_workbench_mcp.contracts import (
 from ai_workbench_mcp.core import (
     model_selection_file_response,
     model_selection_response,
+    policy_pack_selection_response,
     quality_gate_response,
     quality_gate,
     run_analysis_file_response,
     run_analysis_response,
     analyze_runs,
     select_model,
+    select_policy_pack,
     validate_run,
     validation_response,
 )
@@ -193,6 +195,11 @@ class ContractDocumentationTests(unittest.TestCase):
             "Policy-Pack Catalog",
             "configs/policy_packs.yaml",
             "schema_version: 1",
+            "Advisory Policy-Pack Selector",
+            "workbench_select_policy_pack",
+            "recommended_policy_pack",
+            "matched_signals",
+            "security/privacy -> api/MCP contract -> docs-only -> known failing test repair -> low-risk bug fix",
             "PR Decision JSON",
             PR_GATE_OPERATION,
             "accept",
@@ -265,6 +272,7 @@ class ContractDocumentationTests(unittest.TestCase):
             "run_id",
             "evidence_source",
             "source_run_dir",
+            "policy_pack",
             "validation_status",
             "quality_gate_status",
             "reason",
@@ -289,6 +297,7 @@ class ContractDocumentationTests(unittest.TestCase):
                 self.assertEqual(decision["schema_version"], SCHEMA_VERSION)
                 self.assertEqual(decision["operation"], PR_GATE_OPERATION)
                 self.assertEqual(decision["outcome"], expected_outcome)
+                self.assertIsInstance(decision["policy_pack"], str)
                 self.assertIn(decision["outcome"], V03_PR_GATE_OUTCOMES)
                 self.assertIn(decision["evidence_source"], V03_PR_GATE_EVIDENCE_SOURCES)
                 self.assertIsInstance(decision["reason_codes"], list)
@@ -302,6 +311,7 @@ class ContractDocumentationTests(unittest.TestCase):
 
                 self.assertIn(f"# AI Workbench PR Gate: {OUTCOME_LABELS[expected_outcome]}", comment)
                 self.assertIn("Decision:", comment)
+                self.assertIn("**Policy pack:**", comment)
                 self.assertIn("Why:", comment)
                 self.assertIn("Required next action:", comment)
                 self.assertIn("Evidence present: validation_report yes, revision_decision yes", comment)
@@ -353,6 +363,26 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["model"], "example-model")
         self.assertEqual(response["summary"]["routing_feedback_status"], "advisory")
         self.assertEqual(response["summary"]["routing_feedback_recommendation"], "prefer_current_tier")
+
+    def test_policy_pack_selection_response_summarizes_advisory_recommendation(self) -> None:
+        response = policy_pack_selection_response(
+            {
+                "status": "selected",
+                "ok": True,
+                "recommended_policy_pack": "docs_only",
+                "reason": "Only documentation files changed.",
+                "matched_signals": ["doc_file:README.md"],
+                "confidence": 0.7,
+                "candidate_policy_packs": ["docs_only", "low_risk_bug_fix"],
+            }
+        )
+
+        self.assertEqual(response["operation"], "workbench_select_policy_pack")
+        self.assertEqual(response["status"], "selected")
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["summary"]["recommended_policy_pack"], "docs_only")
+        self.assertEqual(response["summary"]["matched_signals"], ["doc_file:README.md"])
+        self.assertEqual(response["summary"]["confidence"], 0.7)
 
     def test_validation_response_requires_passed_signoff_for_ok(self) -> None:
         response = validation_response(
@@ -470,6 +500,19 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(events[0]["operation"], "workbench_select_model")
         self.assertEqual(events[0]["artifacts"]["events"], str(Path(tmpdir) / "events.jsonl"))
 
+    def test_select_policy_pack_direct_call_wraps_payload(self) -> None:
+        response = select_policy_pack(
+            task_text="Docs-only update for README.",
+            changed_files=["README.md"],
+            risk="low",
+        )
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["operation"], "workbench_select_policy_pack")
+        self.assertEqual(response["status"], "selected")
+        self.assertEqual(response["summary"]["recommended_policy_pack"], "docs_only")
+        self.assertIn("doc_file:README.md", response["summary"]["matched_signals"])
+
     def test_event_write_failure_does_not_change_core_response(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact = Path(tmpdir) / "model_selection.json"
@@ -533,12 +576,13 @@ class OperationContractTests(unittest.TestCase):
         self.assertEqual(response["summary"]["project"], "ai_workbench_mcp")
         self.assertEqual(response["summary"]["profile"], "scaffold")
         self.assertTrue(response["summary"]["sign_off_ready"])
-        self.assertEqual(response["summary"]["commands_passed"], 11)
+        self.assertEqual(response["summary"]["commands_passed"], 12)
         self.assertEqual(response["summary"]["commands_failed"], 0)
         command_names = [command["name"] for command in written["commands_run"]]
         self.assertIn("model_registry_override_support", command_names)
         self.assertIn("event_ledger_import_smoke", command_names)
         self.assertIn("golden_eval_help", command_names)
+        self.assertIn("policy_pack_select_help", command_names)
         self.assertIn("codex_live_handoff_help", command_names)
         self.assertIn("codex_live_result_check_help", command_names)
         self.assertEqual(response["summary"]["checks_passed"], 3)

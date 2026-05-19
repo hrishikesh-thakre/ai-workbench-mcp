@@ -107,6 +107,63 @@ class PrGateTests(unittest.TestCase):
         self.assert_scan_first_section(comment, decision)
         self.assertIn("# AI Workbench PR Gate: Accept", comment)
 
+    def test_policy_pack_name_is_read_from_validation_report_policy_pack(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "policy-pack-run",
+                    "profile": "legacy_profile_should_not_win",
+                    "policy_pack": {"name": "docs_only"},
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "run_id": "policy-pack-run",
+                    "final_status": "accepted",
+                },
+            )
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "accept")
+        self.assertEqual(decision["policy_pack"], "docs_only")
+        self.assertIn("**Policy pack:** `docs_only`", comment)
+
+    def test_policy_pack_name_falls_back_to_legacy_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "legacy-profile-run",
+                    "profile": "low_risk_bug_fix",
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "run_id": "legacy-profile-run",
+                    "final_status": "accepted",
+                },
+            )
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "accept")
+        self.assertEqual(decision["policy_pack"], "low_risk_bug_fix")
+        self.assertIn("**Policy pack:** `low_risk_bug_fix`", comment)
+
     def test_missing_validation_report_maps_to_block(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)

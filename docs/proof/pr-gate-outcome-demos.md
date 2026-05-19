@@ -14,7 +14,8 @@ PR-facing outcomes:
 
 No public PRs were created for this proof. The committed artifacts are generated
 from sanitized synthetic Workbench evidence under `examples/pr-gate-outcomes/`.
-They are not private local `runs/` history.
+They are not private local `runs/` history. The generated PR decisions also
+show the policy pack name resolved from the validation report.
 
 ## Evidence Set
 
@@ -47,6 +48,7 @@ Decisive evidence:
 ```text
 validation_report.json: overall_status = passed
 validation_report.json: sign_off_ready = true
+pr_decision.json: policy_pack = docs_only
 revision_decision.json: final_status = accepted
 ```
 
@@ -74,6 +76,7 @@ Decisive evidence:
 ```text
 validation_report.json: overall_status = needs_review
 validation_report.json: sign_off_ready = false
+pr_decision.json: policy_pack = api_contract_change
 revision_decision.json: final_status = review_required
 ```
 
@@ -107,6 +110,7 @@ Decisive evidence:
 validation_report.json: overall_status = needs_review
 validation_report.json: sign_off_ready = false
 validation_report.json: reason_sources[0].severity = blocker
+pr_decision.json: policy_pack = docs_only
 revision_decision.json: final_status = review_required
 ```
 

@@ -37,6 +37,11 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
+      - name: policy_pack_select_help
+        command: python tools/policy_pack_select.py --help
+        cwd: .
+        required: true
+        weight: 1.0
       - name: codex_live_handoff_help
         command: python tools/codex_live_test_handoff.py --help
         cwd: .

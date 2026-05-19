@@ -75,9 +75,9 @@ runs/pr_gate/pr_comment.md
 runs/pr_gate/pr_decision.json
 ```
 
-`pr_decision.json` includes the outcome, run id, evidence source, validation
-status, quality-gate status, reason, reason codes, required next action, and an
-evidence table showing whether these artifacts are present:
+`pr_decision.json` includes the outcome, run id, evidence source, policy pack,
+validation status, quality-gate status, reason, reason codes, required next
+action, and an evidence table showing whether these artifacts are present:
 
 ```text
 validation_report.json
@@ -103,9 +103,9 @@ Required next action: <required_next_action>
 Evidence present: validation_report yes|no, revision_decision yes|no
 ```
 
-The comment then shows run metadata, validation and quality-gate status, evidence
-presence, and reason codes. It does not embed raw model output, provider logs, or
-private run contents.
+The comment then shows run metadata, the selected policy pack, validation and
+quality-gate status, evidence presence, and reason codes. It does not embed raw
+model output, provider logs, or private run contents.
 
 For pull requests opened from the same repository, the comment helper posts or
 updates a single sticky comment marked with:

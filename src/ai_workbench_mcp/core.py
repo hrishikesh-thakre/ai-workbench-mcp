@@ -15,6 +15,7 @@ from .events import response_with_event
 from .tools import context_scout as context_scout_tool
 from .tools import model_handoff as model_handoff_tool
 from .tools import model_select as model_select_tool
+from .tools import policy_pack_select as policy_pack_select_tool
 from .tools import quality_loop as quality_loop_tool
 from .tools import run_analyze as run_analyze_tool
 from .tools import run_log as run_log_tool
@@ -124,6 +125,23 @@ def model_selection_response(selection: JsonObject, artifacts: JsonObject | None
             "routing_feedback_status": routing_feedback.get("status"),
             "routing_feedback_recommendation": routing_feedback.get("recommendation"),
             "routing_feedback_candidate_key": routing_feedback.get("candidate_key"),
+        },
+    )
+
+
+def policy_pack_selection_response(payload: JsonObject, artifacts: JsonObject | None = None) -> JsonObject:
+    status = str(payload.get("status") or "selected")
+    return response_envelope(
+        operation="workbench_select_policy_pack",
+        status=status,
+        ok=bool(payload.get("ok", status == "selected")),
+        artifacts=artifacts,
+        summary={
+            "recommended_policy_pack": payload.get("recommended_policy_pack"),
+            "reason": payload.get("reason"),
+            "matched_signals": payload.get("matched_signals"),
+            "confidence": payload.get("confidence"),
+            "candidate_policy_packs": payload.get("candidate_policy_packs"),
         },
     )
 
@@ -637,6 +655,31 @@ def select_model(
         )
     response = model_selection_response(payload, artifacts={"model_selection": output_path})
     return response_with_event(response, output_path.parent / "events.jsonl")
+
+
+def select_policy_pack(
+    *,
+    task_text: str | None = None,
+    task_type: str | None = None,
+    changed_files: list[str] | None = None,
+    prompt: str | None = None,
+    risk: str | None = None,
+) -> JsonObject:
+    try:
+        payload = policy_pack_select_tool.select_policy_pack_payload(
+            task_text=task_text,
+            task_type=task_type,
+            changed_files=changed_files or [],
+            prompt=prompt,
+            risk=risk,
+        )
+    except Exception as exc:
+        return error_envelope(
+            operation="workbench_select_policy_pack",
+            code="policy_pack_selection_failed",
+            message=str(exc),
+        )
+    return policy_pack_selection_response(payload)
 
 
 def validate_run(

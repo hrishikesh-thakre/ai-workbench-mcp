@@ -6,6 +6,7 @@
   "run_id": "pr-gate-demo-accepted",
   "evidence_source": "acceptance_run",
   "source_run_dir": "examples/pr-gate-outcomes/accepted/evidence",
+  "policy_pack": "docs_only",
   "validation_status": "passed",
   "quality_gate_status": "accepted",
   "reason": "Validation passed and the quality gate accepted the documentation-only run.",

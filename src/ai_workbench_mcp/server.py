@@ -92,6 +92,27 @@ def register_tools(mcp: Any) -> Any:
             return _tool_error("workbench_select_model", exc)
 
     @mcp.tool()
+    def workbench_select_policy_pack(
+        task_text: str | None = None,
+        task_type: str | None = None,
+        changed_files: list[str] | None = None,
+        prompt: str | None = None,
+        risk: str | None = None,
+    ) -> JsonObject:
+        """Recommend an advisory Workbench policy pack from task metadata."""
+
+        try:
+            return core.select_policy_pack(
+                task_text=task_text,
+                task_type=task_type,
+                changed_files=changed_files,
+                prompt=prompt,
+                risk=risk,
+            )
+        except Exception as exc:
+            return _tool_error("workbench_select_policy_pack", exc)
+
+    @mcp.tool()
     def workbench_record_execution(
         project: str,
         run_dir: str,

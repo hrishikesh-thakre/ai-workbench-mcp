@@ -55,4 +55,8 @@ AI Workbench MCP does not prove software correctness. It does not replace CI, co
 
 The current validation profiles are starter policies. They are useful for bounded launch workflows, but they are not universal truth. Deterministic checks come first; reviewer-agent workflows and richer policy metadata are future work.
 
+The advisory policy-pack selector can recommend a profile family from task
+metadata, but it is not an acceptance decision. It does not replace explicit
+`workbench_validate_run` and `workbench_quality_gate` evidence.
+
 Use committed sample evidence for public demos, and keep raw local `runs/` evidence out of git.

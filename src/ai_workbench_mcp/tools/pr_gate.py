@@ -176,6 +176,17 @@ def dict_from(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 
 
+def policy_pack_name_from(report: dict[str, object]) -> str:
+    policy_pack = dict_from(report.get("policy_pack"))
+    name = str(policy_pack.get("name") or "").strip()
+    if name:
+        return name
+    profile = str(report.get("profile") or "").strip()
+    if profile:
+        return profile
+    return "unknown"
+
+
 def reason_codes_from(*payloads: dict[str, object]) -> list[str]:
     codes: list[str] = []
     seen: set[str] = set()
@@ -275,6 +286,7 @@ def acceptance_evidence_missing_decision(
         "run_id": str(report.get("run_id") or decision_payload.get("run_id") or run_dir.name or "unknown"),
         "evidence_source": evidence_source,
         "source_run_dir": source_run_dir,
+        "policy_pack": policy_pack_name_from(report),
         "validation_status": str(report.get("overall_status", "unknown")),
         "quality_gate_status": str(decision_payload.get("final_status", "unknown")),
         "reason": ACCEPTANCE_EVIDENCE_MISSING_REASON,
@@ -363,6 +375,7 @@ def decision_from_evidence(
         "run_id": str(report.get("run_id") or decision.get("run_id") or run_dir.name),
         "evidence_source": evidence_source,
         "source_run_dir": source_label,
+        "policy_pack": policy_pack_name_from(report),
         "validation_status": validation_status,
         "quality_gate_status": quality_gate_status,
         "reason": reason,
@@ -417,6 +430,7 @@ def render_comment(decision: dict[str, object]) -> str:
         f"**Run ID:** `{decision.get('run_id', 'unknown')}`",
         f"**Evidence source:** `{markdown_escape(decision.get('evidence_source', 'unknown'))}`",
         f"**Source run dir:** `{markdown_escape(decision.get('source_run_dir', 'unknown'))}`",
+        f"**Policy pack:** `{markdown_escape(decision.get('policy_pack', 'unknown'))}`",
         "",
         "## Status",
         "",

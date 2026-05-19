@@ -161,6 +161,7 @@ The current product pass is not more general dogfooding, more recipes, GEPA, ext
 - report exactly one of `accept`, `needs_review`, or `block`
 - block scaffold-only fallback evidence with clear next action
 - keep five first-class policy packs clear and usable
+- expose an advisory policy-pack selector without changing validation behavior
 - provide a copy-paste GitHub workflow template
 - provide a one-page external repository setup guide
 - prove the copied workflow in a separate public toy repository without committing private `runs/` evidence
@@ -179,6 +180,8 @@ Use:
 - `docs/codex/acceptance-workflow.md` for the Codex local/IDE six-tool lifecycle.
 - `docs/codex/live-test-handoff.md` for the safe preflight/countdown handoff helper and post-run result checker.
 - `docs/evals/golden-case-harness.md` for local accepted-baseline regression checks.
+- `docs/evals/policy-pack-quality-scorecard.md` for internal pack quality ratings that do not affect acceptance.
+- `docs/policy-packs/` for product-facing pages for the five core policy packs.
 - `docs/github/launch-issues.md` for public alpha issue seeds.
 - `docs/publishing/pypi.md` for package publishing prep.
 - `docs/github/pr-gate-workflow-template.md` for the copy-paste PR gate GitHub Actions workflow.

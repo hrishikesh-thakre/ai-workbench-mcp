@@ -176,7 +176,16 @@ Choose the validation profile from the task shape:
 
 See [focused v0.2 workflows](examples/focused-workflows/) for copy-ready commands.
 
-The five first-class v0.3 policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml` and is loaded into validation profiles so PR gate comments can explain accepted, review-required, and blocked outcomes without parsing prose.
+The five first-class v0.3 policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml` and is loaded into validation profiles so PR gate comments can explain accepted, review-required, and blocked outcomes without parsing prose. Product-facing pack docs live in [docs/policy-packs/](docs/policy-packs/).
+
+Use the advisory selector when the task shape is unclear. It recommends a policy pack and explains the matching signals, but it does not change validation automatically:
+
+```bash
+python tools/policy_pack_select.py \
+  --task-text "Fix the known failing contract test for the MCP response." \
+  --task-type test \
+  --changed-file tests/test_contracts.py
+```
 
 For bounded documentation-only changes, use the focused v0.2 recipe:
 
@@ -287,6 +296,8 @@ The proof pack uses committed sanitized sample evidence under `examples/sample-r
 
 The v0.3 PR gate outcome demos are in [docs/proof/pr-gate-outcome-demos.md](docs/proof/pr-gate-outcome-demos.md) with sanitized fixtures under [examples/pr-gate-outcomes/](examples/pr-gate-outcomes/). They show `accept`, `needs_review`, and `block` decisions generated from Workbench evidence, not from private local run history. The same workflow has also been proven in the public external toy repository [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate), with durable proof records under [`proof-records/`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/tree/main/proof-records).
 
+The v0.4 policy-pack productization summary is in [docs/dogfooding/v0.4-policy-pack-validation-report.md](docs/dogfooding/v0.4-policy-pack-validation-report.md). It records one real or sanitized case per first-class policy pack without committing raw `runs/` evidence.
+
 ## Sample Analytics Demo
 
 To inspect the trust loop without provider setup, run analytics over the committed synthetic sample runs:
@@ -321,12 +332,15 @@ The committed model registry lives at `configs/model_registry.yaml`. To customiz
 
 See [the model registry guide](docs/configuration/model-registry.md) for merge rules, required tier fields, selector-reference validation, and the advisory-only scope.
 
-## Six MCP Tools
+## Seven MCP Tools
 
 ```text
 workbench_open_run
   -> creates the run folder, task metadata, final prompt, context packet, and initial run log
      records execution_host, defaulting to goose
+
+workbench_select_policy_pack
+  -> recommends an advisory policy pack from task metadata without changing validation behavior
 
 workbench_select_model
   -> recommends a model/runtime tier and writes model_selection.json
