@@ -25,11 +25,11 @@ parameters:
       - "low"
       - "medium"
       - "high"
-  - key: validation_profile
+  - key: validation_profile_override
     input_type: string
     requirement: optional
-    description: "Optional validation profile override from configs/validation_profiles.yaml. If supplied explicitly, skip advisory policy-pack auto-selection; the default remains a backward-compatible fallback. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures."
-    default: "test_fix"
+    description: "Optional explicit validation profile override from configs/validation_profiles.yaml. Leave empty to run advisory policy-pack auto-selection. Use test_fix for repo-target repairs and fixture_repair_proof for intentionally broken demo fixtures only when forcing the profile."
+    default: ""
   - key: routing_feedback_path
     input_type: string
     requirement: optional
@@ -90,22 +90,22 @@ instructions: |
   Boundaries:
   - Start from the failing test signal and make the smallest production or test update that is justified by the intended behavior.
   - Do not weaken, delete, skip, xfail, or broadly rewrite tests unless the task explicitly asks for test-correction work and the reason is captured in the response.
-  - Use validation_profile="fixture_repair_proof" for intentionally broken demo fixtures whose source repo self-tests assert that the fixture starts broken.
-  - Use validation_profile="test_fix" for repo-target repairs that must keep the broader project suite passing.
+  - Use validation_profile_override="fixture_repair_proof" for intentionally broken demo fixtures whose source repo self-tests assert that the fixture starts broken.
+  - Use validation_profile_override="test_fix" for repo-target repairs that must keep the broader project suite passing when you need to force the profile.
   - Use OS-appropriate shell inspection commands for the current environment. On Windows, prefer PowerShell Get-Content or cmd type instead of assuming Unix-only commands such as cat.
   - Do not add private run history, provider secrets, personal machine paths, broad UI/provider plumbing, or target-repo-specific configuration.
   - If deterministic validation cannot be run, stop and report that this test-fix recipe cannot produce an accepted run.
 
   Workflow:
   1. Call workbench_open_run with project="{{ project }}", task="{{ task }}", run_dir="{{ run_dir }}", prompt="{{ prompt }}", risk="{{ risk }}", and recipe="workbench-test-fix-acceptance.yaml".
-  2. Determine selected_validation_profile for this run. If the user explicitly supplied validation_profile="{{ validation_profile }}" as an override, use that value and skip advisory auto-selection. Otherwise call workbench_select_policy_pack with task_text="{{ task }}", task_type="test", prompt="{{ prompt }}", and risk="{{ risk }}" before model selection, then use its recommended_validation_profile. If the selector cannot provide one, fall back to profile="{{ validation_profile }}".
+  2. Determine selected_validation_profile for this run. If validation_profile_override="{{ validation_profile_override }}" is non-empty, use that value and skip advisory auto-selection. Otherwise call workbench_select_policy_pack with task_text="{{ task }}", task_type="test", prompt="{{ prompt }}", and risk="{{ risk }}" before model selection, then use its recommended_validation_profile. If the selector cannot provide one, stop and ask for an explicit validation_profile_override instead of guessing from recipe defaults.
   3. Call workbench_select_model with project="{{ project }}", task_type="test", risk="{{ risk }}", validation_strength="strong", prompt="{{ prompt }}", complexity_score={{ complexity_score }}, recipe="workbench-test-fix-acceptance.yaml", validation_profile=selected_validation_profile, routing_feedback_path="{{ routing_feedback_path }}", and out="{{ run_dir }}/model_selection.json".
   4. Perform the requested test-fix task: {{ task }}
   5. Run the relevant failing test command first when one is known, then run the deterministic validation expected by the task. If the task includes an exact Python pytest or unittest command, use it as task_test_command="{{ task_test_command }}" when validating; otherwise pass the exact focused command you ran. If a shell inspection command fails because it is not available on the current OS, retry with an equivalent local command and do not treat the failed inspection as validation evidence.
   6. Inspect the current worktree changes and build the exact changed files list for this task. Exclude Workbench run evidence under runs/, and do not omit extra worktree changes.
   7. Call workbench_record_execution exactly once with project="{{ project }}", run_dir="{{ run_dir }}", run_status="completed", files_touched set to the exact changed files list, and response_text set to a concise implementation summary containing Summary, Files touched, Validation run, and Risks / follow-ups sections. Include the exact test command and result in Validation run.
      If workbench_record_execution returns ok=true and status="response_captured", do not call workbench_record_execution again; continue to deterministic validation.
-  8. Call workbench_validate_run with project="{{ project }}", profile=selected_validation_profile, task_test_command="{{ task_test_command }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. For explicit override runs, this is equivalent to profile="{{ validation_profile }}". The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
+  8. Call workbench_validate_run with project="{{ project }}", profile=selected_validation_profile, task_test_command="{{ task_test_command }}", out_dir="{{ run_dir }}", and changed_files set to the same exact changed files list. For explicit override runs, this is equivalent to profile="{{ validation_profile_override }}". The task_test_command must be the exact focused Python pytest or unittest command for the failing test signal.
   9. Call workbench_quality_gate with project="{{ project }}", run_dir="{{ run_dir }}", mode="auto", and risk="{{ risk }}".
   10. If the quality gate returns review_required or revision_required, follow its next_action and do not mark the task accepted.
   11. Call workbench_analyze_runs with runs_dir="{{ analytics_runs_dir }}" and out_dir="{{ analytics_out_dir }}" after validation and quality gate artifacts exist.
@@ -116,7 +116,7 @@ prompt: |
   Run directory: {{ run_dir }}
   Project: {{ project }}
   Risk: {{ risk }}
-  Validation profile override or fallback: {{ validation_profile }}
+  Validation profile override: {{ validation_profile_override }}
   Focused test command: {{ task_test_command }}
   Analytics runs dir: {{ analytics_runs_dir }}
   Analytics out dir: {{ analytics_out_dir }}

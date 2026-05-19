@@ -19,14 +19,14 @@ machine-readable pack schema.
 ## Safe Auto-Selection
 
 Goose recipes may call `workbench_select_policy_pack` before
-`workbench_select_model` when the user has not explicitly supplied a
-`validation_profile` override. The selector returns a recommended policy pack
+`workbench_select_model` when the user has not supplied a non-empty
+`validation_profile_override`. The selector returns a recommended policy pack
 and recommended validation profile from task metadata. Recipes should pass that
 selected validation profile to both `workbench_select_model` and
 `workbench_validate_run`.
 
-`validation_profile` remains an override parameter for backward compatibility.
-When it is supplied explicitly, recipes should skip advisory auto-selection and
+`validation_profile_override` is the recipe-level escape hatch for forcing a
+profile. When it is non-empty, recipes should skip advisory auto-selection and
 use that profile for both model selection and deterministic validation.
 
 Selector output and profile selection are setup guidance only. They choose the

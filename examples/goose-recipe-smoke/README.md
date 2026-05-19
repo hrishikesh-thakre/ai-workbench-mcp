@@ -6,7 +6,7 @@ validates and quality-gates the run evidence.
 
 This is the first full lifecycle check after the two-tool smoke passes. It
 uses the general engineering acceptance recipe with the `tiny_python_fix`
-profile. For the current focused fixture proof path, use the
+profile override. For the current focused fixture proof path, use the
 `fixture_repair_proof` command in `examples/focused-workflows/`.
 
 On slow local models, run `examples/goose-tool-smoke/` first. The full recipe
@@ -22,7 +22,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task_type=implement \
   --params risk=low \
   --params validation_strength=medium \
-  --params validation_profile=tiny_python_fix \
+  --params validation_profile_override=tiny_python_fix \
   --params prompt=implement_request_change_request \
   --params complexity_score=4
 ```

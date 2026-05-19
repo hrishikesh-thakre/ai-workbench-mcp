@@ -99,7 +99,7 @@ goose run --no-session --max-turns 20 --max-tool-repetitions 2 \
   --params run_dir=runs/gemini-fixture-proof/tiny-python-fix \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
   --params risk=low \
-  --params validation_profile=fixture_repair_proof \
+  --params validation_profile_override=fixture_repair_proof \
   --params complexity_score=4 \
   --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
   --params analytics_runs_dir=runs/gemini-fixture-proof \

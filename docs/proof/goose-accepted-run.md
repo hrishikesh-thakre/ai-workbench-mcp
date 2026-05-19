@@ -78,7 +78,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and report the validation result." \
   --params task_type=implement \
   --params risk=low \
-  --params validation_profile=tiny_python_fix \
+  --params validation_profile_override=tiny_python_fix \
   --params complexity_score=4
 ```
 

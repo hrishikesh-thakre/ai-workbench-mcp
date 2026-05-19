@@ -157,7 +157,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and report the validation result." \
   --params task_type=implement \
   --params risk=low \
-  --params validation_profile=tiny_python_fix \
+  --params validation_profile_override=tiny_python_fix \
   --params complexity_score=4
 ```
 
@@ -219,14 +219,14 @@ goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params risk=medium
 ```
 
-The default `test_fix` profile is for repo-target repairs and requires the broader project suite. For intentionally broken demo fixtures, use the focused fixture proof profile instead:
+For repo-target repairs, the selector should choose the `test_fix` profile and require the broader project suite. For intentionally broken demo fixtures, force the focused fixture proof profile instead:
 
 ```bash
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-fixture-repair-proof \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
-  --params validation_profile=fixture_repair_proof \
+  --params validation_profile_override=fixture_repair_proof \
   --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
   --params analytics_runs_dir=runs/goose-fixture-repair-proof \
   --params analytics_out_dir=runs/goose-fixture-repair-proof/_reports \
@@ -242,7 +242,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Make the requested bounded low-risk code change and keep deterministic tests passing." \
   --params task_type=implement \
   --params risk=low \
-  --params validation_profile=low_risk_coding \
+  --params validation_profile_override=low_risk_coding \
   --params complexity_score=8
 ```
 

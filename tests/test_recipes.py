@@ -52,7 +52,7 @@ def recipe_parameter_default(text: str, key: str) -> str | None:
     block_end_candidates = [index for index in (next_parameter, extensions) if index != -1]
     block_end = min(block_end_candidates) if block_end_candidates else len(text)
     block = text[block_start:block_end]
-    match = re.search(r'(?m)^\s{4}default:\s+"?([^"\n]+)"?\s*$', block)
+    match = re.search(r'(?m)^\s{4}default:\s+"?([^"\n]*)"?\s*$', block)
     return match.group(1) if match else None
 
 
@@ -82,7 +82,7 @@ class WorkbenchRecipeTests(unittest.TestCase):
             "task_type",
             "risk",
             "validation_strength",
-            "validation_profile",
+            "validation_profile_override",
             "routing_feedback_path",
             "prompt",
             "complexity_score",
@@ -139,20 +139,21 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("available_tools:", text)
                 self.assertIn(f'recipe="{recipe_path.name}"', text)
 
-    def test_validation_recipes_reference_discoverable_policy_profiles(self) -> None:
-        profiles = validation_profiles()
-
+    def test_validation_recipes_use_explicit_profile_override_parameter(self) -> None:
         for recipe_path in recipe_files():
             text = recipe_path.read_text(encoding="utf-8")
             if "workbench_validate_run" not in text:
                 continue
 
             with self.subTest(recipe=recipe_path.name):
-                default_profile = recipe_parameter_default(text, "validation_profile")
-                self.assertIsNotNone(default_profile)
-                self.assertIn(default_profile, profiles)
-                self.assertIn('profile="{{ validation_profile }}"', text)
-                self.assertIn('validation_profile="{{ validation_profile }}"', text)
+                self.assertIsNone(recipe_parameter_default(text, "validation_profile"))
+                self.assertEqual(recipe_parameter_default(text, "validation_profile_override"), "")
+                self.assertIn('validation_profile_override="{{ validation_profile_override }}"', text)
+                self.assertIn("If validation_profile_override=", text)
+                self.assertIn("skip advisory auto-selection", text)
+                self.assertIn("stop and ask for an explicit validation_profile_override", text)
+                self.assertIn("profile=selected_validation_profile", text)
+                self.assertIn("validation_profile=selected_validation_profile", text)
                 self.assertIn('routing_feedback_path="{{ routing_feedback_path }}"', text)
 
     def test_validation_policy_profiles_are_discoverable(self) -> None:
@@ -380,7 +381,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         positions = [text.index(tool) for tool in FULL_ACCEPTANCE_TOOLS]
 
         self.assertIn('title: "Workbench Docs-Only Acceptance"', text)
-        self.assertEqual(recipe_parameter_default(text, "validation_profile"), "docs_only")
+        self.assertEqual(recipe_parameter_default(text, "validation_profile_override"), "")
         self.assertEqual(recipe_parameter_default(text, "prompt"), "documentation_accuracy_audit")
         self.assertIn("Documentation-only", text)
         self.assertIn("Do not modify source code", text)
@@ -393,7 +394,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         positions = [text.index(tool) for tool in FULL_ACCEPTANCE_TOOLS]
 
         self.assertIn('title: "Workbench Python Package Maintenance"', text)
-        self.assertEqual(recipe_parameter_default(text, "validation_profile"), "python_package_maintenance")
+        self.assertEqual(recipe_parameter_default(text, "validation_profile_override"), "")
         self.assertIn("Python package maintenance", text)
         self.assertIn("Preserve Goose as the execution surface", text)
         self.assertIn("package maintenance concerns", text)
@@ -406,7 +407,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         profile_data = validation_profiles()["test_fix"]
 
         self.assertIn('title: "Workbench Test-Fix Acceptance"', text)
-        self.assertEqual(recipe_parameter_default(text, "validation_profile"), "test_fix")
+        self.assertEqual(recipe_parameter_default(text, "validation_profile_override"), "")
         self.assertEqual(recipe_parameter_default(text, "prompt"), "bug_root_cause_investigation")
         self.assertEqual(recipe_parameter_default(text, "analytics_runs_dir"), "runs")
         self.assertEqual(recipe_parameter_default(text, "analytics_out_dir"), "runs/_reports")
@@ -416,6 +417,8 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
         self.assertIn("python -m unittest", profile_data["task_test_command"]["allowed_prefixes"])
         self.assertIn("Test-fix", text)
         self.assertIn('task_type="test"', text)
+        self.assertIn('validation_profile_override="fixture_repair_proof"', text)
+        self.assertIn('validation_profile_override="test_fix"', text)
         self.assertIn("Do not weaken, delete, skip, xfail, or broadly rewrite tests", text)
         self.assertIn("OS-appropriate shell inspection commands", text)
         self.assertIn("runs_dir=\"{{ analytics_runs_dir }}\"", text)

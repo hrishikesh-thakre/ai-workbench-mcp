@@ -4,8 +4,9 @@ These examples show the focused v0.2 Goose recipes and validation profiles.
 They are command examples only; local run evidence still belongs under ignored
 `runs/`.
 
-Start here when the two-tool Goose smoke passes and you know the shape of the
-task. Choose the recipe/profile pair before running the agent:
+Start here when the two-tool Goose smoke passes. The recipes run advisory
+policy-pack selection by default; pass `validation_profile_override` only when
+you intentionally need to force one of these profiles:
 
 | Task shape | Recipe | Profile |
 |---|---|---|
@@ -25,7 +26,7 @@ pass the exact focused Python test command through `task_test_command`.
 ## Docs-Only Changes
 
 Use this when the task is limited to public Markdown or example documentation.
-The recipe defaults to the `docs_only` validation profile.
+The recipe should select the `docs_only` validation profile from task metadata.
 
 ```bash
 goose run --recipe ./recipes/workbench-docs-only-acceptance.yaml \
@@ -38,8 +39,8 @@ goose run --recipe ./recipes/workbench-docs-only-acceptance.yaml \
 ## Python Package Maintenance
 
 Use this for bounded package, import, config, tool, recipe, or test maintenance
-inside this package. The recipe defaults to the `python_package_maintenance`
-validation profile.
+inside this package. Use `validation_profile_override=python_package_maintenance`
+only when you need to force the legacy package-maintenance profile.
 
 ```bash
 goose run --recipe ./recipes/workbench-python-package-maintenance.yaml \
@@ -54,14 +55,15 @@ goose run --recipe ./recipes/workbench-python-package-maintenance.yaml \
 
 Use this when a small bug fix has focused regression evidence and the broader
 suite must remain green. The test-fix recipe carries the required
-`task_test_command`; override the validation profile to `low_risk_bug_fix`.
+`task_test_command`; force `low_risk_bug_fix` when the selector would otherwise
+treat the task as a generic test repair.
 
 ```bash
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-low-risk-bug-fix \
   --params task="Fix the requested low-risk bug with the smallest justified change and keep the regression command passing." \
-  --params validation_profile=low_risk_bug_fix \
+  --params validation_profile_override=low_risk_bug_fix \
   --params task_test_command="python -m pytest tests/test_target.py -q" \
   --params risk=low
 ```
@@ -69,8 +71,8 @@ goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
 ## Test-Fix Work
 
 Use this when the task starts from a failing deterministic test signal and the
-broader repository test suite must remain green. The recipe defaults to the
-`test_fix` validation profile.
+broader repository test suite must remain green. The recipe should select the
+`test_fix` validation profile from task metadata.
 
 ```bash
 goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
@@ -90,7 +92,7 @@ goose run --recipe ./recipes/workbench-test-fix-acceptance.yaml \
   --params project=ai_workbench_mcp \
   --params run_dir=runs/goose-fixture-repair-proof \
   --params task="Fix examples/tiny-python-fix/calculator.py so python -m unittest discover -s examples/tiny-python-fix -p test_*.py passes. Keep the change minimal and do not edit unrelated files." \
-  --params validation_profile=fixture_repair_proof \
+  --params validation_profile_override=fixture_repair_proof \
   --params task_test_command="python -m unittest discover -s examples/tiny-python-fix -p test_*.py" \
   --params analytics_runs_dir=runs/goose-fixture-repair-proof \
   --params analytics_out_dir=runs/goose-fixture-repair-proof/_reports \
@@ -113,7 +115,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Make the requested API or MCP contract change and update contract tests." \
   --params task_type=implement \
   --params risk=medium \
-  --params validation_profile=api_contract_change \
+  --params validation_profile_override=api_contract_change \
   --params validation_strength=strong \
   --params complexity_score=13
 ```
@@ -131,7 +133,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Make the requested security or privacy-sensitive change and preserve public hygiene checks." \
   --params task_type=implement \
   --params risk=high \
-  --params validation_profile=security_privacy_sensitive \
+  --params validation_profile_override=security_privacy_sensitive \
   --params validation_strength=strong \
   --params complexity_score=16
 ```
@@ -149,7 +151,7 @@ goose run --recipe ./recipes/workbench-engineering-acceptance.yaml \
   --params task="Make the requested bounded low-risk code change and keep deterministic tests passing." \
   --params task_type=implement \
   --params risk=low \
-  --params validation_profile=low_risk_coding \
+  --params validation_profile_override=low_risk_coding \
   --params complexity_score=8
 ```
 
