@@ -5,7 +5,7 @@ import json
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
-from .policy_packs import PRODUCT_POLICY_PACK_NAMES
+from .policy_packs import PRODUCT_POLICY_PACK_NAMES, load_policy_pack_catalog
 
 
 SCHEMA_VERSION = 1
@@ -244,12 +244,17 @@ def select_policy_pack_payload(
                     reason = "No higher-risk signals matched; defaulting to the bounded bug-fix policy pack."
                     matched = ["default:bounded_bug_fix"]
 
+    catalog = load_policy_pack_catalog()
+    recommended_validation_profile = str(catalog[selected]["validation_profile"])
+
     return {
         "schema_version": SCHEMA_VERSION,
         "operation": OPERATION,
         "status": "selected",
         "ok": True,
         "recommended_policy_pack": selected,
+        "recommended_validation_profile": recommended_validation_profile,
+        "profile_selection_mode": "auto_advisory",
         "reason": reason,
         "matched_signals": matched,
         "confidence": _confidence_for(selected, matched),

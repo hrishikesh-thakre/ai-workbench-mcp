@@ -7,6 +7,7 @@ from .context_scout import WORKBENCH_ROOT
 
 
 POLICY_PACKS_PATH = WORKBENCH_ROOT / "configs" / "policy_packs.yaml"
+VALIDATION_PROFILES_PATH = WORKBENCH_ROOT / "configs" / "validation_profiles.yaml"
 PRODUCT_POLICY_PACK_NAMES = (
     "docs_only",
     "low_risk_bug_fix",
@@ -59,9 +60,14 @@ def normalize_policy_pack(
     if not version:
         raise ValueError(f"Policy pack {pack_name} must declare a version.")
 
+    validation_profile = str(pack_data.get("validation_profile", "")).strip()
+    if not validation_profile:
+        raise ValueError(f"Policy pack {pack_name} must declare a validation_profile.")
+
     normalized: dict[str, object] = {
         "name": pack_name,
         "version": version,
+        "validation_profile": validation_profile,
         "source": source,
     }
 
@@ -83,6 +89,59 @@ def normalize_policy_pack(
         normalized_reason_codes[key] = code
     normalized["reason_codes"] = normalized_reason_codes
     return normalized
+
+
+def _validation_profiles_path_for(config_path: Path) -> Path:
+    sibling_path = config_path.with_name("validation_profiles.yaml")
+    if sibling_path.exists():
+        return sibling_path
+    return VALIDATION_PROFILES_PATH
+
+
+def _policy_pack_name_from_profile(profile_data: object) -> str:
+    if not isinstance(profile_data, dict):
+        return ""
+    policy_pack = profile_data.get("policy_pack")
+    if isinstance(policy_pack, str):
+        return policy_pack.strip()
+    if isinstance(policy_pack, dict):
+        return str(policy_pack.get("name", "")).strip()
+    return ""
+
+
+def validate_policy_pack_profile_mappings(
+    catalog: dict[str, dict[str, object]],
+    *,
+    validation_profiles_path: Path,
+) -> None:
+    raw_profiles = load_simple_yaml(validation_profiles_path)
+    profiles_data = _as_mapping(raw_profiles.get("profiles"), label="profiles")
+
+    mapped_profiles: dict[str, str] = {}
+    for pack_name, pack_data in catalog.items():
+        validation_profile = str(pack_data.get("validation_profile", "")).strip()
+        if validation_profile not in profiles_data:
+            raise ValueError(
+                f"Policy pack {pack_name} maps to unknown validation profile: {validation_profile}"
+            )
+        previous_pack = mapped_profiles.get(validation_profile)
+        if previous_pack is not None:
+            raise ValueError(
+                "Policy packs must not share a validation profile without an explicit "
+                f"mapping design. {previous_pack} and {pack_name} both map to {validation_profile}."
+            )
+        mapped_profiles[validation_profile] = pack_name
+
+    for profile_name, profile_data in profiles_data.items():
+        pack_name = _policy_pack_name_from_profile(profile_data)
+        if pack_name not in catalog:
+            continue
+        mapped_profile = str(catalog[pack_name].get("validation_profile", "")).strip()
+        if mapped_profile != profile_name:
+            raise ValueError(
+                f"Validation profile {profile_name} references policy pack {pack_name}, "
+                f"but the catalog maps that pack to {mapped_profile}."
+            )
 
 
 def load_policy_pack_catalog(config_path: Path = POLICY_PACKS_PATH) -> dict[str, dict[str, object]]:
@@ -110,6 +169,10 @@ def load_policy_pack_catalog(config_path: Path = POLICY_PACKS_PATH) -> dict[str,
             pack_data,
             source=source,
         )
+    validate_policy_pack_profile_mappings(
+        catalog,
+        validation_profiles_path=_validation_profiles_path_for(config_path),
+    )
     return catalog
 
 

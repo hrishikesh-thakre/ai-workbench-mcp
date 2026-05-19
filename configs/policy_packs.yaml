@@ -5,6 +5,7 @@ policy_packs:
   docs_only:
     name: docs_only
     version: v0.2
+    validation_profile: docs_only
     allowed_files:
       - "*.md"
       - "docs/**/*.md"
@@ -33,6 +34,7 @@ policy_packs:
   low_risk_bug_fix:
     name: low_risk_bug_fix
     version: v0.2
+    validation_profile: low_risk_bug_fix
     allowed_files:
       - "src/**/*.py"
       - "tools/*.py"
@@ -68,6 +70,7 @@ policy_packs:
   test_fix:
     name: test_fix
     version: v0.2
+    validation_profile: test_fix
     allowed_files:
       - "src/**/*.py"
       - "tools/*.py"
@@ -102,6 +105,7 @@ policy_packs:
   api_contract_change:
     name: api_contract_change
     version: v0.2
+    validation_profile: api_contract_change
     allowed_files:
       - "src/ai_workbench_mcp/**/*.py"
       - "tools/*.py"
@@ -138,6 +142,7 @@ policy_packs:
   security_privacy_sensitive:
     name: security_privacy_sensitive
     version: v0.2
+    validation_profile: security_privacy_sensitive
     allowed_files:
       - "src/**/*.py"
       - "tools/*.py"
