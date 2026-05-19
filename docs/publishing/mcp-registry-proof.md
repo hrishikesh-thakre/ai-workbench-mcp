@@ -1,7 +1,8 @@
 # MCP Registry Proof
 
 Status: `0.3.0a0` registry publication recorded as complete; `0.6.0a0`
-registry update pending PyPI publication and explicit approval
+TestPyPI proof complete; registry update pending PyPI publication and explicit
+approval
 Latest published registry version: `0.3.0a0`
 Target metadata version: `0.6.0a0`
 Date verified in repo docs: 2026-05-18
@@ -80,7 +81,7 @@ published wheel.
 |---|---|---|
 | `0.2.0a0` | active, not latest | 2026-05-16 |
 | `0.3.0a0` | active, latest | 2026-05-18 |
-| `0.6.0a0` | pending PyPI publication and explicit approval | pending |
+| `0.6.0a0` | TestPyPI proof complete; registry pending PyPI publication and explicit approval | TestPyPI 2026-05-19 |
 
 ## Maintenance Rule
 

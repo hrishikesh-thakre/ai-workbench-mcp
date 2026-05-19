@@ -5,7 +5,8 @@ Release target: `ai-workbench-mcp==0.6.0a0`.
 Local release-readiness validation for `0.6.0a0` completed on 2026-05-19:
 full pytest, diff hygiene, clean temp build, `twine check`, fresh wheel install,
 bootstrap into an empty repository, idempotent rerun, and missing-evidence PR
-gate smoke.
+gate smoke. TestPyPI upload and exact-version install proof also completed on
+2026-05-19.
 
 The latest historical published package before this release is
 `ai-workbench-mcp==0.3.0a0`, exact-version install verified on TestPyPI and
@@ -135,8 +136,21 @@ Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP ser
 
 ## TestPyPI Dry Run
 
-Status: TestPyPI upload for `ai-workbench-mcp==0.6.0a0` is pending explicit
-release approval. Do not upload as part of local release-readiness validation.
+Status: TestPyPI dry run completed for `ai-workbench-mcp==0.6.0a0` on
+2026-05-19.
+
+TestPyPI package page:
+
+```text
+https://test.pypi.org/project/ai-workbench-mcp/0.6.0a0/
+```
+
+The completed rehearsal verified fresh artifacts, `twine check`, upload to
+TestPyPI, exact-version install from TestPyPI with PyPI as the dependency
+fallback, console-script discovery for `ai-workbench-mcp`,
+`ai-workbench-bootstrap`, and `ai-workbench-bootstrap-assets`, bootstrap into an
+empty repository, idempotent `runs/` ignore behavior, and missing-evidence PR
+gate recovery.
 
 Historical status: TestPyPI dry run completed for `ai-workbench-mcp==0.3.0a0`
 on 2026-05-18.
@@ -159,9 +173,10 @@ https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/
 
 The historical rehearsal verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to TestPyPI, and an exact-version install smoke from TestPyPI with PyPI as the dependency fallback.
 
-Do not rerun the upload for `0.3.0a0`. The v0.6 TestPyPI dry run requires a
-fresh existence check and explicit release intent. Only run this after
-confirming credentials and release approval. Do not use `--skip-existing`:
+Do not rerun the upload for `0.3.0a0` or `0.6.0a0`. Future TestPyPI dry runs
+require a version bump, a fresh existence check, and explicit release intent.
+Only run this after confirming credentials and release approval. Do not use
+`--skip-existing`:
 
 ```powershell
 python -m twine upload --repository testpypi --non-interactive dist/*
@@ -180,7 +195,7 @@ python -c "import shutil; assert shutil.which('ai-workbench-bootstrap-assets')"
 ## PyPI Upload
 
 Status: PyPI upload for `ai-workbench-mcp==0.6.0a0` is pending explicit release
-approval and must happen only after TestPyPI proof.
+approval. TestPyPI proof is complete.
 
 Historical status: PyPI release completed for `ai-workbench-mcp==0.3.0a0` on
 2026-05-18.
