@@ -42,7 +42,7 @@ AI Workbench turns agent output into evidence-backed accepted runs.
 
 ## 5-Minute Quickstart
 
-Try the source package demo first. It does not require Goose, provider credentials, a target repository, or committed `runs/` evidence.
+Start with the package-only demo. It is the fastest way to see the Workbench gate because it does not require Goose, provider credentials, a target repository, or committed `runs/` evidence.
 
 ```bash
 python -m pip install -e .
@@ -63,7 +63,25 @@ Expected outputs:
 ./workbench-first-run/ai-workbench-demo/blocked/pr_decision.json       -> block
 ```
 
-The demo uses synthetic fixture evidence to show the PR-gate renderer. It is not a real target-repo acceptance run and is not a shortcut around validation or the quality gate.
+Open the matching `pr_comment.md` files to see the reviewer-facing explanation for each outcome. The demo uses synthetic fixture evidence to show the PR-gate renderer. It is not a real target-repo acceptance run and is not a shortcut around validation or the quality gate. For a short recording script, see the [package demo walkthrough](docs/walkthroughs/package-demo.md).
+
+## What This Catches That CI Does Not
+
+CI answers whether configured commands passed. AI Workbench also checks whether the run produced the evidence needed to justify acceptance.
+
+Workbench catches missing or scaffold-only acceptance evidence, absent validation reports, missing quality-gate decisions, changed-file policy failures, and cases where an AI run should be reviewed or blocked even though a narrow test command passed.
+
+It does not replace CI, code review, security review, or human judgment. It adds an auditable acceptance layer that turns agent output into `accept`, `needs_review`, or `block` with a required next action.
+
+## CI vs AI Reviewer vs Workbench
+
+| Question | CI | AI reviewer | Workbench |
+| --- | --- | --- | --- |
+| Did configured commands pass? | Yes | Usually no | Records command-backed validation |
+| Is required acceptance evidence present? | No | Can mention it | Enforces required artifacts |
+| Did changed files fit policy? | Only if custom checks exist | Can flag concerns | Applies validation profile and policy checks |
+| Is this accepted, needs review, or blocked? | No | Usually prose | Writes machine-readable gate output |
+| Is there an auditable next action? | Logs only | Prose comment | `pr_decision.json` and PR comment |
 
 To add the published `0.6.0a0` PR gate assets to a repository:
 
@@ -149,6 +167,7 @@ Other useful starter profiles include `python_package_maintenance`, `fixture_rep
 - [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/), [sample Codex accepted run](examples/sample-runs/accepted-codex-tiny-python-fix/), [sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/), and [sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized committed evidence.
 - [PR gate outcome demos](docs/proof/pr-gate-outcome-demos.md): sanitized fixtures for `accept`, `needs_review`, and `block`.
 - [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md) and [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): live proof summaries using `fixture_repair_proof`.
+- [Package demo walkthrough](docs/walkthroughs/package-demo.md): 90-second package-only script for `ai-workbench-demo` and the three PR-gate outcomes.
 - [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): recording-ready 3-5 minute public demo runbook.
 
 ## Docs Map

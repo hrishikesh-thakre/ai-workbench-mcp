@@ -4,6 +4,7 @@ This page is the public documentation map. New users should not need to read the
 
 ## Start Here
 
+- [Package demo walkthrough](walkthroughs/package-demo.md): shortest first look at `ai-workbench-demo` and the three PR-gate outcomes.
 - [How acceptance works](concepts/how-acceptance-works.md): the product model, MCP boundary, validation profiles, and quality gate.
 - [External repo setup](github/external-repo-setup.md): shortest path for adding the PR gate workflow to another repository.
 - [Goose acceptance demo](walkthroughs/goose-acceptance-demo.md): recording-ready public demo runbook.

@@ -32,6 +32,7 @@ PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
+PACKAGE_DEMO_WALKTHROUGH = ROOT / "docs" / "walkthroughs" / "package-demo.md"
 CODEX_WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "codex-acceptance-demo.md"
 PROOF_PACK = ROOT / "docs" / "proof" / "proof-pack-v0.2.md"
 GEMINI_FIXTURE_PROOF = ROOT / "docs" / "proof" / "gemini-fixture-accepted-run.md"
@@ -386,6 +387,18 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("revision_decision.json", text)
         self.assertIn("evidence-backed accepted runs", text)
         self.assertIn("## 5-Minute Quickstart", text)
+        self.assertIn("ai-workbench-demo --target ./workbench-first-run", text)
+        self.assertIn("python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run", text)
+        self.assertIn("./workbench-first-run/ai-workbench-demo/accepted/pr_decision.json      -> accept", text)
+        self.assertIn(
+            "./workbench-first-run/ai-workbench-demo/needs-review/pr_decision.json  -> needs_review",
+            text,
+        )
+        self.assertIn("./workbench-first-run/ai-workbench-demo/blocked/pr_decision.json       -> block", text)
+        self.assertIn("## What This Catches That CI Does Not", text)
+        self.assertIn("## CI vs AI Reviewer vs Workbench", text)
+        self.assertIn("| Question | CI | AI reviewer | Workbench |", text)
+        self.assertIn("docs/walkthroughs/package-demo.md", text)
         self.assertIn("## What MCP Does And Does Not Do", text)
         self.assertIn("## Prompt DoD vs Acceptance Gate", text)
         self.assertIn("## What Decides Acceptance", text)
@@ -436,6 +449,32 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("recipes/workbench-python-package-maintenance.yaml", text)
         self.assertIn("recipes/workbench-test-fix-acceptance.yaml", text)
         self.assertIn("low_risk_coding", text)
+
+    def test_package_demo_walkthrough_is_recording_ready(self) -> None:
+        readme_text = README.read_text(encoding="utf-8")
+        docs_index_text = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
+        walkthrough_text = PACKAGE_DEMO_WALKTHROUGH.read_text(encoding="utf-8")
+
+        self.assertIn("docs/walkthroughs/package-demo.md", readme_text)
+        self.assertIn("walkthroughs/package-demo.md", docs_index_text)
+        self.assertIn("Target length: 90 seconds to 2 minutes.", walkthrough_text)
+        self.assertIn("ai-workbench-demo --target ./workbench-first-run", walkthrough_text)
+        self.assertIn("python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run", walkthrough_text)
+        self.assertIn("./workbench-first-run/ai-workbench-demo/accepted/pr_decision.json      -> accept", walkthrough_text)
+        self.assertIn(
+            "./workbench-first-run/ai-workbench-demo/needs-review/pr_decision.json  -> needs_review",
+            walkthrough_text,
+        )
+        self.assertIn(
+            "./workbench-first-run/ai-workbench-demo/blocked/pr_decision.json       -> block",
+            walkthrough_text,
+        )
+        self.assertIn("synthetic fixture evidence", walkthrough_text)
+        self.assertIn("not a real target-repo acceptance run", walkthrough_text)
+        self.assertIn("does not need Goose, provider credentials, or a target repository", walkthrough_text)
+        self.assertIn("validation_report.json", walkthrough_text)
+        self.assertIn("revision_decision.json", walkthrough_text)
+        self.assertIn("Do not commit generated `runs/` evidence", walkthrough_text)
 
     def test_goose_tool_smoke_documents_slow_local_model_path(self) -> None:
         text = (ROOT / "examples" / "goose-tool-smoke" / "README.md").read_text(encoding="utf-8")
