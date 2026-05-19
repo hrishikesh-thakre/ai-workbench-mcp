@@ -21,6 +21,7 @@ replace those artifacts.
 - `configs/validation_profiles.yaml`
 - `docs/contracts/v0.3-contract-baseline.md`
 - `docs/dogfooding/phase5-final-report.md`
+- `docs/dogfooding/v0.4-policy-pack-validation-report.md`
 
 ## Rating Scale
 
@@ -83,7 +84,8 @@ task cleanly.
 
 Evidence quality is high when used correctly. Phase 5 repeatedly found focused
 test command failures and exact-diff failures to be useful deterministic
-signals, and the contract baseline keeps validation and quality-gate evidence
+signals, and the v0.4 closeout added a fresh accepted aggregate case for this
+pack. The contract baseline keeps validation and quality-gate evidence
 authoritative.
 
 ### `test_fix`
@@ -140,9 +142,11 @@ proof of safety.
 
 False-negative risk and setup friction are both high relative to the other
 packs. This is appropriate for the risk class: acceptable work may require
-manual review even after deterministic checks pass. Evidence quality is good,
-but not as complete as a full security assessment unless paired with review
-output and the normal validation plus quality-gate artifacts.
+manual review even after deterministic checks pass. The v0.4 closeout confirms
+that behavior with a fresh aggregate case: deterministic validation passed, and
+the quality gate still required security/privacy review. Evidence quality is
+good, but not as complete as a full security assessment unless paired with
+review output and the normal validation plus quality-gate artifacts.
 
 ## Cross-Pack Findings
 

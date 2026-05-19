@@ -12,7 +12,7 @@ It records the task, captures agent output, runs deterministic validation, appli
 
 Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host` and `response_source` evidence metadata.
 
-Current repo work is the v0.3 Semantic PR Acceptance Alpha release branch. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
+Current repo work is the v0.3 Semantic PR Acceptance Alpha release branch with v0.4 policy-pack productization closed out. `ai-workbench-mcp==0.3.0a0` is published and exact-version install verified on TestPyPI and PyPI. MCP Registry publication is complete for `0.3.0a0`.
 
 ## Before
 
@@ -296,7 +296,7 @@ The proof pack uses committed sanitized sample evidence under `examples/sample-r
 
 The v0.3 PR gate outcome demos are in [docs/proof/pr-gate-outcome-demos.md](docs/proof/pr-gate-outcome-demos.md) with sanitized fixtures under [examples/pr-gate-outcomes/](examples/pr-gate-outcomes/). They show `accept`, `needs_review`, and `block` decisions generated from Workbench evidence, not from private local run history. The same workflow has also been proven in the public external toy repository [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate), with durable proof records under [`proof-records/`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate/tree/main/proof-records).
 
-The v0.4 policy-pack productization summary is in [docs/dogfooding/v0.4-policy-pack-validation-report.md](docs/dogfooding/v0.4-policy-pack-validation-report.md). It records one real or sanitized case per first-class policy pack without committing raw `runs/` evidence.
+The v0.4 policy-pack productization closeout is in [docs/dogfooding/v0.4-policy-pack-validation-report.md](docs/dogfooding/v0.4-policy-pack-validation-report.md). It records one real or sanitized case per first-class policy pack, including fresh aggregate evidence for `low_risk_bug_fix` acceptance and `security_privacy_sensitive` review-required behavior, without committing raw `runs/` evidence.
 
 ## Sample Analytics Demo
 
@@ -462,7 +462,7 @@ python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out
 - `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
 - `v0.2.0-alpha`: focused recipe library and validation policy profiles.
 - Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.3 Semantic PR Acceptance Alpha with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, a completed external sample repo proof, and sanitized PR gate outcome demos.
+- Current: v0.4 policy-pack productization closeout on top of the v0.3 Semantic PR Acceptance Alpha, with real Workbench evidence PR decisions, scaffold-only blocking, five first-class policy packs, advisory policy-pack selection, copy-paste GitHub workflow template, bootstrap assets, external-repo setup docs, a completed external sample repo proof, and sanitized PR gate outcome demos.
 - Next: continue Checks API integration, fork-comment strategy, cost/time evidence, and stable v1 contract packaging.
 - `v1.0`: stable MCP contracts and recipe API.
 

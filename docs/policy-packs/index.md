@@ -52,3 +52,10 @@ Acceptance and PR-gate decisions also depend on:
 Committed docs and examples must avoid private run history, local absolute
 paths, provider secrets, private target-repo names, and raw provider logs.
 
+## Closeout Evidence
+
+The v0.4 productization closeout is summarized in
+[`docs/dogfooding/v0.4-policy-pack-validation-report.md`](../dogfooding/v0.4-policy-pack-validation-report.md).
+It records one real or sanitized case per pack, including fresh isolated
+closeout evidence for `low_risk_bug_fix` and `security_privacy_sensitive`,
+without committing raw `runs/` evidence.
