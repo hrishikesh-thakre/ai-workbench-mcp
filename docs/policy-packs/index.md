@@ -11,6 +11,11 @@ The first-class catalog lives in `configs/policy_packs.yaml`. Validation
 profiles keep their existing names in `configs/validation_profiles.yaml` and
 remain the recipe-facing selection surface.
 
+Version note: each pack still declares `version: v0.2` because that field
+identifies the policy metadata contract lineage. The v0.4 closeout
+productized, documented, and validated these packs without changing the
+machine-readable pack schema.
+
 ## Acceptance Rule
 
 Do not claim a run is accepted from policy-pack metadata, green CI, scaffold

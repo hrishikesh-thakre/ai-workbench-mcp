@@ -1,4 +1,6 @@
 schema_version: 1
+# Per-pack version tracks the policy metadata contract introduced in v0.2.
+# v0.4 productized and validated the catalog without changing that schema.
 policy_packs:
   docs_only:
     name: docs_only
