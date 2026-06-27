@@ -9,7 +9,7 @@ on:
         description: "pip package spec for the PR gate renderer."
         required: false
         type: string
-        default: "ai-workbench-mcp==0.6.0a0"
+        default: "ai-workbench-mcp==0.8.0a0"
       workbench_run_dir:
         description: "Path to a Workbench run directory containing validation_report.json and revision_decision.json."
         required: false
@@ -43,7 +43,7 @@ on:
         description: "pip package spec for the PR gate renderer."
         required: false
         type: string
-        default: "ai-workbench-mcp==0.6.0a0"
+        default: "ai-workbench-mcp==0.8.0a0"
       workbench_run_dir:
         description: "Path to a Workbench run directory containing validation_report.json and revision_decision.json."
         required: false
@@ -79,7 +79,7 @@ permissions:
   contents: read
 
 env:
-  AI_WORKBENCH_MCP_PACKAGE: ${{ inputs.ai_workbench_mcp_package || vars.AI_WORKBENCH_MCP_PACKAGE || 'ai-workbench-mcp==0.6.0a0' }}
+  AI_WORKBENCH_MCP_PACKAGE: ${{ inputs.ai_workbench_mcp_package || vars.AI_WORKBENCH_MCP_PACKAGE || 'ai-workbench-mcp==0.8.0a0' }}
   WORKBENCH_RUN_DIR: ${{ inputs.workbench_run_dir || vars.WORKBENCH_RUN_DIR || '' }}
   WORKBENCH_RUNS_DIR: ${{ inputs.workbench_runs_dir || vars.WORKBENCH_RUNS_DIR || '' }}
   WORKBENCH_RUN_ID: ${{ inputs.workbench_run_id || vars.WORKBENCH_RUN_ID || '' }}
@@ -248,26 +248,26 @@ jobs:
 
           if [[ -n "${WORKBENCH_RUN_DIR}" && -d "${WORKBENCH_RUN_DIR}" ]]; then
             echo "Rendering from WORKBENCH_RUN_DIR=${WORKBENCH_RUN_DIR}"
-            python -m ai_workbench_mcp.tools.pr_gate \
+            ai-workbench pr-gate \
               --run-dir "${WORKBENCH_RUN_DIR}" \
               --out "${out}" \
               --json-out "${decision}"
           elif [[ -n "${WORKBENCH_RUNS_DIR}" && -n "${WORKBENCH_RUN_ID}" && -d "${WORKBENCH_RUNS_DIR}/${WORKBENCH_RUN_ID}" ]]; then
             echo "Rendering from WORKBENCH_RUNS_DIR=${WORKBENCH_RUNS_DIR} and WORKBENCH_RUN_ID=${WORKBENCH_RUN_ID}"
-            python -m ai_workbench_mcp.tools.pr_gate \
+            ai-workbench pr-gate \
               --runs-dir "${WORKBENCH_RUNS_DIR}" \
               --run-id "${WORKBENCH_RUN_ID}" \
               --out "${out}" \
               --json-out "${decision}"
           elif [[ "${self_acceptance}" == "true" && -d "${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}" ]]; then
             echo "Rendering from opt-in self-acceptance run ${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}"
-            python -m ai_workbench_mcp.tools.pr_gate \
+            ai-workbench pr-gate \
               --run-dir "${WORKBENCH_SELF_ACCEPTANCE_RUN_DIR}" \
               --out "${out}" \
               --json-out "${decision}"
           else
             echo "No Workbench run directory was found. Rendering blocking missing/scaffold fallback from ${fallback_run_dir}."
-            python -m ai_workbench_mcp.tools.pr_gate \
+            ai-workbench pr-gate \
               --fallback-run-dir "${fallback_run_dir}" \
               --out "${out}" \
               --json-out "${decision}"

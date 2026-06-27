@@ -61,7 +61,7 @@ class WorkbenchRecipeTests(unittest.TestCase):
         text = RECIPE_PATH.read_text(encoding="utf-8")
 
         self.assertIn('title: "Workbench Engineering Acceptance"', text)
-        self.assertIn("cmd: \"ai-workbench-mcp\"", text)
+        self.assertIn("cmd: \"ai-workbench mcp serve\"", text)
         self.assertIn('name: "AI Workbench MCP"', text)
         self.assertIn('type: stdio', text)
         self.assertIn('timeout: 300', text)
@@ -104,7 +104,7 @@ class WorkbenchRecipeTests(unittest.TestCase):
         text = TOOL_SMOKE_RECIPE_PATH.read_text(encoding="utf-8")
 
         self.assertIn('title: "Workbench MCP Tool Smoke"', text)
-        self.assertIn("cmd: \"ai-workbench-mcp\"", text)
+        self.assertIn("cmd: \"ai-workbench mcp serve\"", text)
         self.assertIn('- "workbench_open_run"', text)
         self.assertIn('- "workbench_select_model"', text)
         self.assertIn("Call exactly these two tools", text)
@@ -134,7 +134,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
                 self.assertIn("parameters:", text)
                 self.assertIn("extensions:", text)
                 self.assertIn("instructions: |", text)
-                self.assertIn('cmd: "ai-workbench-mcp"', text)
+                self.assertIn('cmd: "ai-workbench mcp serve"', text)
                 self.assertIn('name: "AI Workbench MCP"', text)
                 self.assertIn("available_tools:", text)
                 self.assertIn(f'recipe="{recipe_path.name}"', text)
@@ -439,7 +439,7 @@ class WorkbenchRecipeDiscoveryTests(unittest.TestCase):
 
         self.assertIn("task_test_command", profile_data)
         self.assertTrue(profile_data["task_test_command"]["required"])
-        self.assertEqual(command_names, ["recipe_policy_discovery_tests", "validate_run_help"])
+        self.assertEqual(command_names, ["recipe_policy_discovery_tests", "validate_help"])
         self.assertNotIn("full_test_suite", command_names)
         self.assertIsInstance(policy, dict)
         self.assertIn("examples/**/*.py", policy.get("allowed_patterns", []))

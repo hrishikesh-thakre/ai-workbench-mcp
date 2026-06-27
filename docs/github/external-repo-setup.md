@@ -14,7 +14,7 @@ Install the package once and bootstrap the repository assets:
 
 ```bash
 pipx install ai-workbench-mcp
-ai-workbench-bootstrap --target .
+ai-workbench bootstrap --target .
 ```
 
 Bootstrap writes the AI Workbench starter assets into the target repository,
@@ -46,7 +46,7 @@ configure branch protection, or turn green CI into semantic acceptance.
 
    ```bash
    pipx install ai-workbench-mcp
-   ai-workbench-bootstrap --target .
+   ai-workbench bootstrap --target .
    ```
 
 2. Confirm the workflow now exists:
@@ -164,7 +164,7 @@ using scaffold evidence as an acceptance shortcut.
 
    ```bash
    pipx install ai-workbench-mcp
-   ai-workbench-bootstrap --target .
+   ai-workbench bootstrap --target .
    ```
 
 2. Confirm the run folder exists and has the two acceptance artifacts:
@@ -213,7 +213,7 @@ using scaffold evidence as an acceptance shortcut.
 
 ## Quick Checklist
 
-- `pipx install ai-workbench-mcp` and `ai-workbench-bootstrap --target .` have
+- `pipx install ai-workbench-mcp` and `ai-workbench bootstrap --target .` have
   been run, or the workflow was copied manually as a fallback.
 - The workflow template exists at `.github/workflows/ai-workbench-pr-gate.yml`.
 - `runs/` is ignored and raw Workbench evidence is not committed.

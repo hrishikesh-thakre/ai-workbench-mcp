@@ -101,8 +101,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_validation_profile(profile_name: str) -> ValidationProfile:
-    raw_data = load_simple_yaml(WORKBENCH_ROOT / "configs" / "validation_profiles.yaml")
+def load_validation_profile(profile_name: str, *, config_root: Path | None = None) -> ValidationProfile:
+    config_dir = (config_root or WORKBENCH_ROOT) / "configs"
+    raw_data = load_simple_yaml(config_dir / "validation_profiles.yaml")
     profiles = raw_data.get("profiles", {})
     if profile_name not in profiles:
         raise ValueError(f"Unknown validation profile: {profile_name}")
@@ -111,7 +112,9 @@ def load_validation_profile(profile_name: str) -> ValidationProfile:
     if not isinstance(profile_data, dict):
         raise ValueError(f"Validation profile must be a mapping: {profile_name}")
 
-    policy_pack = resolve_policy_pack_reference(profile_name, profile_data)
+    policy_pack_catalog_path = config_dir / "policy_packs.yaml"
+    policy_pack_catalog = load_policy_pack_catalog(policy_pack_catalog_path) if policy_pack_catalog_path.is_file() else None
+    policy_pack = resolve_policy_pack_reference(profile_name, profile_data, catalog=policy_pack_catalog)
 
     return ValidationProfile(
         name=profile_name,
@@ -1386,11 +1389,11 @@ def determine_exit_code(overall_status: str) -> int:
 
 
 def validate_run_payload(args: argparse.Namespace) -> dict[str, object]:
-    project = load_project_config(args.project)
+    project = load_project_config(args.project, allow_path=True)
     run_dir = resolve_cli_path(args.out_dir, project.root)
     run_dir.mkdir(parents=True, exist_ok=True)
     profile_name, profile_source = resolve_validation_profile_name(args.profile, run_dir, project.default_validation_profile)
-    profile = load_validation_profile(profile_name)
+    profile = load_validation_profile(profile_name, config_root=project.root)
     task_test_command = getattr(args, "task_test_command", None)
 
     commands_run, commands_not_run = run_profile_commands(project.root, profile, task_test_command=task_test_command)
@@ -1459,7 +1462,7 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    project = load_project_config(args.project)
+    project = load_project_config(args.project, allow_path=True)
     run_dir = resolve_cli_path(args.out_dir, project.root)
     report_path = run_dir / args.report_name
     report = validate_run_payload(args)

@@ -87,7 +87,7 @@ def build_codex_prompt(tool_run_dir: Path, acceptance_run_dir: Path) -> str:
 
         Safety:
         - Do not ask Codex to launch another Codex session.
-        - Do not start ai-workbench-mcp directly; use the MCP tools already registered in Codex.
+        - Do not start ai-workbench mcp serve directly; use the MCP tools already registered in Codex.
         - Do not delegate this to Codex cloud.
         - If a tool call hangs or fails unexpectedly, stop and report the failing step.
         - Do not reuse an existing run directory.
@@ -182,9 +182,9 @@ def main() -> int:
         return 1
     print("OK package import: ai_workbench_mcp")
 
-    server_command = shutil.which("ai-workbench-mcp")
+    server_command = shutil.which("ai-workbench")
     if server_command:
-        print("OK server command: ai-workbench-mcp")
+        print("OK server command: ai-workbench")
     else:
         print("WARN server command not found on PATH. Run: python -m pip install -e .")
 

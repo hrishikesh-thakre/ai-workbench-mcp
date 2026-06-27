@@ -46,8 +46,9 @@ class GoldenEvalTests(unittest.TestCase):
     def test_scaffold_profile_includes_public_wrapper_help(self) -> None:
         profile_text = (ROOT / "configs" / "validation_profiles.yaml").read_text(encoding="utf-8")
 
-        self.assertIn("golden_eval_help", profile_text)
-        self.assertIn("python tools/golden_eval.py --help", profile_text)
+        self.assertIn("golden_eval_module_help", profile_text)
+        self.assertIn("python -m ai_workbench_mcp.tools.golden_eval --help", profile_text)
+        self.assertNotIn("python tools/golden_eval.py --help", profile_text)
 
     def test_root_wrapper_help_works(self) -> None:
         result = run_golden_eval("--help")

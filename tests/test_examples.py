@@ -29,6 +29,7 @@ GOLDEN_CASE_GUIDE = ROOT / "docs" / "evals" / "golden-case-harness.md"
 PR_GATE_GUIDE = ROOT / "docs" / "github" / "pr-gate.md"
 LAUNCH_ISSUES = ROOT / "docs" / "github" / "launch-issues.md"
 PYPI_GUIDE = ROOT / "docs" / "publishing" / "pypi.md"
+SUPERVISOR_RELEASE_READINESS = ROOT / "docs" / "supervisor" / "release-readiness.md"
 TOPICS_GUIDE = ROOT / "docs" / "github" / "repository-topics.md"
 CREATE_ISSUES_GUIDE = ROOT / "docs" / "github" / "create-launch-issues.md"
 WALKTHROUGH_GUIDE = ROOT / "docs" / "walkthroughs" / "goose-acceptance-demo.md"
@@ -271,7 +272,9 @@ class PublicExamplesTests(unittest.TestCase):
                     result = subprocess.run(
                         [
                             sys.executable,
-                            "tools/pr_gate.py",
+                            "-m",
+                            "ai_workbench_mcp.cli",
+                            "pr-gate",
                             "--run-dir",
                             str(evidence_dir),
                             "--out",
@@ -375,40 +378,28 @@ class PublicExamplesTests(unittest.TestCase):
     def test_readme_product_page_references_quickstart_tools_recipe_and_sample_run(self) -> None:
         text = README.read_text(encoding="utf-8")
 
-        self.assertIn("Acceptance gates for AI coding-agent runs.", text)
-        self.assertIn("Works with Goose today. Designed as a host-agnostic acceptance layer", text)
-        self.assertIn("## Before", text)
-        self.assertIn('The agent says: "Done."', text)
-        self.assertIn("## After", text)
-        self.assertIn("AI Workbench shows:", text)
-        self.assertLess(text.index("runs/example/"), text.index("## 5-Minute Quickstart"))
+        self.assertIn("AI Workbench supervises AI coding agents, captures evidence, validates work", text)
+        self.assertIn("The PyPI package remains `ai-workbench-mcp`", text)
+        self.assertIn("## Architecture", text)
+        self.assertIn("AI Workbench supervisor captures local evidence.", text)
+        self.assertIn("AI Workbench validation writes `validation_report.json`.", text)
+        self.assertIn("AI Workbench quality gate writes `revision_decision.json`.", text)
+        self.assertIn("Agent output is a proposal. Workbench accepts evidence.", text)
+        self.assertLess(text.index("runs/<run_id>/"), text.index("## Codex Hooks"))
         self.assertIn("task_metadata.json", text)
         self.assertIn("validation_report.json", text)
         self.assertIn("revision_decision.json", text)
-        self.assertIn("evidence-backed accepted runs", text)
-        self.assertIn("## 5-Minute Quickstart", text)
-        self.assertIn("ai-workbench-demo --target ./workbench-first-run", text)
-        self.assertIn("python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run", text)
-        self.assertIn("./workbench-first-run/ai-workbench-demo/accepted/pr_decision.json      -> accept", text)
-        self.assertIn(
-            "./workbench-first-run/ai-workbench-demo/needs-review/pr_decision.json  -> needs_review",
-            text,
-        )
-        self.assertIn("./workbench-first-run/ai-workbench-demo/blocked/pr_decision.json       -> block", text)
-        self.assertIn("## What This Catches That CI Does Not", text)
-        self.assertIn("## CI vs AI Reviewer vs Workbench", text)
-        self.assertIn("| Question | CI | AI reviewer | Workbench |", text)
-        self.assertIn("docs/walkthroughs/package-demo.md", text)
-        self.assertIn("## What MCP Does And Does Not Do", text)
-        self.assertIn("## Prompt DoD vs Acceptance Gate", text)
-        self.assertIn("## What Decides Acceptance", text)
-        self.assertIn("MCP is the connection protocol.", text)
-        self.assertIn("AI Workbench MCP is the tool server.", text)
-        self.assertIn("Acceptance is decided by the selected validation profile and quality gate.", text)
-        self.assertIn("The agent performs. Workbench accepts. MCP connects them.", text)
+        self.assertIn("## Quick Start", text)
+        self.assertIn("ai-workbench supervisor setup --project-dir . --task-type code_change", text)
+        self.assertIn("ai-workbench supervisor start", text)
+        self.assertIn("ai-workbench reports show latest --project-dir .", text)
+        self.assertIn("ai-workbench pr-gate --run-dir runs/<run_id>", text)
+        self.assertIn("ai-workbench demo --target ./workbench-first-run", text)
+        self.assertIn("## PR Gate", text)
+        self.assertIn("## Goose MCP", text)
+        self.assertIn("ai-workbench mcp serve", text)
         self.assertIn("docs/concepts/how-acceptance-works.md", text)
-        self.assertIn("## Seven MCP Tools", text)
-        self.assertIn("## Workflow", text)
+        self.assertIn("The seven MCP tools remain:", text)
         self.assertIn("workbench_open_run", text)
         self.assertIn("workbench_select_policy_pack", text)
         self.assertIn("workbench_select_model", text)
@@ -416,39 +407,39 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("workbench_validate_run", text)
         self.assertIn("workbench_quality_gate", text)
         self.assertIn("workbench_analyze_runs", text)
+        self.assertIn("docs/supervisor/automated-evidence-supervisor.md", text)
+        self.assertIn("docs/supervisor/evidence-folder-contract.md", text)
         self.assertIn("recipes/workbench-engineering-acceptance.yaml", text)
         self.assertIn("recipes/workbench-mcp-tool-smoke.yaml", text)
-        self.assertIn("examples/goose-tool-smoke", text)
         self.assertIn("docs/codex/setup.md", text)
-        self.assertIn("docs/codex/acceptance-workflow.md", text)
-        self.assertIn("docs/codex/agents-snippet.md", text)
-        self.assertIn("docs/codex/cloud-limitations.md", text)
-        self.assertIn("docs/codex/live-test-handoff.md", text)
-        self.assertIn("checks the resulting Codex evidence folders", text)
         self.assertIn("docs/walkthroughs/codex-acceptance-demo.md", text)
-        self.assertIn("examples/codex-tool-smoke", text)
-        self.assertIn("examples/codex-acceptance-smoke", text)
-        self.assertIn('execution_host="codex"', text)
-        self.assertIn('response_source="codex"', text)
-        self.assertIn("examples/focused-workflows", text)
+        self.assertIn("docs/walkthroughs/package-demo.md", text)
         self.assertIn("examples/sample-runs/accepted-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-codex-tiny-python-fix", text)
         self.assertIn("examples/sample-runs/accepted-docs-only-smoke", text)
         self.assertIn("examples/sample-runs/needs-review-test-fix", text)
-        self.assertIn("docs/proof/gemini-fixture-accepted-run.md", text)
-        self.assertIn("docs/proof/codex-fixture-accepted-run.md", text)
         self.assertIn("docs/analytics/acceptance-analytics.md", text)
         self.assertIn("docs/analytics/event-ledger.md", text)
         self.assertIn("docs/policy-packs/", text)
-        self.assertIn("docs/dogfooding/v0.4-policy-pack-validation-report.md", text)
-        self.assertIn("docs/configuration/model-registry.md", text)
-        self.assertIn("docs/dogfooding/phase5-dogfooding.md", text)
         self.assertIn("docs/github/pr-gate.md", text)
-        self.assertIn("docs/github/launch-issues.md", text)
         self.assertIn("recipes/workbench-docs-only-acceptance.yaml", text)
         self.assertIn("recipes/workbench-python-package-maintenance.yaml", text)
         self.assertIn("recipes/workbench-test-fix-acceptance.yaml", text)
-        self.assertIn("low_risk_coding", text)
+
+    def test_supervisor_release_readiness_uses_current_public_alpha_release_path(self) -> None:
+        text = SUPERVISOR_RELEASE_READINESS.read_text(encoding="utf-8")
+
+        self.assertIn("ai-workbench-mcp==0.8.0a0", text)
+        self.assertIn("Fresh wheel smoke", text)
+        self.assertIn("Clean-adopter smoke", text)
+        self.assertIn("HOOKS_OBSERVED", text)
+        self.assertIn("python -m pip install --index-url https://test.pypi.org/simple/", text)
+        self.assertIn('"ai-workbench-mcp==0.8.0a0"', text)
+        self.assertIn("git tag v0.8.0a0", text)
+        self.assertIn("Repository: `ai-workbench-mcp`", text)
+        self.assertNotIn("AI Workbench\n", text)
+        self.assertNotIn("v0.4.0a1", text)
+        self.assertNotIn("node scripts/smoke-test.mjs", text)
 
     def test_package_demo_walkthrough_is_recording_ready(self) -> None:
         readme_text = README.read_text(encoding="utf-8")
@@ -458,8 +449,8 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("docs/walkthroughs/package-demo.md", readme_text)
         self.assertIn("walkthroughs/package-demo.md", docs_index_text)
         self.assertIn("Target length: 90 seconds to 2 minutes.", walkthrough_text)
-        self.assertIn("ai-workbench-demo --target ./workbench-first-run", walkthrough_text)
-        self.assertIn("python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run", walkthrough_text)
+        self.assertIn("ai-workbench demo --target ./workbench-first-run", walkthrough_text)
+        self.assertNotIn("python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run", walkthrough_text)
         self.assertIn("./workbench-first-run/ai-workbench-demo/accepted/pr_decision.json      -> accept", walkthrough_text)
         self.assertIn(
             "./workbench-first-run/ai-workbench-demo/needs-review/pr_decision.json  -> needs_review",
@@ -710,13 +701,16 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("cost evidence: capture provider token and cost metadata", launch_text)
         self.assertIn("ci: prototype PR acceptance gate", launch_text)
         self.assertNotIn("before the v0.1 alpha announcement", launch_text)
-        self.assertIn("Release target: `ai-workbench-mcp==0.7.0a0`", pypi_text)
+        self.assertIn("Release target: `ai-workbench-mcp==0.8.0a0`", pypi_text)
         self.assertIn("latest published package before this release target is", pypi_text)
         self.assertIn("`ai-workbench-mcp==0.6.0a0`", pypi_text)
         self.assertIn("`ai-workbench-mcp==0.3.0a0`", pypi_text)
         self.assertIn("latest historical verified publication before the v0.3 release", pypi_text)
         self.assertIn("code/server only", pypi_text)
         self.assertIn("python -m twine check $dist/*", pypi_text)
+        self.assertIn("Clean-adopter smoke before release approval", pypi_text)
+        self.assertIn("ai-workbench reports show latest --project-dir . --json", pypi_text)
+        self.assertIn("HOOKS_OBSERVED", pypi_text)
         self.assertIn("TestPyPI upload, PyPI upload, and exact-version install proof also", pypi_text)
         self.assertIn("no TestPyPI dry run has been completed for", pypi_text)
         self.assertIn("no PyPI release has been completed for", pypi_text)
@@ -728,7 +722,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("TestPyPI dry run completed for `ai-workbench-mcp==0.2.0a0`", pypi_text)
         self.assertIn("https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/", pypi_text)
         self.assertIn('"ai-workbench-mcp==0.6.0a0"', pypi_text)
-        self.assertIn('"ai-workbench-mcp==0.7.0a0"', pypi_text)
+        self.assertIn('"ai-workbench-mcp==0.8.0a0"', pypi_text)
         self.assertIn("PyPI release completed for `ai-workbench-mcp==0.6.0a0`", pypi_text)
         self.assertIn("https://pypi.org/project/ai-workbench-mcp/0.6.0a0/", pypi_text)
         self.assertIn("Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.", pypi_text)
@@ -794,7 +788,7 @@ class PublicExamplesTests(unittest.TestCase):
         self.assertIn("MCP does not decide acceptance; Workbench validation profiles and quality gates do.", walkthrough_text)
         self.assertIn("Do not commit `runs/demo-tiny-python-fix/`", walkthrough_text)
         self.assertIn("Codex Acceptance Demo Walkthrough", codex_walkthrough_text)
-        self.assertIn("Do not run `ai-workbench-mcp` directly", codex_walkthrough_text)
+        self.assertIn("Do not run `ai-workbench mcp serve` directly", codex_walkthrough_text)
         self.assertIn("ask Codex to launch another Codex session", codex_walkthrough_text)
         self.assertIn("runs/codex-local-demo/tool-smoke", codex_walkthrough_text)
         self.assertIn("runs/codex-local-demo/tiny-python-fix", codex_walkthrough_text)
@@ -817,7 +811,7 @@ class PublicExamplesTests(unittest.TestCase):
             for path in (CODEX_TOOL_SMOKE, CODEX_ACCEPTANCE_SMOKE)
         )
 
-        self.assertIn("ai-workbench-mcp", docs_text)
+        self.assertIn("ai-workbench mcp serve", docs_text)
         self.assertIn("one shared MCP server", docs_text)
         self.assertIn('execution_host="codex"', docs_text)
         self.assertIn('response_source="codex"', docs_text)

@@ -1,8 +1,8 @@
 # PyPI Publishing Prep
 
-Release target: `ai-workbench-mcp==0.7.0a0`.
+Release target: `ai-workbench-mcp==0.8.0a0`.
 
-`0.7.0a0` is the current unpublished source package target. This pass must not
+`0.8.0a0` is the current unpublished source package target. This pass must not
 upload to TestPyPI, PyPI, or MCP Registry without explicit release approval.
 
 Historical local release-readiness validation for `0.6.0a0` completed on 2026-05-19:
@@ -24,13 +24,13 @@ This guide records the package boundary and release checklist. Recheck the proje
 
 ## Current Package Boundary
 
-The current source tree installs the `ai_workbench_mcp` package and these
-console scripts:
+The current source tree installs the `ai_workbench_mcp` package and one public
+console script:
 
-- `ai-workbench-mcp`
-- `ai-workbench-bootstrap`
-- `ai-workbench-bootstrap-assets`
-- `ai-workbench-demo`
+- `ai-workbench`
+
+Use `ai-workbench mcp serve`, `ai-workbench bootstrap`, and
+`ai-workbench demo` for the former separate command surfaces.
 
 The published v0.6 adoption package installs `ai-workbench-mcp`,
 `ai-workbench-bootstrap`, and `ai-workbench-bootstrap-assets`. It does not
@@ -64,7 +64,7 @@ python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir .
 The console-script equivalent is:
 
 ```powershell
-ai-workbench-bootstrap-assets --target-dir .
+ai-workbench bootstrap --target .
 ```
 
 The compatibility bootstrap command writes `configs/`, `prompts/`, and `recipes/` under the target directory. Existing files are left untouched unless `--force` is supplied:
@@ -73,10 +73,10 @@ The compatibility bootstrap command writes `configs/`, `prompts/`, and `recipes/
 python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir . --force
 ```
 
-For the v0.6 external-repository adoption path, use:
+For the current external-repository adoption path, use:
 
 ```powershell
-ai-workbench-bootstrap --target .
+ai-workbench bootstrap --target .
 ```
 
 That command writes `configs/`, `prompts/`, `recipes/`, `.github/workflows/ai-workbench-pr-gate.yml`, `docs/ai-workbench-pr-gate.md`, and ensures `.gitignore` contains `runs/`.
@@ -104,7 +104,7 @@ python -m pip install -e ".[dev,publish]"
 Build artifacts to a clean, release-specific output directory:
 
 ```powershell
-$dist = "$env:TEMP\ai-workbench-mcp-0.7.0a0-dist"
+$dist = "$env:TEMP\ai-workbench-mcp-0.8.0a0-dist"
 Remove-Item -Recurse -Force $dist -ErrorAction SilentlyContinue
 python -m build --outdir $dist
 ```
@@ -127,9 +127,8 @@ Smoke the wheel:
 ```powershell
 python -m pip install --force-reinstall (Get-ChildItem $dist\*.whl | Select-Object -First 1).FullName
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
-python -m ai_workbench_mcp.tools.bootstrap_assets --target-dir $env:TEMP\ai-workbench-mcp-assets-smoke --groups configs --force
-ai-workbench-bootstrap --target $env:TEMP\ai-workbench-mcp-bootstrap-smoke --force
-python -m ai_workbench_mcp.tools.demo --target $env:TEMP\ai-workbench-mcp-demo-smoke
+ai-workbench bootstrap --target $env:TEMP\ai-workbench-mcp-bootstrap-smoke --force
+ai-workbench demo --target $env:TEMP\ai-workbench-mcp-demo-smoke
 ```
 
 Fresh virtual environment smoke:
@@ -139,22 +138,29 @@ python -m venv $env:TEMP\ai-workbench-mcp-wheel-smoke
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install --upgrade pip
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m pip install (Get-ChildItem $dist\*.whl | Select-Object -First 1).FullName
 & "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-mcp.exe').exists() or (scripts/'ai-workbench-mcp').exists()"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-bootstrap.exe').exists() or (scripts/'ai-workbench-bootstrap').exists()"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-bootstrap-assets.exe').exists() or (scripts/'ai-workbench-bootstrap-assets').exists()"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench-demo.exe').exists() or (scripts/'ai-workbench-demo').exists()"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m ai_workbench_mcp.tools.bootstrap_assets --target-dir "$env:TEMP\ai-workbench-mcp-wheel-assets" --groups configs --force
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\ai-workbench-bootstrap.exe" --target "$env:TEMP\ai-workbench-mcp-wheel-bootstrap" --force
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m ai_workbench_mcp.tools.demo --target "$env:TEMP\ai-workbench-mcp-wheel-demo"
-& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -m ai_workbench_mcp.tools.pr_gate --fallback-run-dir "$env:TEMP\ai-workbench-missing-evidence" --out "$env:TEMP\ai-workbench-mcp-wheel-pr-gate\pr_comment.md" --json-out "$env:TEMP\ai-workbench-mcp-wheel-pr-gate\pr_decision.json"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\python.exe" -c "from pathlib import Path; import sys; scripts=Path(sys.executable).parent; assert (scripts/'ai-workbench.exe').exists() or (scripts/'ai-workbench').exists(); assert not (scripts/'ai-workbench-mcp.exe').exists(); assert not (scripts/'ai-workbench-bootstrap.exe').exists(); assert not (scripts/'ai-workbench-bootstrap-assets.exe').exists(); assert not (scripts/'ai-workbench-demo.exe').exists()"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\ai-workbench.exe" bootstrap --target "$env:TEMP\ai-workbench-mcp-wheel-bootstrap" --force
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\ai-workbench.exe" demo --target "$env:TEMP\ai-workbench-mcp-wheel-demo"
+& "$env:TEMP\ai-workbench-mcp-wheel-smoke\Scripts\ai-workbench.exe" pr-gate --fallback-run-dir "$env:TEMP\ai-workbench-missing-evidence" --out "$env:TEMP\ai-workbench-mcp-wheel-pr-gate\pr_comment.md" --json-out "$env:TEMP\ai-workbench-mcp-wheel-pr-gate\pr_decision.json"
 ```
 
-Do not run `ai-workbench-mcp` directly as a smoke command. It is a stdio MCP server entrypoint, not a normal help-printing CLI.
+Do not run `ai-workbench mcp serve` directly as a smoke command. It is a stdio MCP server entrypoint, not a normal help-printing CLI.
+
+Clean-adopter smoke before release approval:
+
+1. Install the built wheel in a fresh virtual environment.
+2. Bootstrap a fresh Git repository with `ai-workbench bootstrap --target .`.
+3. From that repository, run `ai-workbench validate --project . --profile scaffold --run-dir runs/scaffold-smoke`.
+4. Register supervisor capture with `ai-workbench supervisor setup --project-dir . --task-type audit`.
+5. Install Codex hooks with `ai-workbench setup codex --project-dir . --task-type audit`.
+6. Simulate or run a hook-observed session and confirm `ai-workbench supervisor status --json` reports `HOOKS_OBSERVED`.
+7. Confirm `ai-workbench reports show latest --project-dir . --json` reads canonical `validation_report.json` and `revision_decision.json`.
+8. Render `ai-workbench pr-gate --run-dir runs/<run_id>` and verify the outcome matches the canonical Workbench artifacts.
 
 ## TestPyPI Dry Run
 
 Status: no TestPyPI dry run has been completed for
-`ai-workbench-mcp==0.7.0a0`. Do not upload this version without explicit release
+`ai-workbench-mcp==0.8.0a0`. Do not upload this version without explicit release
 approval.
 
 Historical status: TestPyPI dry run completed for `ai-workbench-mcp==0.6.0a0` on
@@ -195,7 +201,7 @@ https://test.pypi.org/project/ai-workbench-mcp/0.2.0a0/
 The historical rehearsal verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to TestPyPI, and an exact-version install smoke from TestPyPI with PyPI as the dependency fallback.
 
 Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`. The
-`0.7.0a0` upload is not approved by this prep pass. Future TestPyPI dry runs
+`0.8.0a0` upload is not approved by this prep pass. Future TestPyPI dry runs
 require a fresh existence check and explicit release intent. Only run this after
 confirming credentials and release approval. Do not use `--skip-existing`:
 
@@ -206,17 +212,14 @@ python -m twine upload --repository testpypi --non-interactive dist/*
 Then verify installation in a fresh environment:
 
 ```powershell
-python -m pip install --no-cache-dir --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "ai-workbench-mcp==0.7.0a0"
+python -m pip install --no-cache-dir --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "ai-workbench-mcp==0.8.0a0"
 python -c "import ai_workbench_mcp; from ai_workbench_mcp import server"
-python -c "import shutil; assert shutil.which('ai-workbench-mcp')"
-python -c "import shutil; assert shutil.which('ai-workbench-bootstrap')"
-python -c "import shutil; assert shutil.which('ai-workbench-bootstrap-assets')"
-python -c "import shutil; assert shutil.which('ai-workbench-demo')"
+python -c "import shutil; assert shutil.which('ai-workbench')"
 ```
 
 ## PyPI Upload
 
-Status: no PyPI release has been completed for `ai-workbench-mcp==0.7.0a0`.
+Status: no PyPI release has been completed for `ai-workbench-mcp==0.8.0a0`.
 Do not upload this version without explicit release approval.
 
 Historical status: PyPI release completed for `ai-workbench-mcp==0.6.0a0` on 2026-05-19.
@@ -255,7 +258,7 @@ https://pypi.org/project/ai-workbench-mcp/0.2.0a0/
 The historical release verified fresh artifacts, `twine check`, a local wheel smoke in a fresh virtual environment, upload to PyPI, and an exact-version install smoke from PyPI.
 
 Do not rerun the upload for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`. The
-`0.7.0a0` upload is not approved by this prep pass. Future PyPI uploads require
+`0.8.0a0` upload is not approved by this prep pass. Future PyPI uploads require
 TestPyPI verification, final version review, and explicit release approval:
 
 ```powershell
@@ -271,7 +274,7 @@ python -m pip install ai-workbench-mcp==0.6.0a0
 ## MCP Registry Prep
 
 Status: no MCP Registry publication has been completed for
-`io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.7.0a0`. The latest
+`io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.8.0a0`. The latest
 published registry version remains `0.6.0a0`.
 
 Historical status: MCP Registry publication completed for `io.github.hrishikesh-thakre/ai-workbench-mcp` version `0.6.0a0` on 2026-05-19.
@@ -292,7 +295,7 @@ Registry publication remains separate from package release. For the PyPI package
 Do not upload to TestPyPI or PyPI as part of registry metadata maintenance.
 
 Do not rerun `mcp-publisher publish` for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.
-Do not publish `0.7.0a0` registry metadata until the matching package version is
+Do not publish `0.8.0a0` registry metadata until the matching package version is
 published and the release is explicitly approved. Future registry updates
 require `mcp-publisher publish --file server.json --dry-run`, explicit approval,
 and `mcp-publisher publish --file server.json`. Do not upload to TestPyPI or

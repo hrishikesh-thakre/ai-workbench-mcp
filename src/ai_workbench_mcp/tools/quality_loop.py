@@ -60,8 +60,8 @@ def write_json(file_path: Path, payload: dict[str, object]) -> None:
     file_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def load_quality_config() -> dict[str, object]:
-    config_path = WORKBENCH_ROOT / "configs" / "quality_loop.yaml"
+def load_quality_config(config_root: Path | None = None) -> dict[str, object]:
+    config_path = (config_root or WORKBENCH_ROOT) / "configs" / "quality_loop.yaml"
     if not config_path.exists():
         return {}
     raw_config = load_simple_yaml(config_path)
@@ -534,7 +534,7 @@ def promote_revision(project_key: str, run_dir: Path) -> dict[str, object]:
 
 
 def quality_gate_payload(args: argparse.Namespace) -> dict[str, object]:
-    project = load_project_config(args.project)
+    project = load_project_config(args.project, allow_path=True)
     run_dir = resolve_cli_path(args.run_dir, project.root)
     model_output_path = run_dir / "model_output.md"
     validation_path = resolve_cli_path(args.validation_report, project.root) if args.validation_report else run_dir / "validation_report.json"
@@ -573,7 +573,7 @@ def quality_gate_payload(args: argparse.Namespace) -> dict[str, object]:
         write_json(decision_path, decision)
         return decision
 
-    config = load_quality_config()
+    config = load_quality_config(project.root)
     if args.mode == "auto":
         loop_type, reason, blocking, non_blocking = determine_auto_trigger(
             run_dir=run_dir,
@@ -638,7 +638,7 @@ def main() -> int:
     except Exception as exc:
         if args.mode == "promote_revision" and isinstance(exc, (FileNotFoundError, RuntimeError)):
             try:
-                project = load_project_config(args.project)
+                project = load_project_config(args.project, allow_path=True)
                 run_dir = resolve_cli_path(args.run_dir, project.root)
                 decision_path = run_dir / "revision_decision.json"
                 decision = base_decision(
@@ -660,7 +660,7 @@ def main() -> int:
         print(str(exc))
         return 1
 
-    project = load_project_config(args.project)
+    project = load_project_config(args.project, allow_path=True)
     run_dir = resolve_cli_path(args.run_dir, project.root)
     review_prompt_path = resolve_cli_path(args.review_prompt, project.root) if args.review_prompt else run_dir / "review_prompt.md"
     decision_path = run_dir / "revision_decision.json"

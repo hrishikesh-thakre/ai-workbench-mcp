@@ -29,9 +29,9 @@ ACCEPTANCE_EVIDENCE_MISSING_NEXT_ACTION = (
     "revision_decision.json, then regenerate the PR gate artifact."
 )
 ACCEPTANCE_EVIDENCE_RECOVERY_STEPS = (
-    "python -m ai_workbench_mcp.tools.validate_run --project <project> --profile <validation_profile> --out-dir runs/<run_id>",
-    "python -m ai_workbench_mcp.tools.quality_loop --project <project> --run-dir runs/<run_id> --mode auto",
-    "python -m ai_workbench_mcp.tools.pr_gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+    "ai-workbench validate --project <project> --profile <validation_profile> --run-dir runs/<run_id>",
+    "ai-workbench gate --project <project> --run-dir runs/<run_id> --mode auto",
+    "ai-workbench pr-gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
 )
 ACCEPTANCE_EVIDENCE_RECOVERY_ARTIFACTS = tuple(file_name for _label, file_name in STANDARD_EVIDENCE)
 SCAFFOLD_PROFILES = {"scaffold"}
@@ -286,10 +286,12 @@ def first_reason_summary(*payloads: dict[str, object]) -> str | None:
 
 
 def failed_command_reason(report: dict[str, object]) -> str | None:
+    blocking_statuses = {"blocked", "failed", "timeout"}
     for command in list_from(report.get("commands_run")):
         command_data = dict_from(command)
-        if command_data.get("required") is True and command_data.get("status") == "failed":
-            return f"Required validation command failed: {command_data.get('name', 'unknown')}."
+        status = str(command_data.get("status", ""))
+        if command_data.get("required") is True and status in blocking_statuses:
+            return f"Required validation command {status}: {command_data.get('name', 'unknown')}."
     for command in list_from(report.get("commands_not_run")):
         command_data = dict_from(command)
         name = command_data.get("name", "unknown")
@@ -371,6 +373,8 @@ def decision_from_evidence(
     source_label = source_run_dir or safe_source_label(run_dir)
     missing_acceptance_artifact = not validation_read.present or not decision_read.present
 
+    validation_block_statuses = {"blocked", "failed", "timeout"}
+    command_block_reason = failed_command_reason(report)
     if validation_read.error is None and is_scaffold_only_evidence(report, evidence_source):
         return acceptance_evidence_missing_decision(
             run_dir=run_dir,
@@ -387,25 +391,38 @@ def decision_from_evidence(
         if missing_acceptance_artifact:
             reason_codes = append_reason_code(reason_codes, ACCEPTANCE_EVIDENCE_MISSING_CODE)
             next_action = ACCEPTANCE_EVIDENCE_MISSING_NEXT_ACTION
-    elif validation_status == "passed" and report.get("sign_off_ready") is True and quality_gate_status == "accepted":
-        outcome = "accept"
-        reason = first_reason_summary(decision, report) or "Validation passed and the quality gate accepted the run."
-        next_action = str(decision.get("next_action") or default_next_action(outcome))
-    elif validation_status == "failed" or quality_gate_status == "revision_required" or has_blocker_reason_source(report, decision):
+    elif (
+        validation_status in validation_block_statuses
+        or quality_gate_status == "revision_required"
+        or has_blocker_reason_source(report, decision)
+        or command_block_reason
+    ):
         blocker_reason = first_blocker_reason_summary(report, decision)
+        command_reason_should_win = (
+            command_block_reason
+            and validation_status not in validation_block_statuses
+            and quality_gate_status != "revision_required"
+        )
         outcome = "block"
         reason = (
-            (
+            (blocker_reason if validation_status in validation_block_statuses else None)
+            or (
                 blocker_reason
-                if validation_status != "failed" and quality_gate_status != "revision_required"
+                if validation_status not in validation_block_statuses
+                and quality_gate_status != "revision_required"
                 else None
             )
+            or (command_block_reason if command_reason_should_win else None)
             or str(decision.get("reason") or "").strip()
             or blocker_reason
             or first_reason_summary(report, decision)
-            or failed_command_reason(report)
+            or command_block_reason
             or "Workbench evidence contains blocker findings."
         )
+        next_action = str(decision.get("next_action") or default_next_action(outcome))
+    elif validation_status == "passed" and report.get("sign_off_ready") is True and quality_gate_status == "accepted":
+        outcome = "accept"
+        reason = first_reason_summary(decision, report) or "Validation passed and the quality gate accepted the run."
         next_action = str(decision.get("next_action") or default_next_action(outcome))
     elif validation_status == "needs_review" or quality_gate_status == "review_required":
         outcome = "needs_review"

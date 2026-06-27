@@ -55,7 +55,7 @@ You can verify that the renderer is wired without claiming semantic acceptance:
 
 ```bash
 mkdir -p runs/pr_gate
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --fallback-run-dir runs/ai_workbench_missing_evidence \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json

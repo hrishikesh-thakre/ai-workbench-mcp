@@ -56,14 +56,14 @@ Reason codes: docs_only.required_tests_passed, docs_only.accepted
 ## Minimal command
 
 ```bash
-python tools/validate_run.py --project ai_workbench_mcp --profile docs_only --out-dir runs/<run_id> --changed-files docs/<changed_doc>.md
-python tools/quality_loop.py --run-dir runs/<run_id>
+ai-workbench validate --project ai_workbench_mcp --profile docs_only --run-dir runs/<run_id> --changed-file docs/<changed_doc>.md
+ai-workbench gate --project ai_workbench_mcp --run-dir runs/<run_id>
 ```
 
 For PR rendering, point the PR gate at that completed run:
 
 ```bash
-python tools/pr_gate.py --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
+ai-workbench pr-gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
 ```
 
 ## Common failure modes

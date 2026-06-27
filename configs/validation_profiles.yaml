@@ -1,64 +1,99 @@
 profiles:
   scaffold:
-    description: Smoke validation for the extracted Workbench core.
+    description: Installable public CLI smoke validation for the Workbench package.
     commands:
-      - name: model_select_help
-        command: python tools/model_select.py --help
+      - name: cli_help
+        command: python -m ai_workbench_mcp.cli --help
         cwd: .
         required: true
         weight: 1.0
-      - name: model_handoff_help
-        command: python tools/model_handoff.py --help
+      - name: mcp_serve_help
+        command: python -m ai_workbench_mcp.cli mcp serve --help
         cwd: .
         required: true
         weight: 1.0
-      - name: validate_run_help
-        command: python tools/validate_run.py --help
+      - name: bootstrap_help
+        command: python -m ai_workbench_mcp.cli bootstrap --help
         cwd: .
         required: true
         weight: 1.0
-      - name: run_log_help
-        command: python tools/run_log.py --help
+      - name: demo_help
+        command: python -m ai_workbench_mcp.cli demo --help
         cwd: .
         required: true
         weight: 1.0
-      - name: quality_loop_help
-        command: python tools/quality_loop.py --help
+      - name: validate_help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0
-      - name: run_analyze_help
-        command: python tools/run_analyze.py --help
+      - name: gate_help
+        command: python -m ai_workbench_mcp.cli gate --help
         cwd: .
         required: true
         weight: 1.0
-      - name: golden_eval_help
-        command: python tools/golden_eval.py --help
+      - name: pr_gate_help
+        command: python -m ai_workbench_mcp.cli pr-gate --help
         cwd: .
         required: true
         weight: 1.0
-      - name: policy_pack_select_help
-        command: python tools/policy_pack_select.py --help
+      - name: supervisor_status_help
+        command: python -m ai_workbench_mcp.cli supervisor status --help
         cwd: .
         required: true
         weight: 1.0
-      - name: codex_live_handoff_help
-        command: python tools/codex_live_test_handoff.py --help
+      - name: setup_codex_help
+        command: python -m ai_workbench_mcp.cli setup codex --help
         cwd: .
         required: true
         weight: 1.0
-      - name: codex_live_result_check_help
-        command: python tools/check_codex_live_result.py --help
+      - name: reports_show_help
+        command: python -m ai_workbench_mcp.cli reports show --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: opencode_watch_help
+        command: python -m ai_workbench_mcp.cli opencode watch --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: model_select_module_help
+        command: python -m ai_workbench_mcp.tools.model_select --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: model_handoff_module_help
+        command: python -m ai_workbench_mcp.tools.model_handoff --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: run_log_module_help
+        command: python -m ai_workbench_mcp.tools.run_log --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: run_analyze_module_help
+        command: python -m ai_workbench_mcp.tools.run_analyze --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: golden_eval_module_help
+        command: python -m ai_workbench_mcp.tools.golden_eval --help
+        cwd: .
+        required: true
+        weight: 1.0
+      - name: policy_pack_select_module_help
+        command: python -m ai_workbench_mcp.tools.policy_pack_select --help
         cwd: .
         required: true
         weight: 1.0
       - name: model_registry_override_support
-        command: python -c "from pathlib import Path; from ai_workbench_mcp.tools.model_select import load_model_registry_with_source; assert Path('configs/model_registry.yaml').is_file(); assert Path('configs/model_registry.example.yaml').is_file(); assert Path('docs/configuration/model-registry.md').is_file(); assert 'configs/model_registry.local.yaml' in Path('.gitignore').read_text(encoding='utf-8'); registry=load_model_registry_with_source(); assert registry.source['base_registry_path'] == 'configs/model_registry.yaml'; assert isinstance(registry.source['local_override_loaded'], bool)"
+        command: python -c "from ai_workbench_mcp.tools.model_select import load_model_registry_with_source; registry=load_model_registry_with_source(); assert isinstance(registry.source['local_override_loaded'], bool)"
         cwd: .
         required: true
         weight: 1.0
       - name: event_ledger_import_smoke
-        command: python -c "from pathlib import Path; from ai_workbench_mcp import events; assert hasattr(events, 'build_event'); assert hasattr(events, 'response_with_event'); assert Path('docs/analytics/event-ledger.md').is_file()"
+        command: python -c "from ai_workbench_mcp import events; assert hasattr(events, 'build_event'); assert hasattr(events, 'response_with_event')"
         cwd: .
         required: true
         weight: 1.0
@@ -66,13 +101,13 @@ profiles:
   run_signoff:
     description: Acceptance sign-off for a run folder with captured output.
     commands:
-      - name: validate_run_help
-        command: python tools/validate_run.py --help
+      - name: validate_help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0
-      - name: quality_loop_help
-        command: python tools/quality_loop.py --help
+      - name: gate_help
+        command: python -m ai_workbench_mcp.cli gate --help
         cwd: .
         required: true
         weight: 1.0
@@ -95,8 +130,8 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
-      - name: validate_run_help
-        command: python tools/validate_run.py --help
+      - name: validate_help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0
@@ -258,8 +293,8 @@ profiles:
         cwd: .
         required: true
         weight: 1.0
-      - name: validate_run_help
-        command: python tools/validate_run.py --help
+      - name: validate_help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0
@@ -293,7 +328,7 @@ profiles:
         required: true
         weight: 3.0
       - name: workbench_tool_help_smoke
-        command: python tools/validate_run.py --help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0
@@ -332,7 +367,7 @@ profiles:
         required: true
         weight: 3.0
       - name: workbench_tool_help_smoke
-        command: python tools/validate_run.py --help
+        command: python -m ai_workbench_mcp.cli validate --help
         cwd: .
         required: true
         weight: 1.0

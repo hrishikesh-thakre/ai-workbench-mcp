@@ -59,8 +59,8 @@ Reason codes: test_fix.required_test_missing
 ## Minimal command
 
 ```bash
-python tools/validate_run.py --project ai_workbench_mcp --profile test_fix --out-dir runs/<run_id> --changed-files tests/<focused_test>.py --task-test-command "python -m pytest tests/<focused_test>.py -q -p no:cacheprovider"
-python tools/quality_loop.py --run-dir runs/<run_id>
+ai-workbench validate --project ai_workbench_mcp --profile test_fix --run-dir runs/<run_id> --changed-file tests/<focused_test>.py --task-test-command "python -m pytest tests/<focused_test>.py -q -p no:cacheprovider"
+ai-workbench gate --project ai_workbench_mcp --run-dir runs/<run_id>
 ```
 
 ## Common failure modes

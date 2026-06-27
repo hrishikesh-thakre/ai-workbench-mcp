@@ -37,7 +37,7 @@ It always blocks with `pr_gate.acceptance_evidence_missing`.
 Render from one explicit Workbench run:
 
 ```bash
-python tools/pr_gate.py \
+ai-workbench pr-gate \
   --run-dir examples/sample-runs/accepted-tiny-python-fix \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
@@ -46,7 +46,7 @@ python tools/pr_gate.py \
 Resolve a run by parent folder and run id:
 
 ```bash
-python tools/pr_gate.py \
+ai-workbench pr-gate \
   --runs-dir examples/sample-runs \
   --run-id accepted-tiny-python-fix \
   --out runs/pr_gate/pr_comment.md \
@@ -56,7 +56,7 @@ python tools/pr_gate.py \
 Render a blocking fallback when no full acceptance run is available:
 
 ```bash
-python tools/pr_gate.py \
+ai-workbench pr-gate \
   --fallback-run-dir runs/ci_scaffold \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
@@ -173,7 +173,7 @@ it into a target repository.
 
 The template:
 
-- installs `ai-workbench-mcp==0.6.0a0` by default
+- installs `ai-workbench-mcp==0.8.0a0` by default
 - accepts `workbench_run_dir`, or `workbench_runs_dir` plus `workbench_run_id`
 - can optionally generate a source-repository self-acceptance run when
   `WORKBENCH_SELF_ACCEPTANCE=true`
@@ -202,8 +202,8 @@ artifact path locally:
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest -q -p no:cacheprovider
-python tools/validate_run.py --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
-python tools/pr_gate.py --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
+ai-workbench validate --project ai_workbench_mcp --profile scaffold --run-dir runs/ci_scaffold
+ai-workbench pr-gate --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
 git diff --check
 ```
 

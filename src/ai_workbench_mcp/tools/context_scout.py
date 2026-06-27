@@ -172,10 +172,37 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_project_config(project_key: str) -> ProjectConfig:
-    raw_data = load_simple_yaml(WORKBENCH_ROOT / "configs" / "projects.yaml")
+def looks_like_project_path(project_key: str) -> bool:
+    candidate = Path(project_key).expanduser()
+    return (
+        project_key in {".", ".."}
+        or candidate.is_absolute()
+        or "/" in project_key
+        or "\\" in project_key
+        or candidate.exists()
+    )
+
+
+def default_project_config_for_path(project_key: str) -> ProjectConfig:
+    project_root = resolve_project_path(project_key, Path.cwd())
+    return ProjectConfig(
+        key=project_key,
+        root=project_root,
+        docs={},
+        prompts_dir=project_root / "prompts" / "approved",
+        runs_dir=project_root / "runs",
+        default_context_profile="default_docs_first",
+        default_validation_profile="scaffold",
+    )
+
+
+def load_project_config(project_key: str, *, allow_path: bool = False) -> ProjectConfig:
+    projects_path = WORKBENCH_ROOT / "configs" / "projects.yaml"
+    raw_data = load_simple_yaml(projects_path) if projects_path.is_file() else {}
     projects = raw_data.get("projects", {})
     if project_key not in projects:
+        if allow_path and looks_like_project_path(project_key):
+            return default_project_config_for_path(project_key)
         raise ValueError(f"Unknown project key: {project_key}")
 
     project_data = projects[project_key]

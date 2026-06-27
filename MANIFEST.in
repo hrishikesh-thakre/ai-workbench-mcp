@@ -3,3 +3,5 @@ recursive-include src/ai_workbench_mcp/assets/prompts *.md
 recursive-include src/ai_workbench_mcp/assets/recipes *.yaml
 recursive-include src/ai_workbench_mcp/assets/github *.yml
 recursive-include src/ai_workbench_mcp/assets/docs *.md
+recursive-include src/ai_workbench_mcp/supervisor/policies *.yml
+include NOTICE

@@ -11,7 +11,7 @@ instead of copying this file by hand:
 
 ```bash
 pipx install ai-workbench-mcp
-ai-workbench-bootstrap --target .
+ai-workbench bootstrap --target .
 ```
 
 Use this page when you need to review the bootstrapped workflow behavior or use
@@ -22,7 +22,7 @@ acceptance.
 
 ## What The Template Does
 
-- Installs `ai-workbench-mcp==0.6.0a0` by default.
+- Installs `ai-workbench-mcp==0.8.0a0` by default.
 - Looks for a real Workbench run directory when one is provided.
 - Renders `runs/pr_gate/pr_comment.md` and `runs/pr_gate/pr_decision.json`.
 - Uploads those files as the `workbench-pr-gate` artifact.
@@ -58,7 +58,7 @@ The workflow supports the same evidence selection surface as the existing PR gat
 | `workbench_runs_dir` / `WORKBENCH_RUNS_DIR` | Parent folder containing run folders. Use with `workbench_run_id`. |
 | `workbench_run_id` / `WORKBENCH_RUN_ID` | Run folder name under `workbench_runs_dir`. |
 | `workbench_fallback_run_dir` / `WORKBENCH_FALLBACK_RUN_DIR` | Optional scaffold evidence folder used only when no real run directory exists. Defaults to `runs/ai_workbench_missing_evidence`. |
-| `ai_workbench_mcp_package` / `AI_WORKBENCH_MCP_PACKAGE` | pip package spec. Defaults to `ai-workbench-mcp==0.6.0a0`. |
+| `ai_workbench_mcp_package` / `AI_WORKBENCH_MCP_PACKAGE` | pip package spec. Defaults to `ai-workbench-mcp==0.8.0a0`. |
 | `workbench_self_acceptance` / `WORKBENCH_SELF_ACCEPTANCE` | Optional source-repository mode. Set to `true` only when this workflow should generate a Workbench acceptance run for the current pull request before rendering. Defaults to `false`. |
 | `workbench_self_acceptance_run_dir` / `WORKBENCH_SELF_ACCEPTANCE_RUN_DIR` | Run folder used by self-acceptance mode. Defaults to `runs/pr_gate_acceptance`. |
 
@@ -108,7 +108,7 @@ Bootstrap the workflow assets again if the target repository is missing them:
 
 ```bash
 pipx install ai-workbench-mcp
-ai-workbench-bootstrap --target .
+ai-workbench bootstrap --target .
 ```
 
 Render from an explicit run directory:
@@ -116,7 +116,7 @@ Render from an explicit run directory:
 ```bash
 WORKBENCH_RUN_DIR=runs/<run_id>
 mkdir -p runs/pr_gate
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --run-dir "$WORKBENCH_RUN_DIR" \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
@@ -128,7 +128,7 @@ Or render from a parent directory plus run id:
 WORKBENCH_RUNS_DIR=runs
 WORKBENCH_RUN_ID=<run_id>
 mkdir -p runs/pr_gate
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --runs-dir "$WORKBENCH_RUNS_DIR" \
   --run-id "$WORKBENCH_RUN_ID" \
   --out runs/pr_gate/pr_comment.md \
@@ -140,7 +140,7 @@ Fallback rendering is only a wiring check:
 ```bash
 WORKBENCH_FALLBACK_RUN_DIR=runs/ai_workbench_missing_evidence
 mkdir -p runs/pr_gate
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --fallback-run-dir "$WORKBENCH_FALLBACK_RUN_DIR" \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
@@ -187,10 +187,10 @@ The check run is optional PR presentation, not a new acceptance source. `accept`
 
 ## Local Equivalent
 
-The workflow calls the packaged modules rather than repo-local wrappers:
+The workflow calls the public `ai-workbench` command rather than repo-local wrappers:
 
 ```bash
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --run-dir "$WORKBENCH_RUN_DIR" \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json
@@ -199,7 +199,7 @@ python -m ai_workbench_mcp.tools.pr_gate \
 Fallback rendering uses:
 
 ```bash
-python -m ai_workbench_mcp.tools.pr_gate \
+ai-workbench pr-gate \
   --fallback-run-dir "$WORKBENCH_FALLBACK_RUN_DIR" \
   --out runs/pr_gate/pr_comment.md \
   --json-out runs/pr_gate/pr_decision.json

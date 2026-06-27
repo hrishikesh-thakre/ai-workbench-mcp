@@ -158,9 +158,84 @@ class CliReleaseSmokeTests(unittest.TestCase):
             self.assertTrue(report["sign_off_ready"])
             self.assertGreater(report["summary"]["commands_passed"], 0)
             self.assertIn(
-                "validate_run_help",
+                "validate_help",
                 {str(command.get("name")) for command in report["commands_run"]},
             )
+
+    def test_cli_validate_accepts_project_path_in_bootstrapped_repository(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            target = Path(tmpdir) / "external-repo"
+            bootstrap = run_python(["-m", "ai_workbench_mcp.cli", "bootstrap", "--target", str(target), "--force"])
+            self.assertEqual(bootstrap.returncode, 0, bootstrap.stderr)
+            self.assertFalse((target / "tools").exists())
+
+            result = run_python(
+                [
+                    "-m",
+                    "ai_workbench_mcp.cli",
+                    "validate",
+                    "--project",
+                    ".",
+                    "--profile",
+                    "scaffold",
+                    "--run-dir",
+                    "runs/scaffold-smoke",
+                ],
+                cwd=target,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("overall_status=passed", result.stdout)
+            report_path = target / "runs" / "scaffold-smoke" / "validation_report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["overall_status"], "passed")
+            self.assertEqual(report["summary"]["commands_passed"], 19)
+            command_names = {str(command.get("name")) for command in report["commands_run"]}
+            self.assertIn("cli_help", command_names)
+            self.assertIn("pr_gate_help", command_names)
+            self.assertNotIn("validate_run_help", command_names)
+
+            (report_path.parent / "model_output.md").write_text(
+                "\n".join(
+                    [
+                        "# Model Output",
+                        "",
+                        "## Normalized Response",
+                        "",
+                        "Summary:",
+                        "Bootstrapped repository scaffold validation passed.",
+                        "",
+                        "Files touched:",
+                        "- configs/validation_profiles.yaml",
+                        "",
+                        "Validation run:",
+                        "- ai-workbench validate --project . --profile scaffold --run-dir runs/scaffold-smoke -> passed",
+                        "",
+                        "Risks / follow-ups:",
+                        "- None.",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            gate = run_python(
+                [
+                    "-m",
+                    "ai_workbench_mcp.cli",
+                    "gate",
+                    "--project",
+                    ".",
+                    "--run-dir",
+                    "runs/scaffold-smoke",
+                    "--risk",
+                    "low",
+                ],
+                cwd=target,
+            )
+            self.assertEqual(gate.returncode, 0, gate.stderr)
+            self.assertIn("final_status=accepted", gate.stdout)
+            decision = json.loads((report_path.parent / "revision_decision.json").read_text(encoding="utf-8"))
+            self.assertEqual(decision["final_status"], "accepted")
 
     def test_root_tool_shims_stay_thin_compatibility_wrappers(self) -> None:
         executable_shims = {
@@ -200,10 +275,7 @@ class CliReleaseSmokeTests(unittest.TestCase):
         pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         scripts = pyproject["project"]["scripts"]
 
-        self.assertEqual(scripts["ai-workbench-mcp"], "ai_workbench_mcp.server:main")
-        self.assertEqual(scripts["ai-workbench-bootstrap"], "ai_workbench_mcp.tools.bootstrap_assets:bootstrap_main")
-        self.assertEqual(scripts["ai-workbench-bootstrap-assets"], "ai_workbench_mcp.tools.bootstrap_assets:main")
-        self.assertEqual(scripts["ai-workbench-demo"], "ai_workbench_mcp.tools.demo:main")
+        self.assertEqual(scripts, {"ai-workbench": "ai_workbench_mcp.cli:main"})
 
 
 if __name__ == "__main__":

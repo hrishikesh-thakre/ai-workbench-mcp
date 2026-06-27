@@ -71,7 +71,7 @@ extensions:
     description: "Goose developer tools for shell commands, file reads, and edits."
   - type: stdio
     name: "AI Workbench MCP"
-    cmd: "ai-workbench-mcp"
+    cmd: "ai-workbench mcp serve"
     args: []
     timeout: 300
     bundled: false

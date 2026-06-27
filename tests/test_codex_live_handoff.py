@@ -67,7 +67,7 @@ def write_minimal_codex_live_run(root: Path, *, accepted: bool = True) -> tuple[
                     "status": "passed",
                 },
                 {"name": "recipe_policy_discovery_tests", "status": "passed"},
-                {"name": "validate_run_help", "status": "passed"},
+                {"name": "validate_help", "status": "passed"},
             ],
             "artifact_checks": [
                 {"name": "task_test_command", "status": "passed"},
@@ -148,7 +148,7 @@ class CodexLiveHandoffTests(unittest.TestCase):
         self.assertIn("OS-appropriate shell inspection commands", prompt)
         self.assertIn('response_text="Summary:', prompt)
         self.assertIn("Do not ask Codex to launch another Codex session.", prompt)
-        self.assertIn("Do not start ai-workbench-mcp directly", prompt)
+        self.assertIn("Do not start ai-workbench mcp serve directly", prompt)
         self.assertLess(
             prompt.index("Open the acceptance run with workbench_open_run"),
             prompt.index("Fix examples/tiny-python-fix/calculator.py"),

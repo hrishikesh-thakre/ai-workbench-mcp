@@ -61,8 +61,8 @@ Reason codes: low_risk_bug_fix.required_tests_passed
 ## Minimal command
 
 ```bash
-python tools/validate_run.py --project ai_workbench_mcp --profile low_risk_bug_fix --out-dir runs/<run_id> --changed-files src/<changed_file>.py tests/<focused_test>.py --task-test-command "python -m pytest tests/<focused_test>.py -q -p no:cacheprovider"
-python tools/quality_loop.py --run-dir runs/<run_id>
+ai-workbench validate --project ai_workbench_mcp --profile low_risk_bug_fix --run-dir runs/<run_id> --changed-file src/<changed_file>.py --changed-file tests/<focused_test>.py --task-test-command "python -m pytest tests/<focused_test>.py -q -p no:cacheprovider"
+ai-workbench gate --project ai_workbench_mcp --run-dir runs/<run_id>
 ```
 
 ## Common failure modes

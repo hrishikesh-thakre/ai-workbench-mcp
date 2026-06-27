@@ -56,8 +56,8 @@ Reason codes: api_contract_change.required_tests_passed, api_contract_change.acc
 ## Minimal command
 
 ```bash
-python tools/validate_run.py --project ai_workbench_mcp --profile api_contract_change --out-dir runs/<run_id> --changed-files src/ai_workbench_mcp/<changed_file>.py tests/test_contracts.py
-python tools/quality_loop.py --run-dir runs/<run_id>
+ai-workbench validate --project ai_workbench_mcp --profile api_contract_change --run-dir runs/<run_id> --changed-file src/ai_workbench_mcp/<changed_file>.py --changed-file tests/test_contracts.py
+ai-workbench gate --project ai_workbench_mcp --run-dir runs/<run_id>
 ```
 
 The profile's contract test command is:

@@ -18,9 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 ACCEPTED_SAMPLE = ROOT / "examples" / "sample-runs" / "accepted-tiny-python-fix"
 NEEDS_REVIEW_SAMPLE = ROOT / "examples" / "sample-runs" / "needs-review-test-fix"
 EXPECTED_RECOVERY_STEPS = [
-    "python -m ai_workbench_mcp.tools.validate_run --project <project> --profile <validation_profile> --out-dir runs/<run_id>",
-    "python -m ai_workbench_mcp.tools.quality_loop --project <project> --run-dir runs/<run_id> --mode auto",
-    "python -m ai_workbench_mcp.tools.pr_gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
+    "ai-workbench validate --project <project> --profile <validation_profile> --run-dir runs/<run_id>",
+    "ai-workbench gate --project <project> --run-dir runs/<run_id> --mode auto",
+    "ai-workbench pr-gate --run-dir runs/<run_id> --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json",
 ]
 EXPECTED_MISSING_EVIDENCE_NEXT_ACTION = (
     "Provide a complete Workbench acceptance run with validation_report.json and "
@@ -460,6 +460,116 @@ class PrGateTests(unittest.TestCase):
         self.assertEqual(decision["quality_gate_status"], "revision_required")
         self.assertIn("Deterministic validation failed", decision["reason"])
         self.assert_scan_first_section(comment, decision)
+        self.assertIn("# AI Workbench PR Gate: Block", comment)
+
+    def test_accepted_top_level_with_blocker_reason_source_maps_to_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "contradictory-run",
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                    "reason_sources": [
+                        {
+                            "code": "validation.contradiction",
+                            "severity": "blocker",
+                            "summary": "Contradictory blocker must win.",
+                        }
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "final_status": "accepted",
+                    "reason": "Accepted top-level fields should not win.",
+                    "next_action": "none",
+                    "reason_codes": ["quality_gate.accepted"],
+                },
+            )
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["reason"], "Contradictory blocker must win.")
+        self.assertIn("# AI Workbench PR Gate: Block", comment)
+
+    def test_accepted_top_level_with_required_timeout_command_maps_to_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "timeout-command-run",
+                    "overall_status": "passed",
+                    "sign_off_ready": True,
+                    "commands_run": [
+                        {
+                            "name": "tests",
+                            "required": True,
+                            "status": "timeout",
+                        }
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "final_status": "accepted",
+                    "reason": "Accepted top-level fields should not win.",
+                    "next_action": "none",
+                },
+            )
+
+            decision, _comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertIn("Required validation command timeout: tests.", decision["reason"])
+
+    def test_blocked_validation_maps_to_block_even_when_quality_gate_requests_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            run_dir = tmp_path / "run"
+            run_dir.mkdir()
+            write_json(
+                run_dir / "validation_report.json",
+                {
+                    "run_id": "blocked-validation-run",
+                    "overall_status": "blocked",
+                    "sign_off_ready": False,
+                    "reason_codes": ["supervisor.validation_blocked"],
+                    "reason_sources": [
+                        {
+                            "code": "supervisor.validation_blocked",
+                            "severity": "blocker",
+                            "summary": "Supervisor validation status is blocked.",
+                        }
+                    ],
+                },
+            )
+            write_json(
+                run_dir / "revision_decision.json",
+                {
+                    "final_status": "review_required",
+                    "reason": "Manual review requested.",
+                    "next_action": "manual_review_handoff",
+                },
+            )
+            (run_dir / "model_output.md").write_text("supervised output\n", encoding="utf-8")
+            (run_dir / "run_log.jsonl").write_text("{}\n", encoding="utf-8")
+
+            decision, comment = render_gate(run_dir, tmp_path / "out")
+
+        self.assertEqual(decision["outcome"], "block")
+        self.assertEqual(decision["validation_status"], "blocked")
+        self.assertEqual(decision["quality_gate_status"], "review_required")
+        self.assertIn("Supervisor validation status is blocked.", decision["reason"])
         self.assertIn("# AI Workbench PR Gate: Block", comment)
 
     def test_review_required_without_blocker_reason_maps_to_needs_review(self) -> None:

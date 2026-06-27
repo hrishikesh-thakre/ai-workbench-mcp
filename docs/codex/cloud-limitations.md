@@ -1,6 +1,6 @@
 # Codex Cloud Limitations
 
-Codex cloud is not part of this implementation pass. This pass targets Codex local/IDE because local MCP configuration can call the existing `ai-workbench-mcp` stdio server directly.
+Codex cloud is not part of this implementation pass. This pass targets Codex local/IDE because local MCP configuration can call the existing `ai-workbench mcp serve` stdio server directly.
 
 ## Why Cloud Comes Later
 

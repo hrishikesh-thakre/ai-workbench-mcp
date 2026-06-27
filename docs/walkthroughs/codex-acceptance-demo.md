@@ -2,7 +2,7 @@
 
 This walkthrough proves Codex local/IDE can use the same AI Workbench MCP acceptance layer as Goose.
 
-The target outcome is not a new Codex server. The target outcome is one shared `ai-workbench-mcp` server, one six-tool lifecycle, and evidence that marks:
+The target outcome is not a new Codex server. The target outcome is one shared `ai-workbench mcp serve` server, one six-tool lifecycle, and evidence that marks:
 
 - `execution_host="codex"`
 - `response_source="codex"`
@@ -13,7 +13,7 @@ Use this walkthrough from a single active Codex local/IDE session.
 
 Do not:
 
-- start `ai-workbench-mcp` as a foreground shell command
+- start `ai-workbench mcp serve` as a foreground shell command
 - ask Codex to launch another Codex session
 - delegate this walkthrough to Codex cloud
 - run multiple Codex acceptance attempts against the same `run_dir`
@@ -33,17 +33,17 @@ python -m pip install -e .
 Confirm Python can import the package:
 
 ```bash
-python -c "import ai_workbench_mcp; print('ai-workbench-mcp ready')"
+python -c "import ai_workbench_mcp; print('ai-workbench ready')"
 ```
 
 Configure Codex to use the existing server command:
 
 ```bash
-codex mcp add aiWorkbench -- ai-workbench-mcp
+codex mcp add aiWorkbench -- ai-workbench mcp serve
 codex mcp list
 ```
 
-Do not run `ai-workbench-mcp` directly in a normal terminal for this demo. It is a stdio MCP server and is meant to be launched by the MCP host.
+Do not run `ai-workbench mcp serve` directly in a normal terminal for this demo. It is a stdio MCP server and is meant to be launched by the MCP host.
 
 ## Optional Batch Handoff
 

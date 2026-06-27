@@ -30,7 +30,7 @@ Use the optional live Goose path only after Goose already has a provider configu
 For a new local user, the shortest safe order is:
 
 1. Install from the checked-out repository with `python -m pip install -e .`.
-2. Register the `ai-workbench-mcp` command in Goose.
+2. Register the `ai-workbench mcp serve` command in Goose.
 3. Run the two-tool smoke in `examples/goose-tool-smoke/` to prove Goose can call `workbench_open_run` and `workbench_select_model`.
 4. Run one full acceptance recipe after Goose has a provider configured.
 5. Inspect `validation_report.json` and `revision_decision.json` before describing the run outcome.
@@ -180,7 +180,7 @@ Choose:
 - `Add Extension`
 - `Command-line Extension`
 - Name: `AI Workbench MCP`
-- Command: `ai-workbench-mcp`
+- Command: `ai-workbench mcp serve`
 - Timeout: `300`
 
 Run the tiny Python fix recipe:

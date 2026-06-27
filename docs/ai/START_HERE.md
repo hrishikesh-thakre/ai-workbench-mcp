@@ -1,8 +1,8 @@
 # START_HERE
 
 Owner: AI Workbench MCP
-Status: v0.7 version-boundary and release-candidate prep branch
-Active milestone: v0.7 Version Boundary And Release Candidate Prep. `0.7.0a0` is the current unpublished source package target. `0.6.0a0` is the latest published package and MCP Registry version, with exact-version install proof on TestPyPI and PyPI. The external sample repository proof is complete in [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate).
+Status: v0.8 consolidation public alpha branch
+Active milestone: v0.8 AI Workbench Consolidated Public Alpha. `0.8.0a0` is the current unpublished source package target. `0.6.0a0` remains the latest published package and MCP Registry version, with exact-version install proof on TestPyPI and PyPI. The external sample repository proof is complete in [`hrishikesh-thakre/toy-ai-workbench-pr-gate`](https://github.com/hrishikesh-thakre/toy-ai-workbench-pr-gate).
 Created: 2026-05-12
 
 ## 1. Project One-Liner
@@ -155,7 +155,7 @@ The public repo should look like a Goose-compatible acceptance extension, not an
 
 Phase 5 evidence collection is complete. The closeout report in `docs/dogfooding/phase5-final-report.md` records 31 complete evidence runs, including 29 live Goose runs and 2 deterministic controls. Use that evidence to plan bounded routing-policy experiments; do not broadly auto-route or remove quality gates from the closeout report alone.
 
-The current product/release pass is not more general dogfooding, more recipes, GEPA, extra host integrations, provider plumbing, Checks API enforcement, Codex cloud export, or package publication. It is v0.7 version-boundary and release-candidate prep on top of the already-published v0.6 external PR gate adoption package:
+The current product/release pass is not more general dogfooding, more recipes, GEPA, extra host integrations, provider plumbing, Checks API enforcement, Codex cloud export, or package publication. It is v0.8 AI Workbench consolidation on top of the already-published v0.6 external PR gate adoption package:
 
 - make GitHub PR acceptance consume real Workbench run evidence
 - report exactly one of `accept`, `needs_review`, or `block`

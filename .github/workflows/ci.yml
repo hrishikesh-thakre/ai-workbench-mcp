@@ -42,13 +42,13 @@ jobs:
         run: python -m mypy --no-sqlite-cache --no-incremental
 
       - name: Run package demo smoke
-        run: python -m ai_workbench_mcp.tools.demo --target runs/package_demo_smoke
+        run: ai-workbench demo --target runs/package_demo_smoke
 
       - name: Run scaffold validation
-        run: python -m ai_workbench_mcp.tools.validate_run --project ai_workbench_mcp --profile scaffold --out-dir runs/ci_scaffold
+        run: ai-workbench validate --project ai_workbench_mcp --profile scaffold --run-dir runs/ci_scaffold
 
       - name: Render PR gate artifact
-        run: python -m ai_workbench_mcp.tools.pr_gate --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
+        run: ai-workbench pr-gate --fallback-run-dir runs/ci_scaffold --out runs/pr_gate/pr_comment.md --json-out runs/pr_gate/pr_decision.json
 
       - name: Upload PR gate artifact
         uses: actions/upload-artifact@v6
@@ -74,6 +74,7 @@ jobs:
         run: |
           python -m pip install --force-reinstall "$(ls dist/*.whl | head -n 1)"
           python -c "import ai_workbench_mcp; from ai_workbench_mcp import server; from ai_workbench_mcp.tools import model_select, validate_run"
+          ai-workbench --help
 
       - name: Check diff whitespace
         run: git diff --check

@@ -2,7 +2,7 @@
 
 Owner: AI Workbench MCP
 Status: v0.2 alpha release candidate
-Active milestone: v0.7 Version Boundary And Release Candidate Prep
+Active milestone: v0.8 AI Workbench Consolidated Public Alpha
 Created: 2026-05-12
 
 ## 1. Purpose

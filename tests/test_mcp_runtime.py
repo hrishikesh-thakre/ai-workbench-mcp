@@ -53,12 +53,12 @@ def payload_from_tool_result(result: Any) -> dict[str, Any]:
 
 class McpRuntimeSmokeTests(unittest.TestCase):
     def test_console_script_lists_workbench_tools(self) -> None:
-        script = shutil.which("ai-workbench-mcp")
+        script = shutil.which("ai-workbench")
         if script is None:
-            self.skipTest("ai-workbench-mcp console script is not installed")
+            self.skipTest("ai-workbench console script is not installed")
 
         async def run_smoke() -> None:
-            server = StdioServerParameters(command=script, args=[], env=os.environ.copy())
+            server = StdioServerParameters(command=script, args=["mcp", "serve"], env=os.environ.copy())
 
             async with stdio_client(server) as (read, write):
                 async with ClientSession(read, write) as session:

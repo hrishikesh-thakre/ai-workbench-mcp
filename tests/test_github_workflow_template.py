@@ -56,7 +56,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         ):
             self.assertIn(f"  {env_name}:", workflow)
 
-        self.assertIn("ai-workbench-mcp==0.6.0a0", workflow)
+        self.assertIn("ai-workbench-mcp==0.8.0a0", workflow)
 
     def test_render_job_uses_read_only_permissions_and_packaged_renderer(self) -> None:
         workflow = read_workflow()
@@ -68,7 +68,8 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
         self.assertNotIn("checks: write", render)
         self.assertIn('python -m pip install "$AI_WORKBENCH_MCP_PACKAGE"', render)
         self.assertIn('python -m pip install -e ".[dev]"', render)
-        self.assertIn("python -m ai_workbench_mcp.tools.pr_gate", render)
+        self.assertIn("ai-workbench pr-gate", render)
+        self.assertNotIn("python -m ai_workbench_mcp.tools.pr_gate \\", render)
         self.assertNotIn("python tools/pr_gate.py", workflow)
         self.assertNotIn("tools/pr_gate.py", workflow)
         self.assertNotIn("tools/validate_run.py", workflow)
@@ -213,7 +214,7 @@ class GitHubWorkflowTemplateTests(unittest.TestCase):
             "| `needs_review` | `action_required` |",
             "Green CI is not semantic acceptance",
             "pipx install ai-workbench-mcp",
-            "ai-workbench-bootstrap --target .",
+            "ai-workbench bootstrap --target .",
             "WORKBENCH_RUN_DIR",
             "WORKBENCH_RUNS_DIR",
             "WORKBENCH_SELF_ACCEPTANCE",

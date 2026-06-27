@@ -5,7 +5,7 @@ Paste this into a repository `AGENTS.md` when you want Codex to use AI Workbench
 ```markdown
 ## AI Workbench MCP Acceptance Loop
 
-When using AI Workbench MCP, keep one shared MCP server: `ai-workbench-mcp`.
+When using AI Workbench MCP, keep one shared MCP server: `ai-workbench mcp serve`.
 
 For Codex local/IDE runs:
 

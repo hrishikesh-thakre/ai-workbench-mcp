@@ -1,34 +1,73 @@
-# AI Workbench MCP
+# AI Workbench
 
 <!-- mcp-name: io.github.hrishikesh-thakre/ai-workbench-mcp -->
 
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-Acceptance gates for AI coding-agent runs.
+AI Workbench supervises AI coding agents, captures evidence, validates work,
+applies acceptance policy, and produces auditable PR-ready reports.
 
-AI agents can produce code. AI Workbench MCP helps decide whether that work is accepted by recording evidence, running deterministic validation, applying a quality gate, and rendering auditable outcomes.
+The PyPI package remains `ai-workbench-mcp` for this public alpha because the
+`ai-workbench` package name is already occupied. The product and CLI are
+**AI Workbench**:
 
-Works with Goose today. Designed as a host-agnostic acceptance layer for MCP-compatible agent workflows. Codex local/IDE is the first second-host target through explicit `execution_host="codex"` and `response_source="codex"` evidence metadata.
+```bash
+pip install ai-workbench-mcp
+ai-workbench --help
+```
 
-Current source metadata targets unpublished `ai-workbench-mcp==0.7.0a0` for the next release-candidate pass. `ai-workbench-mcp==0.6.0a0` remains the latest published PyPI and MCP Registry package, and the external PR-gate workflow stays pinned to that published version until a future release is explicitly approved.
+Current source metadata targets unpublished `ai-workbench-mcp==0.8.0a0`.
+This public alpha consolidates local supervision, evidence capture, validation,
+acceptance policy, and PR reporting into one product surface.
 
-## Before
+## Public Alpha Warning
 
-The agent says: "Done."
+The supervisor is the preferred automated evidence path, but daemon, Codex hook,
+and OpenCode adapter coverage are alpha mechanisms. AI Workbench checks evidence
+quality and acceptance readiness; it does not prove the work is absolutely
+correct. High-risk work still requires human review.
 
-## After
+## Architecture
 
-AI Workbench shows:
+- AI Workbench supervisor captures local evidence.
+- AI Workbench validation writes `validation_report.json`.
+- AI Workbench quality gate writes `revision_decision.json`.
+- AI Workbench PR/report surfaces render `accept`, `needs_review`, or `block`.
 
-- what task was requested
-- what agent/model/runtime was used
-- what output was produced
-- what validation ran
-- whether the quality gate accepted, rejected, or requested review
-- where the evidence lives
+Agent output is a proposal. Workbench accepts evidence.
+
+MCP is the connection protocol. AI Workbench MCP is the tool server.
+Acceptance is decided by the selected validation profile and quality gate.
+The agent performs. Workbench accepts. MCP connects them.
+
+## Quick Start
+
+Register a project once and start the local supervisor:
+
+```bash
+pip install ai-workbench-mcp
+ai-workbench supervisor setup --project-dir . --task-type code_change
+ai-workbench supervisor start
+```
+
+Run Codex, OpenCode, Goose, or another supported local workflow in the project.
+Then inspect the latest report:
+
+```bash
+ai-workbench supervisor status
+ai-workbench reports show latest --project-dir .
+```
+
+Render PR-ready artifacts from a finalized run:
+
+```bash
+ai-workbench pr-gate --run-dir runs/<run_id>
+```
+
+The canonical local run ledger is:
 
 ```text
-runs/example/
+runs/<run_id>/
   task_metadata.json
   final_prompt.md
   model_selection.json
@@ -36,183 +75,152 @@ runs/example/
   validation_report.json
   revision_decision.json
   run_log.jsonl
+  metadata.json
+  transcript.jsonl
+  commands.jsonl
+  workspace/
+  validation/
+  artifacts/
 ```
 
-AI Workbench turns agent output into evidence-backed accepted runs.
+`validation_report.json` and `revision_decision.json` are the final acceptance
+authority. Supporting supervisor reports are local evidence, not a substitute
+for those Workbench artifacts.
 
-## 5-Minute Quickstart
+## Codex Hooks
 
-Start with the package-only demo. It is the fastest way to see the Workbench gate because it does not require Goose, provider credentials, a target repository, or committed `runs/` evidence.
+Install project-local Codex hooks:
 
 ```bash
-python -m pip install -e .
-ai-workbench-demo --target ./workbench-first-run
+ai-workbench setup codex --project-dir . --task-type code_change
 ```
 
-Module fallback:
+Restart Codex or start a new session, open `/hooks`, review the project hook,
+and trust it once. Until a hook event is observed, supervisor status reports
+Codex coverage as configured but unverified.
+
+## Goose MCP
+
+AI Workbench still exposes the same MCP tool lifecycle. Register the server with
+Goose or another MCP host using:
 
 ```bash
-python -m ai_workbench_mcp.tools.demo --target ./workbench-first-run
+ai-workbench mcp serve
 ```
 
-Expected outputs:
-
-```text
-./workbench-first-run/ai-workbench-demo/accepted/pr_decision.json      -> accept
-./workbench-first-run/ai-workbench-demo/needs-review/pr_decision.json  -> needs_review
-./workbench-first-run/ai-workbench-demo/blocked/pr_decision.json       -> block
-```
-
-Open the matching `pr_comment.md` files to see the reviewer-facing explanation for each outcome. The demo uses synthetic fixture evidence to show the PR-gate renderer. It is not a real target-repo acceptance run and is not a shortcut around validation or the quality gate. For a short recording script, see the [package demo walkthrough](docs/walkthroughs/package-demo.md).
-
-## What This Catches That CI Does Not
-
-CI answers whether configured commands passed. AI Workbench also checks whether the run produced the evidence needed to justify acceptance.
-
-Workbench catches missing or scaffold-only acceptance evidence, absent validation reports, missing quality-gate decisions, changed-file policy failures, and cases where an AI run should be reviewed or blocked even though a narrow test command passed.
-
-It does not replace CI, code review, security review, or human judgment. It adds an auditable acceptance layer that turns agent output into `accept`, `needs_review`, or `block` with a required next action.
-
-## CI vs AI Reviewer vs Workbench
-
-| Question | CI | AI reviewer | Workbench |
-| --- | --- | --- | --- |
-| Did configured commands pass? | Yes | Usually no | Records command-backed validation |
-| Is required acceptance evidence present? | No | Can mention it | Enforces required artifacts |
-| Did changed files fit policy? | Only if custom checks exist | Can flag concerns | Applies validation profile and policy checks |
-| Is this accepted, needs review, or blocked? | No | Usually prose | Writes machine-readable gate output |
-| Is there an auditable next action? | Logs only | Prose comment | `pr_decision.json` and PR comment |
-
-To add the published `0.6.0a0` PR gate assets to a repository:
-
-```bash
-python -m pip install ai-workbench-mcp==0.6.0a0
-ai-workbench-bootstrap --target .
-```
-
-That command writes starter configs, prompts, recipes, `.github/workflows/ai-workbench-pr-gate.yml`, `docs/ai-workbench-pr-gate.md`, and keeps `runs/` ignored. See [Use AI Workbench PR Gate in your repo in 10 minutes](docs/github/external-repo-setup.md).
-
-## What MCP Does And Does Not Do
-
-MCP is the connection protocol.
-
-AI Workbench MCP is the tool server. MCP lets Goose, Codex local/IDE, or another compatible host call Workbench tools, but the protocol itself does not verify correctness, inspect code quality, or decide whether a run is accepted.
-
-Acceptance is decided by the selected validation profile and quality gate. The agent performs. Workbench accepts. MCP connects them. See [how acceptance works](docs/concepts/how-acceptance-works.md).
-
-## Prompt DoD vs Acceptance Gate
-
-A prompt definition-of-done tells the agent what to attempt and what evidence to report. Prompt instructions are not enforcement.
-
-An acceptance gate checks the resulting evidence after the agent acts. It uses explicit validation profiles, command-backed checks, required artifacts, changed-file policies, and quality-gate rules. The same agent saying "done" is never enough for acceptance.
-
-## What Decides Acceptance
-
-The validation profile runs deterministic checks such as tests, build or lint commands, artifact existence checks, and changed-file policy. The quality gate then accepts the run, requests review, requests revision, or leaves the run failed based on that evidence and the configured risk policy.
-
-For a PR gate to report `accept`, the referenced run must include acceptance-supporting `validation_report.json` and `revision_decision.json`. Scaffold-only evidence is visibility evidence, not semantic acceptance evidence, and blocks with `pr_gate.acceptance_evidence_missing`.
-
-## Seven MCP Tools
+The seven MCP tools remain:
 
 ```text
 workbench_open_run
-  -> creates the run folder, task metadata, final prompt, context packet, and initial run log
 workbench_select_policy_pack
-  -> recommends an advisory policy pack and matching validation profile from task metadata
 workbench_select_model
-  -> recommends a model/runtime tier and writes model_selection.json
 workbench_record_execution
-  -> captures Goose/Codex/model output into model_output.md and records response_source
 workbench_validate_run
-  -> runs deterministic validation and writes validation_report.json
 workbench_quality_gate
-  -> accepts, rejects, or requests review and writes revision_decision.json
 workbench_analyze_runs
-  -> summarizes accepted-run metrics and writes run_dashboard.html for local scanning
 ```
 
-## Workflow
+## PR Gate
 
-```text
-Goose recipe
-  -> workbench_open_run
-  -> workbench_select_model
-  -> Goose performs the task
-  -> workbench_record_execution
-  -> workbench_validate_run
-  -> workbench_quality_gate
-  -> workbench_analyze_runs
+Workbench PR acceptance consumes real Workbench run evidence:
+
+```bash
+ai-workbench pr-gate \
+  --run-dir runs/<run_id> \
+  --out runs/pr_gate/pr_comment.md \
+  --json-out runs/pr_gate/pr_decision.json
 ```
 
-A run is accepted only when deterministic validation and the quality gate support acceptance.
+Outcomes are exactly:
 
-## Goose And Codex
+- `accept`
+- `needs_review`
+- `block`
 
-Goose remains the default execution surface. Register the MCP server with `goose configure`, choose a command-line extension, and use `ai-workbench-mcp` as the command. Start with `recipes/workbench-mcp-tool-smoke.yaml`, then use `recipes/workbench-engineering-acceptance.yaml` or a focused recipe such as `recipes/workbench-docs-only-acceptance.yaml`, `recipes/workbench-python-package-maintenance.yaml`, or `recipes/workbench-test-fix-acceptance.yaml`.
+Missing, unreadable, or scaffold-only evidence blocks. A green CI run, uploaded
+artifact, sticky PR comment, or model self-claim is not acceptance evidence.
 
-Codex local/IDE uses the same `ai-workbench-mcp` server, not a separate Codex server. Read [Codex setup](docs/codex/setup.md), [Codex acceptance workflow](docs/codex/acceptance-workflow.md), [Codex AGENTS.md snippet](docs/codex/agents-snippet.md), [Codex cloud limitations](docs/codex/cloud-limitations.md), [Codex live-test handoff](docs/codex/live-test-handoff.md), and the [Codex acceptance demo walkthrough](docs/walkthroughs/codex-acceptance-demo.md). The handoff helper checks the resulting Codex evidence folders.
+## Bootstrap Assets
 
-## Policy Packs
+To add starter configs, prompts, recipes, docs, and the GitHub PR-gate workflow
+to a repository:
 
-The five first-class policy packs are `docs_only`, `low_risk_bug_fix`, `test_fix`, `api_contract_change`, and `security_privacy_sensitive`. Their catalog metadata lives in `configs/policy_packs.yaml`, maps each pack to a validation profile, and is documented in [docs/policy-packs/](docs/policy-packs/).
+```bash
+ai-workbench bootstrap --target .
+```
 
-Other useful starter profiles include `python_package_maintenance`, `fixture_repair_proof`, and `low_risk_coding`. For copy-ready commands, see [examples/focused-workflows](examples/focused-workflows/).
+The bootstrap keeps `runs/` ignored.
 
-## Examples And Demos
+## Package Demo
 
-- [Tiny Python fix](examples/tiny-python-fix/): deliberately broken one-function fixture.
-- [Goose tool smoke](examples/goose-tool-smoke/): slow-local-model two-tool smoke.
-- [Goose recipe smoke](examples/goose-recipe-smoke/): low-risk Goose acceptance run.
-- [Codex tool smoke](examples/codex-tool-smoke/) and [Codex acceptance smoke](examples/codex-acceptance-smoke/): local/IDE host proof.
-- [Sample accepted run](examples/sample-runs/accepted-tiny-python-fix/), [sample Codex accepted run](examples/sample-runs/accepted-codex-tiny-python-fix/), [sample docs-only accepted run](examples/sample-runs/accepted-docs-only-smoke/), and [sample needs-review run](examples/sample-runs/needs-review-test-fix/): sanitized committed evidence.
-- [PR gate outcome demos](docs/proof/pr-gate-outcome-demos.md): sanitized fixtures for `accept`, `needs_review`, and `block`.
-- [Fresh Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md) and [Fresh Codex fixture proof](docs/proof/codex-fixture-accepted-run.md): live proof summaries using `fixture_repair_proof`.
-- [Package demo walkthrough](docs/walkthroughs/package-demo.md): 90-second package-only script for `ai-workbench-demo` and the three PR-gate outcomes.
-- [Goose acceptance demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md): recording-ready 3-5 minute public demo runbook.
+For a package-only synthetic demo:
 
-## Docs Map
+```bash
+ai-workbench demo --target ./workbench-first-run
+```
 
-Start with [docs/README.md](docs/README.md) for the public documentation map.
-
-Frequently used docs:
-
-- [Acceptance model](docs/concepts/how-acceptance-works.md)
-- [PR gate renderer](docs/github/pr-gate.md) and [copy-paste workflow template](docs/github/pr-gate-workflow-template.md)
-- [External repo setup](docs/github/external-repo-setup.md) and [external sample repo proof](docs/github/external-sample-repo-plan.md)
-- [Acceptance analytics](docs/analytics/acceptance-analytics.md), [evidence dashboard](docs/analytics/evidence-dashboard.md), and [event ledger](docs/analytics/event-ledger.md)
-- [v0.2 contract baseline](docs/contracts/v0.2-contract-baseline.md)
-- [Golden-case harness](docs/evals/golden-case-harness.md)
-- [Model registry configuration](docs/configuration/model-registry.md)
-- [PyPI publishing prep](docs/publishing/pypi.md)
-- [Repository topics](docs/github/repository-topics.md), [launch issue creation record](docs/github/create-launch-issues.md), and [launch issue seeds](docs/github/launch-issues.md)
-
-Historical/internal proof and planning material is intentionally not the first path for new users. It remains available under [docs/proof/](docs/proof/) and [docs/dogfooding/](docs/dogfooding/), including [Phase 5 dogfooding protocol](docs/dogfooding/phase5-dogfooding.md) and [v0.4 policy-pack validation report](docs/dogfooding/v0.4-policy-pack-validation-report.md).
-
-## Approved Prompt Catalog
-
-Approved prompts live in `prompts/approved/`. The catalog includes `bug_root_cause_investigation.md`, `code_review_patch_risk_audit.md`, `data_acquisition_surface_audit.md`, `documentation_accuracy_audit.md`, `implement_request_change_request.md`, `navigation_page_title_ia_audit.md`, `performance_latency_hotspot_audit.md`, `prompt_failure_improvement_log.md`, `repository_context_index_audit.md`, `security_privacy_risk_review.md`, `test_case_development_meaningful_coverage.md`, and `ux_visual_accessibility_audit.md`.
+This shows `accept`, `needs_review`, and `block` PR-gate outcomes with fixture
+evidence. It is not a real target-repository acceptance run.
 
 ## Development
 
 ```bash
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,publish]"
 python -m pytest -q -p no:cacheprovider
 python -m ruff check . --no-cache
 python -m mypy --no-sqlite-cache --no-incremental
-python -m ai_workbench_mcp.tools.validate_run --project ai_workbench_mcp --profile scaffold --out-dir runs/scaffold-smoke
+ai-workbench demo --target runs/package_demo_smoke
+ai-workbench validate --project ai_workbench_mcp --profile scaffold --run-dir runs/scaffold-smoke
 ```
 
-Do not commit `runs/`. It is the local evidence ledger. The root `tools/` scripts remain backward-compatible shims; new package-oriented docs should prefer `python -m ai_workbench_mcp.tools.<name>` or a console script when one exists.
+Do not commit `runs/`. Committed sample evidence must be sanitized and live
+under `examples/`.
 
-## Roadmap
+## Docs
 
-- `v0.1.0-alpha`: first public Goose MCP acceptance workflow.
-- `v0.2.0-alpha`: focused recipe library and validation policy profiles.
-- Phase 5 complete: accepted-artifact analytics, Codex local/IDE proof, PyPI/MCP Registry publication, and 31 complete dogfood evidence runs.
-- Current: v0.7 version-boundary reset and release-candidate prep on top of the published v0.6 external PR-gate adoption package.
-- Next after v0.7: stable contract fixture hardening, then Checks API integration, fork-comment strategy, and cost/time evidence.
-- `v1.0`: stable MCP contracts and recipe API.
+- [Supervisor docs](docs/supervisor/automated-evidence-supervisor.md)
+- [Evidence folder contract](docs/supervisor/evidence-folder-contract.md)
+- [Transcript schema](docs/supervisor/transcript-schema.md)
+- [Workspace hygiene](docs/supervisor/workspace-hygiene.md)
+- [Confidence rules](docs/supervisor/confidence-rules.md)
+- [How acceptance works](docs/concepts/how-acceptance-works.md)
+- [Contract baseline](docs/contracts/v0.2-contract-baseline.md)
+- [Package demo walkthrough](docs/walkthroughs/package-demo.md)
+- [Codex setup](docs/codex/setup.md)
+- [Codex live-test handoff](docs/codex/live-test-handoff.md)
+- [Codex acceptance walkthrough](docs/walkthroughs/codex-acceptance-demo.md)
+- [Acceptance analytics](docs/analytics/acceptance-analytics.md)
+- [Evidence dashboard](docs/analytics/evidence-dashboard.md)
+- [Event ledger](docs/analytics/event-ledger.md)
+- [Golden-case harness](docs/evals/golden-case-harness.md)
+- [Model registry](docs/configuration/model-registry.md)
+- [Dogfooding guide](docs/dogfooding/phase5-dogfooding.md)
+- [Goose demo walkthrough](docs/walkthroughs/goose-acceptance-demo.md) - recording-ready 3-5 minute public demo runbook
+- [Policy packs](docs/policy-packs/)
+- [PR gate](docs/github/pr-gate.md)
+- [Launch issues](docs/github/launch-issues.md)
+- [Repository topics](docs/github/repository-topics.md)
+- [Create launch issues](docs/github/create-launch-issues.md)
+- [Publishing guide](docs/publishing/pypi.md)
+- [Gemini fixture proof](docs/proof/gemini-fixture-accepted-run.md)
+- [Codex fixture proof](docs/proof/codex-fixture-accepted-run.md)
+
+Recipes:
+
+- [Engineering acceptance](recipes/workbench-engineering-acceptance.yaml)
+- [MCP tool smoke](recipes/workbench-mcp-tool-smoke.yaml)
+- [Docs-only acceptance](recipes/workbench-docs-only-acceptance.yaml)
+- [Python package maintenance](recipes/workbench-python-package-maintenance.yaml)
+- [Test-fix acceptance](recipes/workbench-test-fix-acceptance.yaml)
+
+Sample evidence:
+
+- [Accepted tiny Python fix](examples/sample-runs/accepted-tiny-python-fix)
+- [Accepted Codex tiny Python fix](examples/sample-runs/accepted-codex-tiny-python-fix)
+- [Accepted docs-only smoke](examples/sample-runs/accepted-docs-only-smoke)
+- [Needs-review test fix](examples/sample-runs/needs-review-test-fix)
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE).
+Apache-2.0. See [LICENSE](LICENSE). MIT-origin attribution for the consolidated
+Prove It code is retained in [NOTICE](NOTICE).

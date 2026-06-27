@@ -5,7 +5,7 @@ Use this helper when you want a bounded way to test Codex local/IDE without star
 The helper:
 
 - checks that the Python package imports
-- checks whether the `ai-workbench-mcp` command is on `PATH`
+- checks whether the `ai-workbench` command is on `PATH`
 - optionally runs `codex mcp list`
 - writes a one-shot Codex prompt under ignored `runs/`
 - uses one unique parent directory for the tool smoke and acceptance smoke
@@ -17,7 +17,7 @@ The helper:
 It does not:
 
 - launch Codex
-- start `ai-workbench-mcp` as a foreground stdio server
+- start `ai-workbench mcp serve` as a foreground stdio server
 - call Workbench MCP tools itself
 - edit tracked files
 

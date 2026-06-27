@@ -1,8 +1,8 @@
 # MCP Registry Proof
 
-Status: `0.6.0a0` registry publication recorded as complete; `0.7.0a0` source metadata is unpublished.
+Status: `0.6.0a0` registry publication recorded as complete; `0.8.0a0` source metadata is unpublished.
 Latest published registry version: `0.6.0a0`
-Current source metadata version: `0.7.0a0`
+Current source metadata version: `0.8.0a0`
 Date verified in repo docs: 2026-05-20
 
 ## Registry Identity
@@ -13,7 +13,7 @@ Date verified in repo docs: 2026-05-20
 | Title | `AI Workbench MCP` |
 | Package | `ai-workbench-mcp` |
 | Latest published package version | `0.6.0a0` |
-| Current source package version | `0.7.0a0` |
+| Current source package version | `0.8.0a0` |
 | Transport | `stdio` |
 | Repository | `https://github.com/hrishikesh-thakre/ai-workbench-mcp` |
 | License | `Apache-2.0` |
@@ -51,7 +51,7 @@ workbench_analyze_runs
 
 ## Install Path
 
-Published PyPI install for the latest historical registry version:
+Historical v0.3 registry install path:
 
 ```bash
 python -m pip install ai-workbench-mcp==0.3.0a0
@@ -60,8 +60,9 @@ python -m pip install ai-workbench-mcp==0.3.0a0
 This installs the server code, the `ai-workbench-mcp` stdio console script, and
 the `ai-workbench-bootstrap-assets` helper.
 
-The published v0.6 package adds the `ai-workbench-bootstrap` adoption command
-for external repositories:
+The latest published package and registry proof before the v0.8 consolidation
+target is v0.6. The published v0.6 package adds the
+`ai-workbench-bootstrap` adoption command for external repositories:
 
 ```bash
 python -m pip install ai-workbench-mcp==0.6.0a0
@@ -73,7 +74,7 @@ PR-gate adoption assets from the published v0.6 package.
 Full demo fixtures, examples, evals, and private run evidence remain outside the
 published wheel.
 
-The current source tree targets `0.7.0a0` for the next release-candidate pass,
+The current source tree targets `0.8.0a0` for the consolidation alpha pass,
 but that version has not been published to PyPI or MCP Registry.
 
 ## Version History
@@ -84,6 +85,7 @@ but that version has not been published to PyPI or MCP Registry.
 | `0.3.0a0` | active, not latest | 2026-05-18 |
 | `0.6.0a0` | active, latest | 2026-05-19 |
 | `0.7.0a0` | source metadata only, unpublished | 2026-05-20 |
+| `0.8.0a0` | source metadata only, unpublished | 2026-06-27 |
 
 ## v0.6 Publication Proof
 
@@ -97,7 +99,7 @@ OAuth authentication. The registry API returned:
 ## Maintenance Rule
 
 Do not rerun registry publication for `0.2.0a0`, `0.3.0a0`, or `0.6.0a0`.
-Do not publish `0.7.0a0` registry metadata until the matching package version is
+Do not publish `0.8.0a0` registry metadata until the matching package version is
 published and a release is explicitly approved.
 
 Future registry updates require:

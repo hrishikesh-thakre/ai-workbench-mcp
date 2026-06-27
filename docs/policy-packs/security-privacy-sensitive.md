@@ -59,8 +59,8 @@ Reason codes: security_privacy_sensitive.required_tests_passed
 ## Minimal command
 
 ```bash
-python tools/validate_run.py --project ai_workbench_mcp --profile security_privacy_sensitive --out-dir runs/<run_id> --changed-files src/<security_change>.py tests/<security_test>.py
-python tools/quality_loop.py --run-dir runs/<run_id>
+ai-workbench validate --project ai_workbench_mcp --profile security_privacy_sensitive --run-dir runs/<run_id> --changed-file src/<security_change>.py --changed-file tests/<security_test>.py
+ai-workbench gate --project ai_workbench_mcp --run-dir runs/<run_id>
 ```
 
 ## Common failure modes

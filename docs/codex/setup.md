@@ -1,6 +1,6 @@
 # Codex Local/IDE Setup
 
-AI Workbench MCP uses the same `ai-workbench-mcp` stdio server for Goose and Codex. Codex is a first-class execution host, but this pass does not create a Codex-specific server.
+AI Workbench uses the same `ai-workbench mcp serve` stdio server for Goose and Codex. Codex is a first-class execution host, but this pass does not create a Codex-specific server.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ python -m pip install -e .
 - Confirm the package is importable:
 
 ```bash
-python -c "import ai_workbench_mcp; print('ai-workbench-mcp ready')"
+python -c "import ai_workbench_mcp; print('ai-workbench ready')"
 ```
 
 ## Configure Codex
@@ -23,7 +23,7 @@ Codex supports MCP servers from the CLI and IDE extension with shared configurat
 For the local Workbench stdio server, add this server to Codex:
 
 ```bash
-codex mcp add aiWorkbench -- ai-workbench-mcp
+codex mcp add aiWorkbench -- ai-workbench mcp serve
 codex mcp list
 ```
 
@@ -31,8 +31,8 @@ If you manage Codex MCP config directly, keep the server name short and point it
 
 ```toml
 [mcp_servers.aiWorkbench]
-command = "ai-workbench-mcp"
-args = []
+command = "ai-workbench"
+args = ["mcp", "serve"]
 ```
 
 ## Host Metadata
@@ -55,7 +55,7 @@ Workbench still writes evidence under `runs/<run_id>/` and still requires determ
 
 After setup, use `docs/walkthroughs/codex-acceptance-demo.md` for the bounded local/IDE proof. If you want a visible countdown and generated prompt first, use `docs/codex/live-test-handoff.md`.
 
-Do not run `ai-workbench-mcp` directly as a foreground terminal command; Codex should launch it as an MCP server.
+Do not run `ai-workbench mcp serve` directly as a foreground terminal command; Codex should launch it as an MCP server.
 
 ## References
 

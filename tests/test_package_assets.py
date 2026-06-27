@@ -87,7 +87,7 @@ class PackageAssetTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("AI Workbench PR Gate", workflow_text)
-        self.assertIn("ai-workbench-mcp==0.6.0a0", workflow_text)
+        self.assertIn("ai-workbench-mcp==0.8.0a0", workflow_text)
         setup_doc_text = assets_root.joinpath("docs", "ai-workbench-pr-gate.md").read_text(encoding="utf-8")
         self.assertIn("validation_report.json", setup_doc_text)
         self.assertIn("revision_decision.json", setup_doc_text)
@@ -104,6 +104,17 @@ class PackageAssetTests(unittest.TestCase):
 
         self.assertEqual(packaged_workflow.read_bytes(), source_workflow.read_bytes())
 
+    def test_packaged_validation_profiles_do_not_reference_repo_local_tool_paths(self) -> None:
+        validation_profile_text = Path(str(package_assets_root())).joinpath(
+            "configs",
+            "validation_profiles.yaml",
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("python tools/", validation_profile_text)
+        self.assertIn("python -m ai_workbench_mcp.cli validate --help", validation_profile_text)
+        self.assertIn("python -m ai_workbench_mcp.cli pr-gate --help", validation_profile_text)
+        self.assertIn("python -m ai_workbench_mcp.tools.golden_eval --help", validation_profile_text)
+
     def test_packaged_bootstrap_doc_explains_local_recovery_smoke(self) -> None:
         setup_doc_text = Path(str(package_assets_root())).joinpath(
             "docs",
@@ -111,7 +122,7 @@ class PackageAssetTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
 
         for phrase in (
-            "python -m ai_workbench_mcp.tools.pr_gate",
+            "ai-workbench pr-gate",
             "--fallback-run-dir",
             "pr_decision.json",
             "pr_comment.md",
@@ -200,7 +211,7 @@ class PackageAssetTests(unittest.TestCase):
             with mock.patch.object(
                 sys,
                 "argv",
-                ["ai-workbench-bootstrap", "--target", str(target), "--dry-run", "--json"],
+                ["ai-workbench", "--target", str(target), "--dry-run", "--json"],
             ):
                 with contextlib.redirect_stdout(stdout):
                     exit_code = bootstrap_main()
@@ -232,22 +243,11 @@ class PackageAssetTests(unittest.TestCase):
             self.assertEqual(result_action(forced_summary, "configs/policy_packs.yaml"), "overwritten")
             self.assertIn("policy_packs:", policy_pack_path.read_text(encoding="utf-8"))
 
-    def test_packaging_metadata_includes_asset_bootstrap_surface(self) -> None:
+    def test_packaging_metadata_includes_unified_cli_and_assets(self) -> None:
         pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         manifest = (ROOT / "MANIFEST.in").read_text(encoding="utf-8")
 
-        self.assertEqual(
-            pyproject["project"]["scripts"]["ai-workbench-bootstrap"],
-            "ai_workbench_mcp.tools.bootstrap_assets:bootstrap_main",
-        )
-        self.assertEqual(
-            pyproject["project"]["scripts"]["ai-workbench-bootstrap-assets"],
-            "ai_workbench_mcp.tools.bootstrap_assets:main",
-        )
-        self.assertEqual(
-            pyproject["project"]["scripts"]["ai-workbench-demo"],
-            "ai_workbench_mcp.tools.demo:main",
-        )
+        self.assertEqual(pyproject["project"]["scripts"], {"ai-workbench": "ai_workbench_mcp.cli:main"})
         self.assertTrue(pyproject["tool"]["setuptools"]["include-package-data"])
         self.assertIn("recursive-include src/ai_workbench_mcp/assets/configs *.yaml", manifest)
         self.assertIn("recursive-include src/ai_workbench_mcp/assets/prompts *.md", manifest)
